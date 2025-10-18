@@ -1,0 +1,339 @@
+package com.test.minestom;
+
+import com.minestom.mechanics.features.blocking.BlockingStateManager;
+import com.test.minestom.commands.CommandRegistry;
+import com.minestom.mechanics.manager.CombatManager;
+import com.test.minestom.commands.debug.EntityVisibilityTest;
+import com.minestom.mechanics.config.combat.CombatPresets;
+import com.minestom.mechanics.config.combat.CombatModeBundle;
+import com.minestom.mechanics.config.gameplay.GameplayConfig;
+import com.minestom.mechanics.config.world.WorldInteractionConfig;
+import com.test.minestom.config.server.ServerConfig;
+import com.minestom.mechanics.gui.GuiManager;
+import com.minestom.mechanics.util.*;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.minestom.server.MinecraftServer;
+import net.minestom.server.entity.GameMode;
+import net.minestom.server.entity.Player;
+import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
+import net.minestom.server.event.player.PlayerSpawnEvent;
+import net.minestom.server.event.player.PlayerDisconnectEvent;
+import net.minestom.server.instance.InstanceContainer;
+import net.minestom.server.instance.InstanceManager;
+import net.minestom.server.instance.LightingChunk;
+import net.minestom.server.instance.block.Block;
+import net.minestom.server.component.DataComponents;
+import net.minestom.server.item.ItemStack;
+import net.minestom.server.item.Material;
+import net.minestom.server.item.component.BlocksAttacks;
+import net.minestom.server.potion.Potion;
+import net.minestom.server.potion.PotionEffect;
+
+import java.util.List;
+
+/**
+ * 1.8 PvP Test Server - WITH PROJECTILES
+ * Full combat + projectile system
+ */
+public class Main {
+
+    private static InstanceContainer gameWorld;
+
+    // ===========================
+    // CONFIGURATION
+    // ===========================
+    
+    // NEW API - Multiple usage patterns demonstrated:
+    
+    // Pattern 1: Simple preset usage (recommended for most users)
+    private static final CombatModeBundle COMBAT_BUNDLE = CombatPresets.Modes.MINEMEN;
+    
+    // Pattern 2: Preset with overrides (mix and match)
+    // private static final CombatModeBundle COMBAT_BUNDLE = CombatManager.getInstance()
+    //         .configure()
+    //         .fromPreset(CombatPresets.Modes.MINEMEN)
+    //         .withHitDetection(CombatPresets.STRICT_HIT_DETECTION)
+    //         .withName("Custom Minemen", "Minemen with strict hit detection")
+    //         .apply();
+    
+    // Pattern 3: Full custom configuration (advanced users)
+    // private static final CombatModeBundle COMBAT_BUNDLE = CombatManager.getInstance()
+    //         .configure()
+    //         .withCombatRules(CombatPresets.MINEMEN_COMBAT_RULES)
+    //         .withHitDetection(CombatPresets.STRICT_HIT_DETECTION)
+    //         .withDamage(CombatPresets.COMBO_DAMAGE)
+    //         .withBlocking(CombatPresets.STANDARD_BLOCKING)
+    //         .withProjectiles(CombatPresets.DEFAULT_PROJECTILES)
+    //         .withName("Ultra Custom", "Fully customized combat")
+    //         .apply();
+    
+    private static final ServerConfig SERVER_CONFIG = ServerConfig.production("TkJ8OBuWtDYC");
+
+    // ===========================
+    // MAIN
+    // ===========================
+
+    public static void main(String[] args) {
+        System.setProperty("minestom.new-socket-write-lock", "true");
+        System.setProperty( "minestom.enforce-entity-interaction-range", "false");
+        System.setProperty("minestom.chunk-view-distance", "12");
+        System.setProperty("minestom.entity-view-distance", "5");
+
+        // Initialize server
+        MinecraftServer server;
+        if (SERVER_CONFIG.isVelocityEnabled()) {
+            server = MinecraftServer.init(
+                    new net.minestom.server.Auth.Velocity(SERVER_CONFIG.getVelocitySecret())
+            );
+            System.setProperty("minestom.velocity-support", "true");
+        } else {
+            server = MinecraftServer.init();
+        }
+
+        // CRITICAL: Initialize cleanup manager FIRST
+        PlayerCleanupManager.initialize();
+
+        // Setup
+        createWorld();
+        initializeWorldInteraction();
+        initializePvP();
+        initializeCompatibility();
+        registerEvents();
+
+        // Start server
+        server.start(SERVER_CONFIG.getServerIp(), SERVER_CONFIG.getServerPort());
+    }
+
+    // ===========================
+    // WORLD SETUP
+    // ===========================
+
+    private static void createWorld() {
+        InstanceManager instanceManager = MinecraftServer.getInstanceManager();
+        gameWorld = instanceManager.createInstanceContainer();
+        gameWorld.setChunkSupplier(LightingChunk::new);
+
+        // Generate flat world
+        if (SERVER_CONFIG.isFlatWorld()) {
+            int height = SERVER_CONFIG.getWorldHeight();
+            gameWorld.setGenerator(unit -> {
+                unit.modifier().fillHeight(0, height - 2, Block.STONE);
+                unit.modifier().fillHeight(height - 2, height - 1, Block.GRASS_BLOCK);
+            });
+        }
+
+        MinecraftServer.LOGGER.info("[World] Flat world created");
+    }
+
+    // ===========================
+    // WORLD INTERACTION INITIALIZATION
+    // ===========================
+
+    private static void initializeWorldInteraction() {
+        // Set up server-wide world interaction configuration
+        WorldInteractionConfig worldConfig = WorldInteractionConfig.builder()
+                .blockReach(6.0, 4.5)  // Creative, Survival
+                .blockRaycastStep(0.2)
+                .build();
+        
+        com.minestom.mechanics.config.ServerConfig.setWorldInteraction(worldConfig);
+        
+        MinecraftServer.LOGGER.info("[Main] World interaction configuration set");
+    }
+
+    // ===========================
+    // PVP INITIALIZATION
+    // ===========================
+
+    private static void initializePvP() {
+        // Initialize all mechanics systems using MechanicsManager
+        com.minestom.mechanics.MechanicsManager.getInstance()
+                .configure()
+                .withCombat(COMBAT_BUNDLE)
+                .withGameplay(GameplayConfig.MINEMEN)
+                .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.defaultConfig())
+                .withArmor(true)
+                .withKnockback(COMBAT_BUNDLE.combatRules().getKnockbackProfile(), true)
+                .initialize();
+
+        // Initialize projectiles separately (not handled by MechanicsManager)
+        com.minestom.mechanics.manager.ProjectileManager.getInstance().initialize(COMBAT_BUNDLE.projectiles());
+
+        ClientVersionDetector.getInstance();
+        ViewerBasedAnimationHandler.getInstance();
+        EntityVisibilityTest.register();
+
+        ModernClientOptimizer.getInstance();
+
+        // Initialize commands (depends on all systems being initialized first!)
+        CommandRegistry.initialize();
+
+        MinecraftServer.LOGGER.info("[Main] All PvP systems initialized successfully!");
+    }
+
+    // ===========================
+    // LEGACY MECHANICS INIT
+    // ===========================
+
+    private static void initializeCompatibility() {
+        MinecraftServer.LOGGER.info("╔═══════════════════════════════════════╗");
+        MinecraftServer.LOGGER.info("║  1.8 Mechanics - Initializing         ║");
+        MinecraftServer.LOGGER.info("╚═══════════════════════════════════════╝");
+
+        // Gameplay mechanics are now handled by MechanicsManager in initializePvP()
+        MinecraftServer.LOGGER.info("[Compat] 1.8 mechanics enforced");
+    }
+
+    // ===========================
+    // EVENT HANDLERS
+    // ===========================
+
+    private static void registerEvents() {
+        var handler = MinecraftServer.getGlobalEventHandler();
+
+        // Player configuration
+        handler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
+            event.setSpawningInstance(gameWorld);
+            event.getPlayer().setRespawnPoint(SERVER_CONFIG.getSpawnPosition());
+        });
+
+        // Player spawn
+        handler.addListener(PlayerSpawnEvent.class, event -> {
+            Player player = event.getPlayer();
+
+            if (event.isFirstSpawn()) {
+                player.setGameMode(GameMode.SURVIVAL);
+
+                giveStarterKit(player);
+
+                // ✅ Force inventory sync for all clients (fixes 1.8 invisibility bug)
+                com.minestom.mechanics.util.InventoryUtil.forceInventorySyncDelayed(player, 5);
+                // TODO: make this scheduler based on ping?
+
+                sendWelcomeMessage(player);
+
+                // Add permanent Resistance V
+                player.addEffect(new Potion(
+                        PotionEffect.RESISTANCE,
+                        (byte) 4,
+                        Potion.INFINITE_DURATION
+                ));
+
+                // Add permanent Speed II
+                player.addEffect(new Potion(
+                        PotionEffect.SPEED,
+                        (byte) 1,
+                        Potion.INFINITE_DURATION
+                ));
+
+                // ✅ CRITICAL: Actually apply the speed by modifying movement speed attribute
+                // Default movement speed is 0.1, Speed II increases by 40% (0.1 * 1.4 = 0.14)
+                player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
+                        .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
+            }
+        });
+
+        // Player disconnect - automatic cleanup!
+        handler.addListener(PlayerDisconnectEvent.class, event -> {
+            Player player = event.getPlayer();
+
+            // Clean up combat systems
+            CombatManager.getInstance().cleanupPlayer(player);
+
+            // Clean up GUI
+            GuiManager.getInstance().cleanup(player);
+
+            // Force aggressive cleanup
+            player.removeTag(BlockingStateManager.BLOCKING);
+            player.removeTag(BlockingStateManager.ORIGINAL_OFFHAND);
+            player.removeTag(BlockingStateManager.PREFERENCES);
+
+            MinecraftServer.LOGGER.info("Cleaned up all data for: {}", player.getUsername());
+        });
+    }
+
+    // ===========================
+    // PLAYER SETUP
+    // ===========================
+
+    private static void giveStarterKit(Player player) {
+        var inventory = player.getInventory();
+
+        // Weapons
+        inventory.setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD).with(DataComponents.BLOCKS_ATTACKS, new BlocksAttacks(0, 0, List.of(), new BlocksAttacks.ItemDamageFunction(0, 0, 0), null, null, null)));
+        inventory.setItemStack(1, ItemStack.of(Material.BOW));
+        inventory.setItemStack(2, ItemStack.of(Material.FISHING_ROD)); // ✅ Added fishing rod
+        inventory.setItemStack(3, ItemStack.of(Material.SNOWBALL, 64));
+        inventory.setItemStack(4, ItemStack.of(Material.EGG, 64));
+        inventory.setItemStack(5, ItemStack.of(Material.WHITE_WOOL, 64));
+        inventory.setItemStack(9, ItemStack.of(Material.ARROW, 64));
+
+        // Food
+        inventory.setItemStack(8, ItemStack.of(Material.COOKED_BEEF, 64));
+
+        // Diamond Armor
+        player.setHelmet(ItemStack.of(Material.DIAMOND_HELMET));
+        player.setChestplate(ItemStack.of(Material.DIAMOND_CHESTPLATE));
+        player.setLeggings(ItemStack.of(Material.DIAMOND_LEGGINGS));
+        player.setBoots(ItemStack.of(Material.DIAMOND_BOOTS));
+    }
+
+
+    private static void sendWelcomeMessage(Player player) {
+        // Use new API for configuration display
+        CombatModeBundle bundle = COMBAT_BUNDLE;
+
+        player.sendMessage(Component.empty());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("⚔ ", NamedTextColor.GOLD))
+                .append(Component.text("1.8 PvP Test Server", NamedTextColor.YELLOW, TextDecoration.BOLD))
+                .build());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   Mode: ", NamedTextColor.GRAY))
+                .append(Component.text(bundle.name(), NamedTextColor.AQUA))
+                .build());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   ", NamedTextColor.GRAY))
+                .append(Component.text(bundle.description(), NamedTextColor.DARK_GRAY))
+                .build());
+
+        player.sendMessage(Component.empty());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   Knockback: ", NamedTextColor.GRAY))
+                .append(Component.text(bundle.combatRules().getKnockbackProfile().name(), NamedTextColor.AQUA))
+                .build());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   Reach: ", NamedTextColor.GRAY))
+                .append(Component.text("3.0 blocks", NamedTextColor.AQUA))
+                .build());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   Invulnerability: ", NamedTextColor.GRAY))
+                .append(Component.text("10 ticks", NamedTextColor.AQUA))
+                .build());
+
+        // ✅ NEW: Mention projectiles
+        player.sendMessage(Component.empty());
+        player.sendMessage(Component.text()
+                .append(Component.text("   Projectiles: ", NamedTextColor.GRAY))
+                .append(Component.text("Bow, Fishing Rod, Snowballs, Eggs", NamedTextColor.AQUA))
+                .build());
+
+        player.sendMessage(Component.empty());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   Commands: ", NamedTextColor.GRAY))
+                .append(Component.text("/kb", NamedTextColor.AQUA))
+                .append(Component.text(" - Knockback settings", NamedTextColor.GRAY))
+                .build());
+
+        player.sendMessage(Component.empty());
+    }
+}
