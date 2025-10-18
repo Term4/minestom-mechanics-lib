@@ -9,6 +9,11 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerDeathEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 
+// TODO: Probably good. Maybe could / should make an abstract cleanup handler? But
+//  to be honest, most systems / features do clean up in house anyways.
+//  Two options: 1. move projectile cleanup in house, or 2: Move cleanup for the other systems out.
+//  Unsure of which would be more efficient / better, but I do know which one is easier...
+
 /**
  * Centralized handler for projectile cleanup events.
  * Manages cleanup for all projectile features when players disconnect or die.

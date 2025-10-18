@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: Same as with InvulnerabilityTracker, it works very well, it's just long.
+//  ALSO ensure safety / scalability.
+
 /**
  * Main damage system orchestrator - coordinates all damage-related components.
  * Replaces the monolithic DamageSystem with focused component architecture.

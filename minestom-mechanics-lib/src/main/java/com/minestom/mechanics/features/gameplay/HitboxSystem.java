@@ -16,6 +16,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: Pay very close attention to this class when refactoring, and it WILL require a major refactor.
+//  It is VERY monolithic, and it has many duplicate methods seen in other classes earlier (starting from
+//  the attack package and working your way down)
+
 /**
  * HitboxSystem - Enforces specific hitbox dimensions and collision.
  * 
@@ -86,6 +90,8 @@ public class HitboxSystem extends InitializableSystem {
             enforceHitbox(player);
         }
     }
+
+    // TODO: What does this do?
 
     /**
      * Validates movement with PRECISE collision shape checking
@@ -201,6 +207,11 @@ public class HitboxSystem extends InitializableSystem {
         }
         return null;
     }
+
+    // TODO: This is pretty good, could be better, but might as well try and improve it anyways.
+    //  See if there's a way to maybe use ghost blocks or something to prevent ping from playing a role in
+    //  sliding-smoothness.
+    //  ALSO this is very mathy and long. Could be moved to aformentioned math / physics / utils class.
 
     // ===========================
     // COLLISION SLIDING

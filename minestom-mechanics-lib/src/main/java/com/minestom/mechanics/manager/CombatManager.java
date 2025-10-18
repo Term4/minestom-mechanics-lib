@@ -9,6 +9,9 @@ import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
+// TODO: This should simplify greatly by am update to our builder system.
+//  As of right now, it's a bit of a mess, and very long.
+
 /**
  * Combat Manager - Manages player vs player combat mechanics
  * 

@@ -75,6 +75,8 @@ public class KnockbackHandler extends InitializableSystem {
         return instance;
     }
 
+    // TODO: Remember what I said earlier about memory leaks from enabling wayyy too many listeners
+
     private void registerEventHandlers() {
         MinestomVelocityFix.initialize();
 
@@ -144,7 +146,9 @@ public class KnockbackHandler extends InitializableSystem {
         // Apply velocity using velocity handler
         velocityHandler.applyKnockbackVelocity(victim, attacker, knockbackDirection, modifiedStrength, type);
     }
-    
+
+
+    // THIS IS ENTIRELY UNTESTED, also could probably be consolidated into one applyKnockback class...
     /**
      * Apply knockback with knockback enchantment level.
      * This is a convenience method for the KnockbackManager.
@@ -178,6 +182,8 @@ public class KnockbackHandler extends InitializableSystem {
             victim.setVelocity(victim.getVelocity().add(additionalVelocity));
         }
     }
+
+    // TODO: Projectile knockback SHOULD be in the knnockback feature, just not this class
 
     /**
      * Apply projectile knockback with full system integration.
@@ -233,6 +239,8 @@ public class KnockbackHandler extends InitializableSystem {
         // Apply velocity using velocity handler
         velocityHandler.applyKnockbackVelocity(victim, projectile, knockbackDirection, modifiedStrength, KnockbackType.PROJECTILE);
     }
+
+    // TODO: Move out to a knockback math specific class.
 
     /**
      * Calculate knockback direction for projectiles (horizontal only).
@@ -416,6 +424,8 @@ public class KnockbackHandler extends InitializableSystem {
             return System.currentTimeMillis() - lastCombatTime < COMBAT_TIMEOUT_MS;
         }
     }
+
+    // TODO: this is duplicate code inn KnockbackCalculator.
 
     public static class KnockbackStrength {
         public final double horizontal;

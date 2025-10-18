@@ -23,7 +23,8 @@ public class KnockbackVelocityHandler {
         this.stateManager = stateManager;
         this.knockbackSyncEnabled = knockbackSyncEnabled;
     }
-    
+
+    // TODO: Seems like duplicate code, no? Did we not apply this logic in the calculator?
     /**
      * Apply knockback velocity to victim.
      */
@@ -59,7 +60,8 @@ public class KnockbackVelocityHandler {
             stateManager.recordKnockback(player, newVelocity);
         }
     }
-    
+
+    // TODO: Yes this is direct duplication from the knockback calculator.
     /**
      * Calculate final velocity from knockback components.
      */
@@ -92,7 +94,8 @@ public class KnockbackVelocityHandler {
                 oldVelocity.z() / 2.0 + direction.z() * horizontal * tps
         );
     }
-    
+
+    // TODO: Same here
     /**
      * Calculate final vertical component of knockback.
      */

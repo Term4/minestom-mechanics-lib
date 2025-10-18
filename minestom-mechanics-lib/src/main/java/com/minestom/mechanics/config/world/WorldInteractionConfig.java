@@ -2,6 +2,10 @@ package com.minestom.mechanics.config.world;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+
+// TODO: Is this necessary? I feel like we could move functionality
+//  over to other classes and clean up the codebase significantly.
+
 /**
  * Configuration for world/environment interaction settings.
  * Contains block interaction reach and raycasting settings.
@@ -22,7 +26,10 @@ public record WorldInteractionConfig(
     public static Builder builder() {
         return new Builder();
     }
-    
+
+    // TODO: This is what I was talking about in the eye height config.
+    //  Seems to be duplicate logic (block reach)
+
     /**
      * Get the appropriate block reach for the given game mode.
      * 
@@ -92,7 +99,11 @@ public record WorldInteractionConfig(
             this.survivalBlockReach = reach;
             return this;
         }
-        
+
+        // TODO: I like this, but I don't know if it should be in THIS class.
+        //  Maybe have some sort of math, physics, or other sort of misc package for this kind of thing.
+        //  We do similar things for combat reach and hit detection.
+
         /**
          * Set block raycast step size.
          * 

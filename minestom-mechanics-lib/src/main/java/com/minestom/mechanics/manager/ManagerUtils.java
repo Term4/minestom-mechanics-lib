@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+// TODO: Make this more useful, or remove it...
+
 /**
  * Common utilities for manager implementations.
  * Consolidates repeated patterns across all manager classes.

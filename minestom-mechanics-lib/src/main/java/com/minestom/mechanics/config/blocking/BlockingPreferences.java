@@ -5,6 +5,12 @@ import net.minestom.server.item.Material;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.DEFAULT_BLOCKING_PARTICLE_COUNT;
 
+// TODO: Move this to player data package? Make player data manager? Or is that too much for this library?
+//  As of right now, this gets reset upon restarting the server, and players do NOT have persistent data.
+//  WOULD LIKE to move to persistent data using mysql or something similar, but I feel like adding an entire player data
+//  manage to THIS library would be too much. Probably do that in the server itself, or in a separate library, and have this
+//  feature (among others) be compatible (wouldn't be difficult), would also probably allow simplification here
+
 /**
  * BlockingPreferences - Player visual preferences for blocking.
  * ✅ REFACTORED: Default values use constants

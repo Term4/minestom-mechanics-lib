@@ -3,6 +3,8 @@ package com.minestom.mechanics.hitbox;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import net.minestom.server.coordinate.Vec;
 
+// TODO: Ensure no duplicate methods / logic, move to future player package
+
 /**
  * Manages hitbox expansion values for hit detection and validation.
  * Provides primary and limit expansion values for different hit detection scenarios.

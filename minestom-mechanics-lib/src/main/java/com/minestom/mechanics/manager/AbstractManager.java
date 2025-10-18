@@ -3,6 +3,12 @@ package com.minestom.mechanics.manager;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.Player;
 
+// TODO: I actually like this a lot. Notice how a lot of the
+//  logging is handled HERE in the abstract system? That means
+//  that all managers can be guaranteed to have consistent logging.
+//  ISSUE is we still added additional verbose logging to each manager anyways,
+//  making each manager class much longer than it needs to be
+
 /**
  * Abstract base class for all manager implementations.
  * 

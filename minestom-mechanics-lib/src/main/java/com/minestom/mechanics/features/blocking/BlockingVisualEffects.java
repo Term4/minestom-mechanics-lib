@@ -24,6 +24,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: Would be nice if we could play the shield blocking by sending a use item packet
+//  on a per viewer basis. Something to look into, but nothing to worry too much about
+//  also considering adding additional visual effects for blocking. Unsure as to what
+//  as of now, but it could be a cool cosmetics system maybe
+
 /**
  * Handles visual effects for blocking - shield display, particles, animations.
  * Focused responsibility: Visual effects only.

@@ -11,6 +11,12 @@ import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.instance.block.Block;
 
+// TODO: Move to (and create) player package, and make this configurable
+//  ALSO look for a better way to prevent poses in the minestom javadocs, cancelling them
+//  right when they enter causes stuttering and is hacky at best
+//  If there's a native way to prevent poses, would also shorten this by allowing
+//  the removal of corrective velocity measures
+
 /**
  * MovementRestrictionSystem - Controls which movement mechanics are allowed.
  * 

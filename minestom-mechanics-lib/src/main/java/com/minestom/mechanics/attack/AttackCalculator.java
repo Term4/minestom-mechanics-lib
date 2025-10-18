@@ -34,7 +34,10 @@ public class AttackCalculator {
         if (weapon.isAir()) return DAMAGE_FIST;
         
         Material material = weapon.material();
-        
+
+        // TODO: this seems extremely inefficient. There has got to be a better
+        //  way to do this lmao.
+
         // Swords
         if (material == Material.WOODEN_SWORD) return DAMAGE_WOODEN_SWORD;
         if (material == Material.STONE_SWORD) return DAMAGE_STONE_SWORD;

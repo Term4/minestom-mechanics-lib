@@ -2,6 +2,8 @@ package com.minestom.mechanics.config.combat;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: Linked with CombatModeBundle's todo
+
 /**
  * Configuration for hit detection and validation settings.
  * Contains reach distances and hitbox expansion for combat hit detection.

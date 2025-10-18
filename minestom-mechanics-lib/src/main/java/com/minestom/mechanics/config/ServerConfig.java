@@ -2,6 +2,8 @@ package com.minestom.mechanics.config;
 
 import com.minestom.mechanics.config.world.WorldInteractionConfig;
 
+// TODO: this seems entirely unnecessary
+
 /**
  * Static class to hold server-wide configuration.
  * Stores settings that apply to the entire server, not per-combat-mode.

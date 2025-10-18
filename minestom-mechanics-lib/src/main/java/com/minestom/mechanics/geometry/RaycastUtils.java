@@ -1,5 +1,8 @@
 package com.minestom.mechanics.geometry;
 
+// TODO: Bring other math / physics intensive classes over to this package?
+//  ALSO this is a very long class. Moving some of the math out will certainly help.
+
 import com.minestom.mechanics.config.ServerConfig;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Point;
@@ -36,6 +39,9 @@ public class RaycastUtils {
     // BLOCK RAYCASTING
     // ===========================
 
+    // TODO: Could remove this method, and have the following isLookingAtBlock
+    //  method use a defualt of maxreach with the same gamemode check as below if
+    //  the reach isn't provided. Is that cleaner? Idk
     /**
      * Check if player is looking at a solid block within reach.
      * Uses gamemode-appropriate reach distances.
@@ -57,6 +63,9 @@ public class RaycastUtils {
         return isLookingAtBlock(instance, origin, direction, maxReach);
     }
 
+
+    // TODO: This could be used to check if a players ability to hit a player is obstructed by a block?
+    //  Could be useful for hit detection, but not 100% sure
     /**
      * Check if ray intersects a solid block within specified distance.
      *
@@ -88,6 +97,7 @@ public class RaycastUtils {
         return false;
     }
 
+    // TODO: this is cool, idk what I'd use it for but I do like it. Don't know if it works unfortunately
     /**
      * Find the first solid block along a ray.
      * Returns null if no block found within distance.
@@ -118,6 +128,8 @@ public class RaycastUtils {
 
         return null;
     }
+
+    // TODO: very math intensive. Should move outside of this class
 
     // ===========================
     // AABB RAYCASTING
@@ -188,6 +200,10 @@ public class RaycastUtils {
         return new RayHitResult(hitPoint, hitDistance);
     }
 
+
+    // TODO: A decent chunk of the logic in the following two methods is shared.
+    //  Could simplify by consolidating, adding a check for if expanded hitboxes are enabled,
+    //  as well as an optional arg to use them or ignore them? Could be overkill though.
     /**
      * Convenience method for raycasting to an entity hitbox.
      * Automatically calculates world-space AABB bounds from entity position and hitbox.

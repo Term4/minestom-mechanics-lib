@@ -12,7 +12,7 @@ public record EyeHeightConfig(
     double creativeReach,
     boolean enforceBlockPlaceReach
 ) {
-    
+    // TODO: Get preset values from a constants class (constants package to create from combatconstants)
     // Presets
     public static final EyeHeightConfig MINECRAFT_1_8 = new EyeHeightConfig(
         true, 1.62, 1.54, 4.5, 5.0, true
@@ -48,16 +48,20 @@ public record EyeHeightConfig(
             this.sneakingEyeHeight = height;
             return this;
         }
-        
+
+        // TODO: Make sure these aren't handled somewhere else
+        // This
         public Builder survivalReach(double reach) {
             this.survivalReach = reach;
             return this;
         }
-        
+        // and this
         public Builder creativeReach(double reach) {
             this.creativeReach = reach;
             return this;
         }
+
+        // TODO: What is this? Is this more on the survival / creative reach?
         
         public Builder enforceBlockPlaceReach(boolean enforce) {
             this.enforceBlockPlaceReach = enforce;

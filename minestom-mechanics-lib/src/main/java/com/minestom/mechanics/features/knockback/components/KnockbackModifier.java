@@ -6,6 +6,9 @@ import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
+// TODO: Ensure this is actually necessary and not handled elsewhere. ALSO maybe simplify?
+//  Seems like a lot for a simple method. ALSO would this be necessary if we separated legacy knockback from modern?
+
 /**
  * Component responsible for applying modifiers to knockback.
  * Handles blocking reduction and other combat modifiers.

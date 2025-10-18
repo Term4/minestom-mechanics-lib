@@ -10,6 +10,9 @@ import net.minestom.server.scoreboard.Team;
 import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.network.packet.server.play.TeamsPacket;
 
+// TODO: Make sure is thread / memory safe (should at least be thread safe)
+//  and move to player package when it is made
+
 /**
  * System to control player collisions.
  * When disabled, players can pass through each other.
@@ -58,7 +61,10 @@ public class PlayerCollisionSystem extends InitializableSystem {
         collisionTeam = teamManager.createTeam("collision_control");
         collisionTeam.setCollisionRule(TeamsPacket.CollisionRule.ALWAYS); // Default to collisions enabled
     }
-    
+
+    // TODO: Could be good to have a single initialization / register listeners method for all
+    //  systems, features, etc. To avoid listener spam and potential memory leaks. THIS IS A VERY IMPORTANT NOTE!!!
+
     private void registerListeners() {
         var handler = MinecraftServer.getGlobalEventHandler();
         
@@ -77,7 +83,9 @@ public class PlayerCollisionSystem extends InitializableSystem {
         
         log.debug("Added player {} to collision team", player.getUsername());
     }
-    
+
+
+    // TODO: I like this, it falls in line with what I mentioned earlier about more future-proofing this library
     /**
      * Update collision rule for a specific player
      */

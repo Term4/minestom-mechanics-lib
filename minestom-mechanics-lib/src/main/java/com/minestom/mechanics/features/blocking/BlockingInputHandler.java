@@ -58,7 +58,7 @@ public class BlockingInputHandler {
             prefs.showParticlesOnOthers = false;
             prefs.showActionBarOnBlock = true;
             prefs.particleType = BlockingPreferences.ParticleType.CRIT;
-            prefs.particleCount = 8;
+            prefs.particleCount = 8; // TODO: remove hard coded value here!!!
             player.setTag(BlockingStateManager.PREFERENCES, prefs);
         }
     }
@@ -81,11 +81,16 @@ public class BlockingInputHandler {
         }
     }
 
+    // TODO: This is repeated logic for other things, consider refactoring to avoid duplicating code
+    //  (I know it was used for rods at one point, tbh this is small and probably fine, but idk)
     private void handleSlotChange(PlayerChangeHeldSlotEvent event) {
         if (blockingSystem.isBlocking(event.getPlayer())) {
             blockingSystem.stopBlocking(event.getPlayer());
         }
     }
+
+    // TODO: Probably a good idea to add a couple cleanup things to the aformentioned player package
+    //  to avoid duplicating handleplayerdeath, handledisconnect, etc. in multiple features / systems
 
     private void handlePlayerDeath(PlayerDeathEvent event) {
         Player player = event.getPlayer();
@@ -99,6 +104,7 @@ public class BlockingInputHandler {
         blockingSystem.cleanup(event.getPlayer());
     }
 
+    // TODO: Find a better way to tell if an item is a sword. This is pathetic lmao
     /**
      * Check if an item is a sword that can be used for blocking
      */

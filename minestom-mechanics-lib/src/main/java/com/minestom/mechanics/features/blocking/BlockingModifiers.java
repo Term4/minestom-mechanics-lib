@@ -13,6 +13,12 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.sound.SoundEvent;
 
+// TODO: Integrate with proposed new abstract method in damage feature:
+//  (abstract DamageType class would have modifyDamage method,
+//  probably with configurability for static values, or reductions). This would
+//  simplify the blocking feature package a lot, as well as provide customizability for
+//  setting if blocking reduces a certain damage type or not (something I've been wanting to do for a while)
+
 /**
  * Handles damage and knockback reduction for blocking players.
  * Consolidated from BlockingDamageReducer and BlockingKnockbackReducer.

@@ -11,6 +11,11 @@ import net.minestom.server.tag.Tag;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.SAFE_FALL_DISTANCE;
 
+// TODO: As I said, introduce an AbstractDamageTracker class, and extend for different damage types.
+//  ALSO could be cool to add a way for library users to add their own damage types without modifying the
+//  library source code. That way if I'm missing a type they want, or they want to add
+//  a custom damage type, no issues.
+
 /**
  * Tracks and applies fall damage to players.
  * Handles fall distance accumulation and damage calculation.

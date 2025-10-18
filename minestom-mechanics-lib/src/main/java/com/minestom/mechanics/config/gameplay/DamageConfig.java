@@ -2,6 +2,8 @@ package com.minestom.mechanics.config.gameplay;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: Linked with CombatModeBundle's todo
+
 /**
  * Configuration for damage system.
  * ✅ REFACTORED: All default values and validation use constants
@@ -49,6 +51,8 @@ public class DamageConfig {
 
     public static class Builder {
         private final DamageConfig config = new DamageConfig();
+
+        // TODO: Introduce an abstract damage type class, then simplify this builder
 
         public Builder fallDamage(boolean enabled, float multiplier) {
             config.fallDamageEnabled = enabled;

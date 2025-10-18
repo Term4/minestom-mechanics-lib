@@ -1,5 +1,9 @@
 package com.minestom.mechanics.config.combat;
 
+// TODO: Move to (and create) constants package for all constants like these.
+//  Could make an abstract class for all constants, then use enums / record classes to define constants.
+//  Would want to drastically clean these classes up, though. Remove unnecessary values (i.e. "Balanced invulnerability ticks" etc)
+
 /**
  * Centralized constants for combat system.
  * All magic numbers and configuration values should be defined here.

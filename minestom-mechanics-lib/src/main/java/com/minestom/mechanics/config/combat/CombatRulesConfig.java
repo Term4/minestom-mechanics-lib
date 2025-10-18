@@ -4,6 +4,8 @@ import com.minestom.mechanics.features.knockback.KnockbackProfile;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: Linked with CombatModeBundle's todo
+
 /**
  * Configuration for pure combat gameplay rules.
  * Contains only combat mechanics, no hit detection or world interaction settings.

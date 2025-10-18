@@ -4,6 +4,8 @@ import com.minestom.mechanics.projectile.config.FishingRodConfig;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.projectile.config.FishingRodKnockbackConfig;
 
+// TODO: Linked with CombatModeBundle's todo
+
 /**
  * Configuration for all projectile-related settings.
  * Bundles together knockback configs for different projectile types.

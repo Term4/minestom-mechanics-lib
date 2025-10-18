@@ -8,6 +8,11 @@ import net.minestom.server.registry.RegistryKey;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.DEFAULT_FIRE_DAMAGE_MULTIPLIER;
 
+// TODO: Probably introduce a GENERAL damage modifier (abstract class), and extend.
+//  OR better yet, just add the damage modification method to the original
+//  damage type abstract class. NOTE could be weird with tick damage, but
+//  probably not too bad
+
 /**
  * Modifies fire damage based on configuration.
  * Handles fire damage enable/disable and damage multiplier.

@@ -2,6 +2,9 @@ package com.minestom.mechanics.features.knockback;
 
 import com.minestom.mechanics.features.knockback.KnockbackHandler.KnockbackSettings;
 
+// TODO: I like the idea of having presets, unsure of how it'll work with
+//  potential future building (See combatbundles), but I like this.
+
 public enum KnockbackProfile {
     VANILLA("Vanilla 1.8", "Standard 1.8.9 knockback",
             KnockbackSettings.builder()
@@ -108,7 +111,9 @@ public enum KnockbackProfile {
     public double getyLimit() {
         return settings.verticalLimit();
     }
-    
+
+    // TODO: From my understanding, A. as of now WE don't do anything with friction,
+    //  and B. don't even have access if we wanted to. Seems unnecessary for now.
     public double getFriction() {
         return 0.6; // Default friction value, can be made configurable later
     }

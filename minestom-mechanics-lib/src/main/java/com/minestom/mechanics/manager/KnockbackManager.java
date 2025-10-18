@@ -6,6 +6,8 @@ import com.minestom.mechanics.features.knockback.sync.KnockbackSyncHandler;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
+// TODO: Seems to be a lot of duplicate methods here from the knockback feature package
+
 /**
  * KnockbackManager - Manages knockback mechanics
  * 

@@ -13,6 +13,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: See if this is even necessary. Seems overly complex, also shouldn't
+//  knockback just be applied if a hit went through to the damage system? what's all this "canReceiveKnockback" for?
+//  ALSO any of this ground state tracking, A. it'd be a lot better to probably have a general method for that, outside
+//  of this class, and B. seems like it'd be used more for KnockbackSync than anything. I mean we don't get access to friction, sooo
+
 /**
  * Component responsible for managing knockback state and player data.
  * Extracted from monolithic KnockbackHandler for better maintainability.

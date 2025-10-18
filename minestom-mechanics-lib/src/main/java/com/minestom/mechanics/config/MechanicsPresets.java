@@ -6,6 +6,8 @@ import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.features.knockback.KnockbackProfile;
 
+// TODO: I like this concept, but similar to what I said with combatbundles, could be much better and cleaner
+
 /**
  * Preset configurations for MechanicsManager.
  * 

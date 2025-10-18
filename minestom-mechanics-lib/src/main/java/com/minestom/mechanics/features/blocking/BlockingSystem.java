@@ -150,6 +150,11 @@ public class BlockingSystem extends InitializableSystem {
         return config.isEnabled();
     }
 
+    // TODO: Make reductions appear consistent. Seeinng 1 - reduction can be confusing.
+    //  Just have 0.95 reduce by 95% (0.95), and whenever we present the user with the option to
+    //  configure this, we present it like that. Now, we can use it HERE however we want to, but
+    //  it's confusing to present the user with two different ways of presenting the same information.
+
     public void setDamageReduction(double reduction) {
         config.setDamageReduction(reduction);
     }

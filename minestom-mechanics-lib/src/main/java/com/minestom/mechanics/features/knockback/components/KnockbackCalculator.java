@@ -12,6 +12,10 @@ import net.minestom.server.entity.attribute.Attribute;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: Potentially add another knockback calculator for modern knockback
+//  (the formula is entirely different) would lead to this being called "LegacyKnockbackCalculator"
+//  Actually I think the only change would need to be in
+
 /**
  * Component responsible for calculating knockback strength and direction.
  * Extracted from monolithic KnockbackHandler for better maintainability.
@@ -96,7 +100,8 @@ public class KnockbackCalculator {
 
         return new KnockbackStrength(horizontal, vertical);
     }
-    
+
+    // TODO: Remove this method? It's not used anywhere. Is it needed?
     /**
      * Apply modifiers to knockback strength.
      * ✅ REFACTORED: Using FALLING_VELOCITY_THRESHOLD and MIN_FALLING_KNOCKBACK constants
@@ -129,7 +134,9 @@ public class KnockbackCalculator {
 
         return new KnockbackStrength(horizontal, vertical);
     }
-    
+
+
+    // TODO: Remove this method? It's not used anywhere. Is it needed?
     /**
      * Calculate final velocity from knockback components.
      */
@@ -169,12 +176,17 @@ public class KnockbackCalculator {
     private double calculateVerticalComponent(LivingEntity victim, Vec oldVelocity,
                                            double vertical, double tps) {
         boolean isInAir = !victim.isOnGround();
+
+        // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug (where it has a ~ -1.518 offset)
         boolean isFalling = isInAir && oldVelocity.y() <= 0.0;
 
         if (victim.isOnGround()) {
             return oldVelocity.y() / 2.0 + vertical * tps;
         }
 
+        // TODO: Investigate if this is needed at all. Seems arbitrary, if someone configures
+        //  their knockback profile in a way that would result in vertical being < MIN_FALLING_KNOCKBACK,
+        //  we should allow that, not override it. If they get upset that's kinda their fault
         // ✅ REFACTORED: Using constant for no-falling KB
         if (isFalling) {
             return Math.max(vertical * tps, MIN_FALLING_KNOCKBACK);

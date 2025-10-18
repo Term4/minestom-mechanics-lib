@@ -2,6 +2,13 @@ package com.minestom.mechanics.config.combat;
 
 import com.minestom.mechanics.config.blocking.BlockingConfig;
 
+// TODO: I like this general idea of being able to set one mechanics package instantly, but this method of implementing such a feature is hacky at best
+//  and could cause conflicts. Most likely is NOT thread safe either (bad for reliability in production)
+//  Alternative way to do this would be to overhaul the entire mechanics system to be more independent, i.e. if a feature is set individually it takes priority
+//  or something. But I need to look more into how to accomplish this without hacky solutions.
+
+// TODO: ACTUALLY thinking back to it, I think MinestomPvP's combat featureset did this fairly well. Could take some inspiration from that
+
 /**
  * Java record to bundle all combat-related configurations together.
  * This replaces the old CombatMode enum's bundling role.

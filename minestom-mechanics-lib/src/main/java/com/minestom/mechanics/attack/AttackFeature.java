@@ -25,7 +25,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-
+// TODO: MAJOR todo here, we need to add a configurable method of detecting if hitbox / bounding box is obstructed.
+//  Right now due to the swing animation method of detecting hits, players can be hit through walls. This issue extends to projectiles
+//  Could be good to generalize this to be used for general checking if a bounding box / hitbox is obstructed.
+//  We already have the block raycast feature, but players can be
 
 /**
  * Main attack feature that orchestrates all attack-related components.
@@ -34,7 +37,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AttackFeature extends InitializableSystem {
     private static AttackFeature instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("AttackFeature");
-    
+
+    // TODO: Consider moving all tick away from attackfeature to be handled by invulnerabilitytracker and damagefeature
+    //  Alternatively, could leave this here for future updates with 1.9 hit cooldown tracking, but would probably want to
+    //  make tracking conditional for efficiency
     private final CombatRulesConfig config;
     private final Map<UUID, Long> lastAttackTime = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastAttackTick = new ConcurrentHashMap<>();

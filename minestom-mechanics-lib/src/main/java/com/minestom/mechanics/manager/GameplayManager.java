@@ -14,6 +14,8 @@ import com.minestom.mechanics.damage.DamageFeature;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
+// TODO: WAY too long. Should simplify A LOT with eth builder update
+
 /**
  * GameplayManager - Manages general gameplay mechanics
  * 

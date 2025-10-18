@@ -24,6 +24,9 @@ public class BlockingStateManager {
     public static final Tag<ItemStack> ORIGINAL_OFFHAND = Tag.ItemStack("original_offhand");
     public static final Tag<BlockingPreferences> PREFERENCES = Tag.Transient("blocking_prefs");
 
+    // TODO: do we need to keep a map of all the blocking players if we have them tagged as blocking?
+    //  I think we do just making sure though
+
     // State tracking
     private final Map<UUID, Boolean> blockingPlayers = new ConcurrentHashMap<>();
     private final BlockingConfig config;
@@ -66,6 +69,9 @@ public class BlockingStateManager {
      */
     public void stopBlocking(Player player) {
         if (!isBlocking(player)) return;
+
+        // TODO: either rename or find a different solution than
+        //  "ViewerBasedAnimationHandler"
 
         ViewerBasedAnimationHandler.getInstance().unregisterAnimation(player);
 

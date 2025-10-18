@@ -9,6 +9,8 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.tag.Tag;
 
+// TODO: See if this works, if it's necessary, and if it can be simplified.
+
 public class MinestomVelocityFix {
     // Track actual velocity ourselves
     private static final Tag<Vec> REAL_VELOCITY = Tag.Transient("real_velocity");

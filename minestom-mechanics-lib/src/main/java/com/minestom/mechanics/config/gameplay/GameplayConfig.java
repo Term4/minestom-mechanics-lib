@@ -1,5 +1,7 @@
 package com.minestom.mechanics.config.gameplay;
 
+// TODO: Linked with CombatModeBundle's todo
+
 /**
  * Complete gameplay mechanics configuration bundle.
  */

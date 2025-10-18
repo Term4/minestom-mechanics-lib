@@ -5,6 +5,8 @@ import com.minestom.mechanics.validation.HitDetectionFeature;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
+// TODO: This one isn't actually terrible, but still a bit long
+
 /**
  * HitboxManager - Manages all hitbox and bounding box related functionality
  * 

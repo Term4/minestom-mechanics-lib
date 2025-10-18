@@ -14,6 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: I like this, also how it's configurable as well.
+//  Make sure it's thread and memory safe, and not to
+//  performance intensive.
+
 /**
  * Calculates sprint bonus for attacks.
  * Single responsibility: Only sprint bonus logic.

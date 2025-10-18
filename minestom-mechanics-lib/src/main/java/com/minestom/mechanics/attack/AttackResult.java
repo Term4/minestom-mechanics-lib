@@ -1,5 +1,9 @@
 package com.minestom.mechanics.attack;
 
+// TODO: Is it possible to get the attack result without manually
+//  inserting a new method into the event flow? Do I need to add a getAttackResult method here?
+//  Would be very useful for server development
+
 /**
  * Result of an attack calculation.
  * Contains all the data needed for processing the attack.

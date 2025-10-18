@@ -9,6 +9,8 @@ import com.minestom.mechanics.projectile.config.FishingRodKnockbackConfig;
 import com.minestom.mechanics.events.ProjectileCleanupHandler;
 import com.minestom.mechanics.config.combat.ProjectileConfig;
 
+// TODO: Simplify, unnecessarily long...
+
 /**
  * Projectile Manager - Initializes all projectile systems
  * ✅ REFACTORED: Now extends AbstractManager for consistency

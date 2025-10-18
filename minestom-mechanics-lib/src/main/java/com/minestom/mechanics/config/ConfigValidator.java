@@ -1,5 +1,7 @@
 package com.minestom.mechanics.config;
 
+// TODO: I see the vision, but this is not used whatsoever, and I feel like it's being overly verbose
+
 /**
  * Common validation utilities for configuration classes.
  * Consolidates repeated validation patterns across the codebase.

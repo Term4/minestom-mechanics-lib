@@ -12,6 +12,9 @@ import net.minestom.server.item.Material;
 
 import static com.minestom.mechanics.util.MessageBuilder.error;
 
+// TODO: To be honest, we should just move the gui and guibuilder to the server directly.
+//  Having a GUI builder and set guis in a mechanics lib doesn't make sense.
+
 /**
  * Blocking settings GUI using custom GuiBuilder (no external dependencies).
  * Migrated from InvUI to native Minestom implementation.

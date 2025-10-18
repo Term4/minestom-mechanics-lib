@@ -7,6 +7,7 @@ import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.projectile.config.FishingRodConfig;
 import com.minestom.mechanics.projectile.config.FishingRodKnockbackConfig;
 
+// TODO: Linked with CombatModeBundle's todo
 
 /**
  * Static constants for common combat configurations.

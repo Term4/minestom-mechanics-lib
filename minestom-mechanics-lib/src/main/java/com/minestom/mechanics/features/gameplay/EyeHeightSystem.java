@@ -87,12 +87,18 @@ public class EyeHeightSystem extends InitializableSystem {
             handler.addListener(PlayerBlockPlaceEvent.class, this::validateBlockPlacement);
         }
 
+        // TODO: There's that cleanup on disconnect again. Really should create some cleanup class(es)
+        //  in the future player package to prevent all this duplication.
+
         // Cleanup on disconnect
         handler.addListener(PlayerDisconnectEvent.class, e ->
                 sneakingPlayers.remove(e.getPlayer().getUuid()));
 
         log.debug("Eye height enforcement active");
     }
+
+    // TODO: This part feels like more of a subsystem, and could probably be moved
+    //  out to a separate class for organization.
 
     // ===========================
     // BLOCK PLACEMENT VALIDATION
@@ -147,6 +153,9 @@ public class EyeHeightSystem extends InitializableSystem {
         return player.getPosition().add(EYE_HEIGHT_Y_OFFSET, eyeHeight, EYE_HEIGHT_Y_OFFSET);
     }
 
+    // TODO: NOTE a similar method exists in the server config / world interaction config (can't remember rn)
+    //  But we should avoid duplicate methods like this. Consolidate.
+
     /**
      * Get the appropriate reach distance for a player based on game mode.
      * 
@@ -172,6 +181,9 @@ public class EyeHeightSystem extends InitializableSystem {
     // ===========================
     // HELPER METHODS
     // ===========================
+
+    // TODO: This distanceToFace helper method could be useful later, and is very mathy.
+    //  Consider moving it to the aformentioned math / physics / utils class.
 
     /**
      * Calculate distance from point to the nearest point on a block face.
@@ -233,6 +245,7 @@ public class EyeHeightSystem extends InitializableSystem {
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
+    // TODO: Same for this one
     /**
      * Get the neighbor block that was clicked to place a block.
      */
