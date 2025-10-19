@@ -5,12 +5,10 @@ import com.minestom.mechanics.config.gameplay.EyeHeightConfig;
 import com.minestom.mechanics.config.gameplay.MovementConfig;
 import com.minestom.mechanics.config.gameplay.HitboxConfig;
 import com.minestom.mechanics.config.gameplay.PlayerCollisionConfig;
-import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.features.gameplay.EyeHeightSystem;
 import com.minestom.mechanics.features.gameplay.MovementRestrictionSystem;
 import com.minestom.mechanics.features.gameplay.HitboxSystem;
 import com.minestom.mechanics.features.gameplay.PlayerCollisionSystem;
-import com.minestom.mechanics.damage.DamageFeature;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
@@ -24,7 +22,7 @@ import net.minestom.server.entity.Player;
  * - Movement restrictions  
  * - Hitbox control
  * - Player collision control
- * - Environmental damage (fall, fire, etc.)
+ * - Environmental
  * 
  * Can be used with or without CombatManager.
  */
@@ -35,8 +33,7 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
     private MovementRestrictionSystem movementSystem;
     private HitboxSystem hitboxSystem;
     private PlayerCollisionSystem playerCollisionSystem;
-    private DamageFeature damageFeature;
-    
+
     private GameplayManager() {
         super("GameplayManager");
     }
@@ -77,10 +74,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
             // Initialize player collision system
             log.debug("Initializing PlayerCollisionSystem...");
             playerCollisionSystem = PlayerCollisionSystem.initialize(config.getPlayerCollision());
-            
-            // Initialize damage feature
-            log.debug("Initializing DamageFeature...");
-            damageFeature = DamageFeature.initialize(config.getDamage());
         });
     }
     
@@ -122,7 +115,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
         movementSystem = null;
         hitboxSystem = null;
         playerCollisionSystem = null;
-        damageFeature = null;
     }
 
     @Override
@@ -137,7 +129,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
         status.append("  MovementRestrictionSystem: ").append(movementSystem != null ? "✓" : "✗").append("\n");
         status.append("  HitboxSystem: ").append(hitboxSystem != null ? "✓" : "✗").append("\n");
         status.append("  PlayerCollisionSystem: ").append(playerCollisionSystem != null ? "✓" : "✗").append("\n");
-        status.append("  DamageFeature: ").append(damageFeature != null ? "✓" : "✗").append("\n");
 
         return status.toString();
     }
@@ -157,9 +148,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
         }
         if (playerCollisionSystem != null) {
             // PlayerCollisionSystem handles its own cleanup
-        }
-        if (damageFeature != null) {
-            damageFeature.cleanup(player);
         }
     }
     
@@ -204,21 +192,12 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
                     log.error("PlayerCollisionSystem shutdown failed", e);
                 }
             }
-            
-            if (damageFeature != null) {
-                try {
-                    damageFeature.shutdown();
-                } catch (Exception e) {
-                    log.error("DamageFeature shutdown failed", e);
-                }
-            }
 
             // Reset references
             eyeHeightSystem = null;
             movementSystem = null;
             hitboxSystem = null;
             playerCollisionSystem = null;
-            damageFeature = null;
         });
     }
     
@@ -233,15 +212,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
         requireInitialized();
         playerCollisionSystem.setEnabled(enabled);
         log.info("Player collisions {}", enabled ? "enabled" : "disabled");
-    }
-
-    /**
-     * Update damage configuration at runtime
-     */
-    public void updateDamageConfig(DamageConfig config) {
-        requireInitialized();
-        damageFeature.updateConfig(config);
-        log.info("Damage configuration updated");
     }
 
     // ===========================
@@ -266,11 +236,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
     public PlayerCollisionSystem getPlayerCollisionSystem() {
         requireInitialized();
         return playerCollisionSystem;
-    }
-
-    public DamageFeature getDamageFeature() {
-        requireInitialized();
-        return damageFeature;
     }
     
     // ===========================
@@ -311,7 +276,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
                 .movement(config.getMovement())
                 .hitbox(config.getHitbox())
                 .playerCollision(config.getPlayerCollision())
-                .damage(config.getDamage())
                 .build();
             return this;
         }
@@ -328,7 +292,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
                 .movement(movement)
                 .hitbox(config.getHitbox())
                 .playerCollision(config.getPlayerCollision())
-                .damage(config.getDamage())
                 .build();
             return this;
         }
@@ -345,7 +308,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
                 .movement(config.getMovement())
                 .hitbox(hitbox)
                 .playerCollision(config.getPlayerCollision())
-                .damage(config.getDamage())
                 .build();
             return this;
         }
@@ -362,24 +324,6 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
                 .movement(config.getMovement())
                 .hitbox(config.getHitbox())
                 .playerCollision(playerCollision)
-                .damage(config.getDamage())
-                .build();
-            return this;
-        }
-        
-        /**
-         * Override damage configuration.
-         * 
-         * @param damage The damage config to use
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder withDamage(DamageConfig damage) {
-            this.config = GameplayConfig.builder()
-                .eyeHeight(config.getEyeHeight())
-                .movement(config.getMovement())
-                .hitbox(config.getHitbox())
-                .playerCollision(config.getPlayerCollision())
-                .damage(damage)
                 .build();
             return this;
         }

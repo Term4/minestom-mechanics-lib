@@ -1,110 +1,101 @@
 package com.minestom.mechanics.config;
 
-import com.minestom.mechanics.config.combat.CombatModeBundle;
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.combat.CombatPresets;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
+import com.minestom.mechanics.config.gameplay.DamageConfig;
+import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.features.knockback.KnockbackProfile;
 
-// TODO: I like this concept, but similar to what I said with combatbundles, could be much better and cleaner
-
-/**
- * Preset configurations for MechanicsManager.
- * 
- * Provides common configurations that combine settings from all managers:
- * - Combat settings
- * - Gameplay settings
- * - Hitbox detection
- * - Armor settings
- * - Knockback profiles
- */
 public enum MechanicsPresets {
-    /**
-     * Vanilla Minecraft-like mechanics
-     */
     VANILLA(
-        "Vanilla",
-        "Standard Minecraft mechanics",
-        CombatPresets.Modes.VANILLA,
-        GameplayConfig.VANILLA,
-        CombatPresets.STANDARD_HIT_DETECTION,
-        true,
-        KnockbackProfile.VANILLA
+            "Vanilla",
+            "Standard Minecraft mechanics",
+            CombatPresets.VANILLA,
+            GameplayConfig.VANILLA,              // ✅ GameplayConfig for eye height, movement, etc.
+            DamagePresets.VANILLA,                // ✅ DamageConfig for damage/invuln
+            HitDetectionConfig.standard(),
+            true,
+            KnockbackProfile.VANILLA
     ),
-    
-    /**
-     * MinemanClub competitive PvP settings
-     */
+
     MINEMEN(
-        "Minemen",
-        "MinemanClub competitive PvP configuration",
-        CombatPresets.Modes.MINEMEN,
-        GameplayConfig.MINEMEN,
-        CombatPresets.STANDARD_HIT_DETECTION,
-        true,
-        KnockbackProfile.MINEMEN
+            "Minemen",
+            "MinemanClub competitive PvP configuration",
+            CombatPresets.MINEMEN,
+            GameplayConfig.MINEMEN,               // ✅ GameplayConfig
+            DamagePresets.MINEMEN,                // ✅ DamageConfig
+            HitDetectionConfig.standard(),
+            true,
+            KnockbackProfile.MINEMEN
     ),
-    
-    /**
-     * Hypixel-style mechanics
-     */
+
     HYPIXEL(
-        "Hypixel",
-        "Hypixel server mechanics",
-        CombatPresets.Modes.VANILLA, // Hypixel uses mostly vanilla combat
-        GameplayConfig.VANILLA,
-        HitDetectionConfig.standard(),
-        true,
-        KnockbackProfile.HYPIXEL
+            "Hypixel",
+            "Hypixel server mechanics",
+            CombatPresets.HYPIXEL,
+            GameplayConfig.VANILLA,               // ✅ GameplayConfig
+            DamagePresets.HYPIXEL,                // ✅ DamageConfig
+            HitDetectionConfig.standard(),
+            true,
+            KnockbackProfile.HYPIXEL
     );
-    
+
     private final String name;
     private final String description;
-    private final CombatModeBundle combatBundle;
-    private final GameplayConfig gameplayConfig;
+    private final CombatConfig combatConfig;
+    private final GameplayConfig gameplayConfig;      // ✅ BOTH configs
+    private final DamageConfig damageConfig;
     private final HitDetectionConfig hitDetectionConfig;
     private final boolean armorEnabled;
     private final KnockbackProfile knockbackProfile;
-    
-    MechanicsPresets(String name, String description, 
-                     CombatModeBundle combatBundle,
-                     GameplayConfig gameplayConfig,
+
+    MechanicsPresets(String name, String description,
+                     CombatConfig combatConfig,
+                     GameplayConfig gameplayConfig,       // ✅ BOTH parameters
+                     DamageConfig damageConfig,
                      HitDetectionConfig hitDetectionConfig,
                      boolean armorEnabled,
                      KnockbackProfile knockbackProfile) {
         this.name = name;
         this.description = description;
-        this.combatBundle = combatBundle;
-        this.gameplayConfig = gameplayConfig;
+        this.combatConfig = combatConfig;
+        this.gameplayConfig = gameplayConfig;          // ✅ Store both
+        this.damageConfig = damageConfig;
         this.hitDetectionConfig = hitDetectionConfig;
         this.armorEnabled = armorEnabled;
         this.knockbackProfile = knockbackProfile;
     }
-    
+
     public String getName() {
         return name;
     }
-    
+
     public String getDescription() {
         return description;
     }
-    
-    public CombatModeBundle getCombatBundle() {
-        return combatBundle;
+
+    public CombatConfig getCombatConfig() {
+        return combatConfig;
     }
-    
-    public GameplayConfig getGameplayConfig() {
+
+    public GameplayConfig getGameplayConfig() {         // ✅ Getter for GameplayConfig
         return gameplayConfig;
     }
-    
+
+    public DamageConfig getDamageConfig() {             // ✅ Getter for DamageConfig
+        return damageConfig;
+    }
+
     public HitDetectionConfig getHitDetectionConfig() {
         return hitDetectionConfig;
     }
-    
+
     public boolean isArmorEnabled() {
         return armorEnabled;
     }
-    
+
     public KnockbackProfile getKnockbackProfile() {
         return knockbackProfile;
     }

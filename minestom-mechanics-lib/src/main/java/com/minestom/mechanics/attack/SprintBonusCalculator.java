@@ -18,6 +18,12 @@ import static com.minestom.mechanics.config.combat.CombatConstants.*;
 //  Make sure it's thread and memory safe, and not to
 //  performance intensive.
 
+// TODO: Also this doesn't work very well unless set VERY high, which causes
+//  false application of sprint bonus. Need to find a better way to track if the CLIENT
+//  was sprinting when the attack went through. What if we literally just track player ping,
+//  then see if they were sprinting X ticks ago based on that? Isn't that what we already do?
+//  Why doesn't it work?
+
 /**
  * Calculates sprint bonus for attacks.
  * Single responsibility: Only sprint bonus logic.

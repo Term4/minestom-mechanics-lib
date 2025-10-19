@@ -1,5 +1,8 @@
 package com.test.minestom;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
+import com.minestom.mechanics.config.gameplay.DamageConfig;
+import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.features.blocking.BlockingStateManager;
 import com.test.minestom.commands.CommandRegistry;
 import com.minestom.mechanics.manager.CombatManager;
@@ -48,7 +51,8 @@ public class Main {
     // NEW API - Multiple usage patterns demonstrated:
     
     // Pattern 1: Simple preset usage (recommended for most users)
-    private static final CombatModeBundle COMBAT_BUNDLE = CombatPresets.Modes.MINEMEN;
+    private static final CombatConfig COMBAT_CONFIG = CombatPresets.MINEMEN;
+    private static final DamageConfig DAMAGE_CONFIG = DamagePresets.MINEMEN;
     
     // Pattern 2: Preset with overrides (mix and match)
     // private static final CombatModeBundle COMBAT_BUNDLE = CombatManager.getInstance()
@@ -148,18 +152,20 @@ public class Main {
     // ===========================
 
     private static void initializePvP() {
-        // Initialize all mechanics systems using MechanicsManager
         com.minestom.mechanics.MechanicsManager.getInstance()
                 .configure()
-                .withCombat(COMBAT_BUNDLE)
+                .withCombat(COMBAT_CONFIG)
                 .withGameplay(GameplayConfig.MINEMEN)
+                .withDamage(DAMAGE_CONFIG)
                 .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.standard())
                 .withArmor(true)
-                .withKnockback(COMBAT_BUNDLE.combatRules().getKnockbackProfile(), true)
+                .withKnockback(COMBAT_CONFIG.knockbackProfile(), true)
                 .initialize();
 
         // Initialize projectiles separately (not handled by MechanicsManager)
-        com.minestom.mechanics.manager.ProjectileManager.getInstance().initialize(COMBAT_BUNDLE.projectiles());
+        // Using default projectile config
+        com.minestom.mechanics.manager.ProjectileManager.getInstance()
+                .initialize(com.minestom.mechanics.config.combat.ProjectileConfig.builder().build());
 
         ClientVersionDetector.getInstance();
         ViewerBasedAnimationHandler.getInstance();
@@ -283,7 +289,8 @@ public class Main {
 
     private static void sendWelcomeMessage(Player player) {
         // Use new API for configuration display
-        CombatModeBundle bundle = COMBAT_BUNDLE;
+        CombatConfig combatConfig = COMBAT_CONFIG;
+        DamageConfig damageConfig = DAMAGE_CONFIG;
 
         player.sendMessage(Component.empty());
 
@@ -294,29 +301,29 @@ public class Main {
 
         player.sendMessage(Component.text()
                 .append(Component.text("   Mode: ", NamedTextColor.GRAY))
-                .append(Component.text(bundle.name(), NamedTextColor.AQUA))
+                .append(Component.text("MINEMEN", NamedTextColor.AQUA))
                 .build());
 
         player.sendMessage(Component.text()
                 .append(Component.text("   ", NamedTextColor.GRAY))
-                .append(Component.text(bundle.description(), NamedTextColor.DARK_GRAY))
+                .append(Component.text("Fast-paced competitive PvP", NamedTextColor.DARK_GRAY))
                 .build());
 
         player.sendMessage(Component.empty());
 
         player.sendMessage(Component.text()
                 .append(Component.text("   Knockback: ", NamedTextColor.GRAY))
-                .append(Component.text(bundle.combatRules().getKnockbackProfile().name(), NamedTextColor.AQUA))
+                .append(Component.text(COMBAT_CONFIG.knockbackProfile().name(), NamedTextColor.AQUA))
+                .build());
+
+        player.sendMessage(Component.text()
+                .append(Component.text("   Invulnerability: ", NamedTextColor.GRAY))
+                .append(Component.text(DAMAGE_CONFIG.invulnerabilityTicks() + " ticks", NamedTextColor.AQUA))
                 .build());
 
         player.sendMessage(Component.text()
                 .append(Component.text("   Reach: ", NamedTextColor.GRAY))
                 .append(Component.text("3.0 blocks", NamedTextColor.AQUA))
-                .build());
-
-        player.sendMessage(Component.text()
-                .append(Component.text("   Invulnerability: ", NamedTextColor.GRAY))
-                .append(Component.text("10 ticks", NamedTextColor.AQUA))
                 .build());
 
         // ✅ NEW: Mention projectiles

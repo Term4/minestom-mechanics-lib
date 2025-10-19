@@ -1,9 +1,11 @@
 package com.minestom.mechanics;
 
 import com.minestom.mechanics.config.MechanicsPresets;
-import com.minestom.mechanics.config.combat.CombatModeBundle;
+import com.minestom.mechanics.config.combat.CombatConfig;
+import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
+import com.minestom.mechanics.damage.DamageFeature;
 import com.minestom.mechanics.features.knockback.KnockbackProfile;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.manager.GameplayManager;
@@ -44,13 +46,15 @@ public class MechanicsManager {
     // Manager references
     private CombatManager combatManager;
     private GameplayManager gameplayManager;
+    private DamageFeature damageFeature;
     private HitboxManager hitboxManager;
     private ArmorManager armorManager;
     private KnockbackManager knockbackManager;
-    
+
     // Track which systems are enabled
     private boolean combatEnabled = false;
     private boolean gameplayEnabled = false;
+    private boolean damageEnabled = false;
     private boolean hitboxEnabled = false;
     private boolean armorEnabled = false;
     private boolean knockbackEnabled = false;
@@ -84,11 +88,12 @@ public class MechanicsManager {
         
         // Initialize all systems with preset configurations
         ConfigurationBuilder builder = configure()
-            .withCombat(preset.getCombatBundle())
-            .withGameplay(preset.getGameplayConfig())
-            .withHitbox(preset.getHitDetectionConfig())
-            .withArmor(preset.isArmorEnabled())
-            .withKnockback(preset.getKnockbackProfile());
+                .withCombat(preset.getCombatConfig())
+                .withGameplay(preset.getGameplayConfig())
+                .withDamage(preset.getDamageConfig())
+                .withHitbox(preset.getHitDetectionConfig())
+                .withArmor(preset.isArmorEnabled())
+                .withKnockback(preset.getKnockbackProfile());
         
         return builder.initialize();
     }
@@ -128,6 +133,9 @@ public class MechanicsManager {
         if (gameplayEnabled && gameplayManager != null) {
             gameplayManager.cleanupPlayer(player);
         }
+        if (damageEnabled && damageFeature != null) {
+            // DamageFeature cleanup if needed
+        }
         if (hitboxEnabled && hitboxManager != null) {
             hitboxManager.cleanupPlayer(player);
         }
@@ -163,13 +171,22 @@ public class MechanicsManager {
                 log.error("Combat shutdown failed", e);
             }
         }
-        
+
         if (gameplayEnabled && gameplayManager != null) {
             try {
                 gameplayManager.shutdown();
                 log.info("Gameplay systems shut down");
             } catch (Exception e) {
                 log.error("Gameplay shutdown failed", e);
+            }
+        }
+
+        if (damageEnabled && damageFeature != null) {
+            try {
+                damageFeature.shutdown();
+                log.info("Damage system shut down");
+            } catch (Exception e) {
+                log.error("Damage shutdown failed", e);
             }
         }
         
@@ -199,16 +216,18 @@ public class MechanicsManager {
                 log.error("Knockback shutdown failed", e);
             }
         }
-        
+
         // Reset references
         combatManager = null;
         gameplayManager = null;
+        damageFeature = null;
         hitboxManager = null;
         armorManager = null;
         knockbackManager = null;
-        
+
         combatEnabled = false;
         gameplayEnabled = false;
+        damageEnabled = false;
         hitboxEnabled = false;
         armorEnabled = false;
         knockbackEnabled = false;
@@ -234,6 +253,13 @@ public class MechanicsManager {
             throw new IllegalStateException("Gameplay system not enabled!");
         }
         return gameplayManager;
+    }
+
+    public DamageFeature getDamageFeature() {
+        if (!damageEnabled) {
+            throw new IllegalStateException("Damage system not enabled!");
+        }
+        return damageFeature;
     }
     
     public HitboxManager getHitboxManager() {
@@ -264,11 +290,12 @@ public class MechanicsManager {
         StringBuilder status = new StringBuilder();
         status.append("Mechanics Manager Status:\n");
         status.append("  Initialized: ").append(initialized ? "✓" : "✗").append("\n");
-        
+
         if (initialized) {
             status.append("\nEnabled Systems:\n");
             status.append("  Combat: ").append(combatEnabled ? "✓" : "✗").append("\n");
             status.append("  Gameplay: ").append(gameplayEnabled ? "✓" : "✗").append("\n");
+            status.append("  Damage: ").append(damageEnabled ? "✓" : "✗").append("\n");
             status.append("  Hitbox: ").append(hitboxEnabled ? "✓" : "✗").append("\n");
             status.append("  Armor: ").append(armorEnabled ? "✓" : "✗").append("\n");
             status.append("  Knockback: ").append(knockbackEnabled ? "✓" : "✗").append("\n");
@@ -302,10 +329,13 @@ public class MechanicsManager {
      */
     public class ConfigurationBuilder {
         // Combat configuration
-        private CombatModeBundle combatBundle = null;
-        
+        private CombatConfig combatConfig = null;
+
         // Gameplay configuration
         private GameplayConfig gameplayConfig = null;
+
+        // Damage configuration
+        private DamageConfig damageConfig = null;
         
         // Hitbox configuration
         private HitDetectionConfig hitDetectionConfig = null;
@@ -318,20 +348,28 @@ public class MechanicsManager {
         private boolean knockbackSyncEnabled = false;
         
         private ConfigurationBuilder() {}
-        
-        /**
-         * Enable combat systems with the specified bundle
-         */
-        public ConfigurationBuilder withCombat(CombatModeBundle bundle) {
-            this.combatBundle = bundle;
-            return this;
-        }
-        
+
         /**
          * Enable gameplay systems with the specified config
          */
         public ConfigurationBuilder withGameplay(GameplayConfig config) {
             this.gameplayConfig = config;
+            return this;
+        }
+
+        /**
+         * Enable combat systems with the specified config
+         */
+        public ConfigurationBuilder withCombat(CombatConfig config) {
+            this.combatConfig = config;
+            return this;
+        }
+
+        /**
+         * Enable damage system with the specified config
+         */
+        public ConfigurationBuilder withDamage(DamageConfig config) {
+            this.damageConfig = config;
             return this;
         }
         
@@ -393,15 +431,15 @@ public class MechanicsManager {
             log.info("Initializing...");
             
             int systemCount = 0;
-            
+
             // Initialize combat if configured
-            if (combatBundle != null) {
+            if (combatConfig != null) {
                 log.info("Initializing Combat System...");
-                manager.combatManager = CombatManager.getInstance().initialize(combatBundle);
+                manager.combatManager = CombatManager.getInstance().initialize(combatConfig);
                 manager.combatEnabled = true;
                 systemCount++;
             }
-            
+
             // Initialize gameplay if configured
             if (gameplayConfig != null) {
                 log.info("Initializing Gameplay System...");
@@ -409,7 +447,15 @@ public class MechanicsManager {
                 manager.gameplayEnabled = true;
                 systemCount++;
             }
-            
+
+            // Initialize damage if configured
+            if (damageConfig != null) {
+                log.info("Initializing Damage System...");
+                manager.damageFeature = DamageFeature.initialize(damageConfig);
+                manager.damageEnabled = true;
+                systemCount++;
+            }
+
             // Initialize hitbox if configured
             if (hitDetectionConfig != null) {
                 log.info("Initializing Hitbox System...");
