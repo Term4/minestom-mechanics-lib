@@ -26,7 +26,7 @@ public record FishingRodKnockbackConfig(
     // Default configurations
     public static FishingRodKnockbackConfig defaultConfig() {
         return new FishingRodKnockbackConfig(
-            new ProjectileKnockbackConfig(true, 0.3, 0.2, 0.3),
+            new ProjectileKnockbackConfig(true, 0.525, 0.365, 0.45),
             KnockbackMode.BOBBER_RELATIVE
         );
     }
