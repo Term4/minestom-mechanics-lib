@@ -75,7 +75,7 @@ public class KnockbackModifier {
         net.minestom.server.coordinate.Vec velocity = victim.getVelocity();
         boolean isInAir = !victim.isOnGround();
         // TODO: Move hardcoded value to constants class
-        boolean isFalling = isInAir && velocity.y() < -0.1; // FALLING_VELOCITY_THRESHOLD
+        boolean isFalling = isInAir && velocity.y() < -0.0; // FALLING_VELOCITY_THRESHOLD
         
         if (isFalling) {
             // TODO: Move hardcoded value to constants class
