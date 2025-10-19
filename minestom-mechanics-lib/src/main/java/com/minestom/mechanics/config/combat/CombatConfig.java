@@ -16,6 +16,9 @@ import static com.minestom.mechanics.config.combat.CombatConstants.*;
  */
 public record CombatConfig(
         // Attack mechanics
+        // TODO: could be good to have some way to force 1.9+ attack cooldowns on 1.8?
+        //  I mean they would be applied server side already (I think???) but we'd need a way
+        //  for them to see it.
         boolean removeAttackCooldown,
         float criticalMultiplier,
         boolean allowSprintCrits,
