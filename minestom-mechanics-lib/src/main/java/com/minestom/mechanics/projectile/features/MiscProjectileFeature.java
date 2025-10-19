@@ -73,12 +73,6 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
     // PUBLIC API
     // ===========================
     
-    @Override
-    public void cleanup(Player player) {
-        // MiscProjectileFeature doesn't maintain player state
-        // No cleanup needed for this feature
-    }
-    
     public static MiscProjectileFeature getInstance() {
         return requireInstance(instance, "MiscProjectileFeature");
     }

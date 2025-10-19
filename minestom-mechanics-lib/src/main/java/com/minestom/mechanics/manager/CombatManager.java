@@ -26,7 +26,7 @@ import net.minestom.server.entity.Player;
  * - HitboxManager: Hit detection and validation
  * - GameplayManager: Player collisions and environmental damage
  */
-public class CombatManager implements ManagerLifecycle {
+public class CombatManager implements Lifecycle {
     private static CombatManager instance;
 
     // Current configuration
@@ -97,7 +97,7 @@ public class CombatManager implements ManagerLifecycle {
     public boolean initialize() {
         return initialize(CombatPresets.MINEMEN).isInitialized();
     }
-    
+
     /**
      * Get a configuration builder for custom combat setup.
      * 

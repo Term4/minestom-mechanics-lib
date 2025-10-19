@@ -1,14 +1,15 @@
 package com.minestom.mechanics.util;
 
-// TODO: This is actually pretty good. Could update with some more features maybe?
-//  But overall this is pretty good.
+import com.minestom.mechanics.manager.Lifecycle;
 
 /**
  * Base class for systems that require explicit initialization.
  * Provides common initialization state management and validation.
  * Includes helper methods for singleton pattern implementation.
+ *
+ * Now implements Lifecycle to provide cleanup/shutdown capabilities.
  */
-public abstract class InitializableSystem {
+public abstract class InitializableSystem implements Lifecycle {
 
     /**
      * Tracks whether this system has been initialized.
@@ -42,9 +43,11 @@ public abstract class InitializableSystem {
 
     /**
      * Check if this system has been initialized.
+     * Overrides the Lifecycle default to use actual state.
      *
      * @return true if initialized, false otherwise
      */
+    @Override
     public boolean isInitialized() {
         return initialized;
     }
@@ -56,11 +59,11 @@ public abstract class InitializableSystem {
     protected void resetInitialization() {
         this.initialized = false;
     }
-    
+
     /**
      * Helper method for singleton getInstance() implementations.
      * Validates that the instance is not null and throws a consistent exception.
-     * 
+     *
      * @param instance The singleton instance to validate
      * @param className The class name for error messages
      * @param <T> The type of the instance
@@ -73,4 +76,7 @@ public abstract class InitializableSystem {
         }
         return instance;
     }
+
+    // cleanupPlayer() and shutdown() inherited from Lifecycle with default no-op
+    // Override in subclasses if cleanup/shutdown is needed
 }

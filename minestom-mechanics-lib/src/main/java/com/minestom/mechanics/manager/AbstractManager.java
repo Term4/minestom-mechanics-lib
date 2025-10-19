@@ -7,12 +7,6 @@ import net.minestom.server.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-// TODO: I actually like this a lot. Notice how a lot of the
-//  logging is handled HERE in the abstract system? That means
-//  that all managers can be guaranteed to have consistent logging.
-//  ISSUE is we still added additional verbose logging to each manager anyways,
-//  making each manager class much longer than it needs to be
-
 /**
  * Abstract base class for all manager implementations.
  *
@@ -20,7 +14,7 @@ import java.util.List;
  * - Initialization state management
  * - Consistent error handling
  * - Standardized logging with LogUtil helpers
- * - Common cleanup patterns
+ * - Automatic cleanup/shutdown via system registry
  *
  * Reduces boilerplate across all managers while maintaining
  * useful debugging capabilities.
@@ -28,7 +22,7 @@ import java.util.List;
  * @param <T> The concrete manager type extending AbstractManager
  */
 public abstract class AbstractManager<T extends AbstractManager<T>>
-        implements ManagerLifecycle {
+        implements Lifecycle {
 
     protected boolean initialized = false;
     protected final LogUtil.SystemLogger log;
@@ -107,7 +101,7 @@ public abstract class AbstractManager<T extends AbstractManager<T>>
             actualInit.run();
             initialized = true;
             LogUtil.logInitComplete(getSystemName());
-            logMinimalConfig(); // Optional minimal logging
+            logMinimalConfig();
         } catch (Exception e) {
             log.error("Initialization failed!", e);
             cleanup();
@@ -133,26 +127,72 @@ public abstract class AbstractManager<T extends AbstractManager<T>>
     }
 
     // ===========================
-    // ABSTRACT METHODS FOR CUSTOMIZATION
+    // LIFECYCLE IMPLEMENTATION
     // ===========================
 
     /**
-     * Get the system name for logging and error messages
+     * Check if manager is initialized.
+     * Overrides Lifecycle default to use actual state.
      */
-    protected abstract String getSystemName();
+    @Override
+    public boolean isInitialized() {
+        return initialized;
+    }
 
     /**
-     * Log minimal configuration info (not verbose).
-     * Tip: Use getActiveSystemCount() to report how many systems were initialized.
+     * Automatically clean up all registered systems for a player.
+     * Checks for Lifecycle interface (works for both systems and managers).
      */
-    protected abstract void logMinimalConfig();
+    @Override
+    public void cleanupPlayer(Player player) {
+        if (!initialized) return;
+
+        for (SystemEntry entry : systems) {
+            if (entry.system == null) continue;
+
+            try {
+                // NEW: Check for Lifecycle interface (works for both systems and managers)
+                if (entry.system instanceof Lifecycle lifecycle) {
+                    lifecycle.cleanupPlayer(player);
+                }
+            } catch (Exception e) {
+                log.error("Cleanup failed for {} (player: {}): {}",
+                        entry.name, player.getUsername(), e.getMessage(), e);
+            }
+        }
+    }
 
     /**
-     * Cleanup resources when initialization fails or during shutdown.
-     * Override if you have additional cleanup beyond registered systems.
+     * Automatically shutdown all registered systems.
+     * Uses system registry for automatic cleanup.
      */
-    protected void cleanup() {
-        // Default: no-op, override if needed
+    @Override
+    public void shutdown() {
+        shutdownWithWrapper(() -> {
+            // Clean up all online players first
+            MinecraftServer.getConnectionManager().getOnlinePlayers()
+                    .forEach(this::cleanupPlayer);
+
+            // Shutdown each system
+            for (SystemEntry entry : systems) {
+                if (entry.system == null) continue;
+
+                try {
+                    // NEW: Check for Lifecycle interface (works for both systems and managers)
+                    if (entry.system instanceof Lifecycle lifecycle) {
+                        lifecycle.shutdown();
+                    }
+                } catch (Exception e) {
+                    log.error("Shutdown failed for {}: {}", entry.name, e.getMessage(), e);
+                }
+            }
+
+            // Clear registry
+            systems.clear();
+
+            // Subclass cleanup hook
+            cleanup();
+        });
     }
 
     /**
@@ -177,67 +217,27 @@ public abstract class AbstractManager<T extends AbstractManager<T>>
     }
 
     // ===========================
-    // COMMON UTILITY METHODS
+    // ABSTRACT METHODS FOR CUSTOMIZATION
     // ===========================
 
     /**
-     * Check if manager is initialized
+     * Get the system name for logging and error messages
      */
-    public boolean isInitialized() {
-        return initialized;
-    }
+    protected abstract String getSystemName();
 
     /**
-     * Optional per-player cleanup (default: no-op)
-     * Override in subclasses if needed
+     * Log minimal configuration info (not verbose).
+     * Called after successful initialization.
+     * Tip: Use getActiveSystemCount() to report how many systems were initialized.
      */
-    @Override
-    public void cleanupPlayer(Player player) {
-        if (!initialized) return;
-
-        for (SystemEntry entry : systems) {
-            if (entry.system == null) continue;
-
-            try {
-                if (entry.system instanceof ManagedSystem managed) {
-                    managed.cleanupPlayer(player);
-                }
-            } catch (Exception e) {
-                log.error("Cleanup failed for {} (player: {}): {}",
-                        entry.name, player.getUsername(), e.getMessage(), e);
-            }
-        }
-    }
+    protected abstract void logMinimalConfig();
 
     /**
-     * Shutdown the manager and clean up all resources.
-     * Uses system registry for automatic cleanup.
+     * Cleanup resources when initialization fails or during shutdown.
+     * Override if you have additional cleanup beyond registered systems.
+     * Default implementation is no-op since registry handles most cleanup.
      */
-    @Override
-    public void shutdown() {
-        shutdownWithWrapper(() -> {
-            // Clean up all online players first
-            MinecraftServer.getConnectionManager().getOnlinePlayers()
-                    .forEach(this::cleanupPlayer);
-
-            // Shutdown each system
-            for (SystemEntry entry : systems) {
-                if (entry.system == null) continue;
-
-                try {
-                    if (entry.system instanceof ManagedSystem managed) {
-                        managed.shutdown();
-                    }
-                } catch (Exception e) {
-                    log.error("Shutdown failed for {}: {}", entry.name, e.getMessage(), e);
-                }
-            }
-
-            // Clear registry
-            systems.clear();
-
-            // Subclass cleanup hook
-            cleanup();
-        });
+    protected void cleanup() {
+        // Default: no-op, override if needed
     }
 }

@@ -175,5 +175,4 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
     public static BowFeature getInstance() {
         return requireInstance(instance, "BowFeature");
     }
-    
 }

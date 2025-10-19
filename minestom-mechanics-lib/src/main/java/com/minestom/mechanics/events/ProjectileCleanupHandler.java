@@ -72,7 +72,6 @@ public class ProjectileCleanupHandler {
             }
             
             // Clean up misc projectile state (if any)
-            MiscProjectileFeature.getInstance().cleanup(player);
             
         } catch (Exception e) {
             log.error("Error cleaning up projectiles for {}: {}", player.getUsername(), e.getMessage());
