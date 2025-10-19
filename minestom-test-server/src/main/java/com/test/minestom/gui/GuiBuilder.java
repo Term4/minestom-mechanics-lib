@@ -1,4 +1,4 @@
-package com.minestom.mechanics.gui;
+package com.test.minestom.gui;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;

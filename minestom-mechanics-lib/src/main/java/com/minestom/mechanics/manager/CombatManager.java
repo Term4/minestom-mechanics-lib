@@ -38,18 +38,8 @@ public class CombatManager extends AbstractManager<CombatManager> {
         this.currentConfig = config;
 
         return initializeWithWrapper(() -> {
-            // Create blocking config from CombatConfig fields
-            BlockingConfig blockingConfig = BlockingConfig.builder()
-                    .enabled(true)
-                    .damageReduction(config.blockDamageReduction())
-                    .knockbackHorizontalMultiplier(config.blockKnockbackHMultiplier())
-                    .knockbackVerticalMultiplier(config.blockKnockbackVMultiplier())
-                    .showDamageMessages(config.showBlockDamageMessages())
-                    .showBlockEffects(config.showBlockEffects())
-                    .build();
-
             // Initialize and register systems
-            blockingSystem = BlockingSystem.initialize(blockingConfig);
+            blockingSystem = BlockingSystem.initialize(config);
             registerSystem(blockingSystem, "BlockingSystem");
 
             attackFeature = AttackFeature.initialize(config);
@@ -90,7 +80,7 @@ public class CombatManager extends AbstractManager<CombatManager> {
 
     public void setBlockingEnabled(boolean enabled) {
         requireInitialized();
-        blockingSystem.setEnabled(enabled);
+        blockingSystem.setRuntimeEnabled(enabled);
         log.info("Blocking {}", enabled ? "enabled" : "disabled");
     }
 

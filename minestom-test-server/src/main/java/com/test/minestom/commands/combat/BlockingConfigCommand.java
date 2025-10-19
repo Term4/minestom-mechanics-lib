@@ -1,7 +1,6 @@
 package com.test.minestom.commands.combat;
 
 import com.minestom.mechanics.manager.CombatManager;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
 import com.minestom.mechanics.features.blocking.BlockingSystem;
 import com.minestom.mechanics.util.CommandHelpBuilder;
 import net.minestom.server.command.builder.Command;
@@ -13,7 +12,7 @@ import static com.minestom.mechanics.util.MessageBuilder.*;
 
 /**
  * Admin command to configure blocking system at runtime.
- * ✅ REFACTORED: Uses MessageBuilder for all output
+ * Uses runtime overrides for immutable CombatConfig.
  */
 public class BlockingConfigCommand extends Command {
 
@@ -46,55 +45,52 @@ public class BlockingConfigCommand extends Command {
             player.sendMessage(error("Blocking system DISABLED"));
         }, ArgumentType.Literal("disable"));
 
-        // Damage reduction
+        // Damage reduction (0.0-1.0 input, e.g., 0.5 = 50%)
         var damageArg = ArgumentType.Literal("damage");
-        var damageValueArg = ArgumentType.Double("percentage").between(0.0, 100.0);
+        var damageValueArg = ArgumentType.Double("reduction").between(0.0, 1.0);
 
         addSyntax((sender, context) -> {
             if (!(sender instanceof Player player)) return;
 
-            double percentage = context.get(damageValueArg);
-            double reduction = percentage / 100.0;
+            double reduction = context.get(damageValueArg);
 
             BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            blocking.getConfig().setDamageReduction(reduction);
+            blocking.setDamageReduction(reduction);
 
             player.sendMessage(success("Damage reduction set to " +
-                    String.format("%.0f%%", percentage)));
+                    String.format("%.0f%%", reduction * 100)));
         }, damageArg, damageValueArg);
 
-        // Horizontal knockback reduction
+        // Horizontal knockback reduction (0.0-1.0 input)
         var hKnockbackArg = ArgumentType.Literal("hkb");
-        var hKnockbackValueArg = ArgumentType.Double("percentage").between(0.0, 100.0);
+        var hKnockbackValueArg = ArgumentType.Double("reduction").between(0.0, 1.0);
 
         addSyntax((sender, context) -> {
             if (!(sender instanceof Player player)) return;
 
-            double percentage = context.get(hKnockbackValueArg);
-            double multiplier = 1.0 - (percentage / 100.0);
+            double reduction = context.get(hKnockbackValueArg);
 
             BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            blocking.getConfig().setKnockbackHorizontalMultiplier(multiplier);
+            blocking.setKnockbackHorizontalReduction(reduction);
 
             player.sendMessage(success("Horizontal KB reduction set to " +
-                    String.format("%.0f%%", percentage)));
+                    String.format("%.0f%%", reduction * 100)));
         }, hKnockbackArg, hKnockbackValueArg);
 
-        // Vertical knockback reduction
+        // Vertical knockback reduction (0.0-1.0 input)
         var vKnockbackArg = ArgumentType.Literal("vkb");
-        var vKnockbackValueArg = ArgumentType.Double("percentage").between(0.0, 100.0);
+        var vKnockbackValueArg = ArgumentType.Double("reduction").between(0.0, 1.0);
 
         addSyntax((sender, context) -> {
             if (!(sender instanceof Player player)) return;
 
-            double percentage = context.get(vKnockbackValueArg);
-            double multiplier = 1.0 - (percentage / 100.0);
+            double reduction = context.get(vKnockbackValueArg);
 
             BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            blocking.getConfig().setKnockbackVerticalMultiplier(multiplier);
+            blocking.setKnockbackVerticalReduction(reduction);
 
             player.sendMessage(success("Vertical KB reduction set to " +
-                    String.format("%.0f%%", percentage)));
+                    String.format("%.0f%%", reduction * 100)));
         }, vKnockbackArg, vKnockbackValueArg);
 
         // Toggle damage messages
@@ -102,9 +98,8 @@ public class BlockingConfigCommand extends Command {
             if (!(sender instanceof Player player)) return;
 
             BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            BlockingConfig config = blocking.getConfig();
-            boolean newState = !config.isShowDamageMessages();
-            config.setShowDamageMessages(newState);
+            boolean newState = !blocking.shouldShowDamageMessages();
+            blocking.setShowDamageMessages(newState);
 
             player.sendMessage(Component.text("Damage messages ", LABEL)
                     .append(status(newState)));
@@ -115,9 +110,8 @@ public class BlockingConfigCommand extends Command {
             if (!(sender instanceof Player player)) return;
 
             BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            BlockingConfig config = blocking.getConfig();
-            boolean newState = !config.isShowBlockEffects();
-            config.setShowBlockEffects(newState);
+            boolean newState = !blocking.shouldShowBlockEffects();
+            blocking.setShowBlockEffects(newState);
 
             player.sendMessage(Component.text("Block effects ", LABEL)
                     .append(status(newState)));
@@ -132,34 +126,33 @@ public class BlockingConfigCommand extends Command {
 
             String preset = context.get(presetTypeArg);
             BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            BlockingConfig config = blocking.getConfig();
 
             switch (preset) {
                 case "vanilla" -> {
-                    config.setDamageReduction(0.5);
-                    config.setKnockbackHorizontalMultiplier(0.4);
-                    config.setKnockbackVerticalMultiplier(0.4);
+                    blocking.setDamageReduction(0.5);
+                    blocking.setKnockbackHorizontalReduction(0.6);
+                    blocking.setKnockbackVerticalReduction(0.6);
                     player.sendMessage(success("Applied VANILLA preset"));
                     player.sendMessage(Component.text("50% damage reduction, 60% KB reduction", LABEL));
                 }
                 case "reduced" -> {
-                    config.setDamageReduction(0.25);
-                    config.setKnockbackHorizontalMultiplier(0.7);
-                    config.setKnockbackVerticalMultiplier(0.7);
+                    blocking.setDamageReduction(0.25);
+                    blocking.setKnockbackHorizontalReduction(0.3);
+                    blocking.setKnockbackVerticalReduction(0.3);
                     player.sendMessage(success("Applied REDUCED preset"));
                     player.sendMessage(Component.text("25% damage reduction, 30% KB reduction", LABEL));
                 }
                 case "minimal" -> {
-                    config.setDamageReduction(0.1);
-                    config.setKnockbackHorizontalMultiplier(0.9);
-                    config.setKnockbackVerticalMultiplier(0.9);
+                    blocking.setDamageReduction(0.1);
+                    blocking.setKnockbackHorizontalReduction(0.1);
+                    blocking.setKnockbackVerticalReduction(0.1);
                     player.sendMessage(success("Applied MINIMAL preset"));
                     player.sendMessage(Component.text("10% damage reduction, 10% KB reduction", LABEL));
                 }
                 case "maximum" -> {
-                    config.setDamageReduction(0.75);
-                    config.setKnockbackHorizontalMultiplier(0.1);
-                    config.setKnockbackVerticalMultiplier(0.1);
+                    blocking.setDamageReduction(0.75);
+                    blocking.setKnockbackHorizontalReduction(0.9);
+                    blocking.setKnockbackVerticalReduction(0.9);
                     player.sendMessage(success("Applied MAXIMUM preset"));
                     player.sendMessage(Component.text("75% damage reduction, 90% KB reduction", LABEL));
                 }
@@ -172,9 +165,9 @@ public class BlockingConfigCommand extends Command {
                 .description("Configure the blocking system (admin command)")
                 .addUsage("/blockconfig", "Show current configuration")
                 .addUsage("/blockconfig enable/disable", "Toggle blocking system")
-                .addUsage("/blockconfig damage <0-100>", "Set damage reduction percentage")
-                .addUsage("/blockconfig hkb <0-100>", "Set horizontal KB reduction")
-                .addUsage("/blockconfig vkb <0-100>", "Set vertical KB reduction")
+                .addUsage("/blockconfig damage <0.0-1.0>", "Set damage reduction (0.5 = 50%)")
+                .addUsage("/blockconfig hkb <0.0-1.0>", "Set horizontal KB reduction")
+                .addUsage("/blockconfig vkb <0.0-1.0>", "Set vertical KB reduction")
                 .addUsage("/blockconfig messages", "Toggle damage messages")
                 .addUsage("/blockconfig effects", "Toggle block effects")
                 .addUsage("/blockconfig preset <type>", "Apply preset (vanilla/reduced/minimal/maximum)")
@@ -185,7 +178,6 @@ public class BlockingConfigCommand extends Command {
 
     private void showCurrentConfig(Player player) {
         BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-        BlockingConfig config = blocking.getConfig();
 
         player.sendMessage(Component.empty());
         player.sendMessage(header("Blocking Configuration"));
@@ -199,24 +191,21 @@ public class BlockingConfigCommand extends Command {
 
         // Damage reduction
         player.sendMessage(labelValue("Damage Reduction",
-                String.format("%.0f%%", config.getDamageReduction() * 100)));
+                String.format("%.0f%%", blocking.getDamageReduction() * 100)));
 
         // Knockback reduction
-        double hKbReduction = (1.0 - config.getKnockbackHorizontalMultiplier()) * 100;
-        double vKbReduction = (1.0 - config.getKnockbackVerticalMultiplier()) * 100;
-
         player.sendMessage(labelValue("Horizontal KB Reduction",
-                String.format("%.0f%%", hKbReduction)));
+                String.format("%.0f%%", blocking.getKnockbackHorizontalReduction() * 100)));
         player.sendMessage(labelValue("Vertical KB Reduction",
-                String.format("%.0f%%", vKbReduction)));
+                String.format("%.0f%%", blocking.getKnockbackVerticalReduction() * 100)));
 
         player.sendMessage(Component.empty());
 
         // Options
         player.sendMessage(Component.text("Show Messages: ", LABEL)
-                .append(toggle(config.isShowDamageMessages())));
+                .append(toggle(blocking.shouldShowDamageMessages())));
         player.sendMessage(Component.text("Show Effects: ", LABEL)
-                .append(toggle(config.isShowBlockEffects())));
+                .append(toggle(blocking.shouldShowBlockEffects())));
 
         player.sendMessage(Component.empty());
         player.sendMessage(Component.text("Use ", LABEL)

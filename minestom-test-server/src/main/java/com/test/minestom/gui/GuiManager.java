@@ -1,4 +1,4 @@
-package com.minestom.mechanics.gui;
+package com.test.minestom.gui;
 
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;

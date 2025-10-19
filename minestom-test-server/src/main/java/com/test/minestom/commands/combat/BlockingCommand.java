@@ -1,6 +1,6 @@
 package com.test.minestom.commands.combat;
 
-import com.minestom.mechanics.gui.views.BlockingSettingsGui;
+import com.test.minestom.gui.views.BlockingSettingsGui;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.entity.Player;
 import net.kyori.adventure.text.Component;

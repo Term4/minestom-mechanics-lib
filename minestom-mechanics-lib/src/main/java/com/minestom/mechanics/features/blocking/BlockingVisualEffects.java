@@ -1,7 +1,7 @@
 package com.minestom.mechanics.features.blocking;
 
-import com.minestom.mechanics.config.blocking.BlockingConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
+import com.minestom.mechanics.config.combat.CombatConfig;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
@@ -29,17 +29,22 @@ import static com.minestom.mechanics.config.combat.CombatConstants.*;
 //  also considering adding additional visual effects for blocking. Unsure as to what
 //  as of now, but it could be a cool cosmetics system maybe
 
+// TODO: Could be a desync glitch?
+//  CONDITIONS: Viewer (& attacker) - 1.21.10, Victim - 1.8.9
+//  Attacker was hitting victim while victim held block
+//  attacker saw victim stop blocking
+//  victim AND server still thought victim was blocking
 /**
  * Handles visual effects for blocking - shield display, particles, animations.
  * Focused responsibility: Visual effects only.
  */
 public class BlockingVisualEffects {
 
-    private final BlockingConfig config;
+    private final CombatConfig config;
     private final BlockingStateManager stateManager;
     private final Map<UUID, Task> particleTasks = new ConcurrentHashMap<>();
 
-    public BlockingVisualEffects(BlockingConfig config, BlockingStateManager stateManager) {
+    public BlockingVisualEffects(CombatConfig config, BlockingStateManager stateManager) {
         this.config = config;
         this.stateManager = stateManager;
     }
@@ -78,9 +83,32 @@ public class BlockingVisualEffects {
     }
 
     /**
-     * Start particle effects for a blocking player
+     * Send all blocking effects to a player.
+     * Central method for all special effects (particles, sounds, etc.)
+     * Call this when blocking starts or when effects need updating.
      */
-    public void startParticleTask(Player player) {
+    public void sendBlockingEffects(Player player) {
+        // Check global effects toggle
+        if (!config.showBlockEffects()) return;
+
+        // Send all enabled effects
+        startParticleTask(player);
+        // Future effects
+    }
+
+    /**
+     * Stop all blocking effects for a player.
+     * Call this when blocking stops.
+     */
+    public void stopBlockingEffects(Player player) {
+        stopParticleTask(player);
+        // Future effects
+    }
+
+    /**
+     * Start particle effects for a blocking player (internal)
+     */
+    private void startParticleTask(Player player) {
         UUID uuid = player.getUuid();
 
         // Cancel existing task if any
@@ -89,9 +117,9 @@ public class BlockingVisualEffects {
         BlockingPreferences prefs = player.getTag(BlockingStateManager.PREFERENCES);
         if (prefs == null) return;
 
-        // Check if particles should be shown
+        // Check if particles should be shown (per-player preference)
         boolean showParticles = prefs.showParticlesOnSelf || prefs.showParticlesOnOthers;
-        if (!showParticles || !config.isShowBlockEffects()) return;
+        if (!showParticles) return;
 
         Task task = MinecraftServer.getSchedulerManager()
                 .buildTask(() -> {
@@ -110,7 +138,7 @@ public class BlockingVisualEffects {
     /**
      * Stop particle effects for a player
      */
-    public void stopParticleTask(Player player) {
+    private void stopParticleTask(Player player) {
         UUID uuid = player.getUuid();
         Task task = particleTasks.remove(uuid);
         if (task != null) {

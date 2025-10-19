@@ -1,7 +1,7 @@
 package com.minestom.mechanics.features.blocking;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -18,10 +18,10 @@ import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 public class BlockingInputHandler {
     private static final LogUtil.SystemLogger log = LogUtil.system("BlockingInputHandler");
 
-    private final BlockingConfig config;
+    private final CombatConfig config;
     private final BlockingSystem blockingSystem;
 
-    public BlockingInputHandler(BlockingConfig config, BlockingSystem blockingSystem) {
+    public BlockingInputHandler(CombatConfig config, BlockingSystem blockingSystem) {
         this.config = config;
         this.blockingSystem = blockingSystem;
     }
@@ -38,6 +38,7 @@ public class BlockingInputHandler {
         // Handle blocking start/stop via packets
         handler.addListener(PlayerPacketEvent.class, this::handlePlayerPacket);
 
+        // TODO: This seems to be a common listener
         // Stop blocking on slot change
         handler.addListener(PlayerChangeHeldSlotEvent.class, this::handleSlotChange);
 
@@ -64,7 +65,7 @@ public class BlockingInputHandler {
     }
 
     private void handlePlayerPacket(PlayerPacketEvent event) {
-        if (!config.isEnabled()) return;
+        if (!config.blockingEnabled()) return;
 
         Player player = event.getPlayer();
 

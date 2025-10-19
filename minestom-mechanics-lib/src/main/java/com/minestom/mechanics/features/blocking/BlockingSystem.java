@@ -2,7 +2,7 @@ package com.minestom.mechanics.features.blocking;
 
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -25,15 +25,18 @@ public class BlockingSystem extends InitializableSystem {
     private final BlockingVisualEffects visualEffects;
 
     // Configuration
-    private final BlockingConfig config;
+    private final CombatConfig config;
 
-    private BlockingSystem(BlockingConfig config) {
+    // Runtime state
+    private boolean runtimeEnabled = true;
+
+    private BlockingSystem(CombatConfig config) {
         this.config = config;
-        
+
         // Initialize components
         this.stateManager = new BlockingStateManager(config);
         this.inputHandler = new BlockingInputHandler(config, this);
-        this.modifiers = new BlockingModifiers(config, stateManager);
+        this.modifiers = new BlockingModifiers(this, stateManager);
         this.visualEffects = new BlockingVisualEffects(config, stateManager);
     }
 
@@ -41,7 +44,7 @@ public class BlockingSystem extends InitializableSystem {
     // INITIALIZATION
     // ===========================
 
-    public static BlockingSystem initialize(BlockingConfig config) {
+    public static BlockingSystem initialize(CombatConfig config) {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("BlockingSystem");
             return instance;
@@ -70,7 +73,24 @@ public class BlockingSystem extends InitializableSystem {
 
         // Register damage and velocity handlers
         handler.addListener(EntityDamageEvent.class, modifiers::handleDamage);
-        handler.addListener(EntityVelocityEvent.class, modifiers::handleVelocity);
+    }
+
+    // ===========================
+    // RUNTIME
+    // ===========================
+
+    public void setRuntimeEnabled(boolean enabled) {
+        this.runtimeEnabled = enabled;
+
+        // If disabling, stop all active blocks
+        if (!enabled) {
+            for (Player player : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
+                if (isBlocking(player)) {
+                    stopBlocking(player);
+                }
+            }
+        }
+        log.debug("Runtime blocking toggle: {}", enabled);
     }
 
     // ===========================
@@ -81,13 +101,13 @@ public class BlockingSystem extends InitializableSystem {
      * Start blocking for a player
      */
     public void startBlocking(Player player) {
-        if (!config.isEnabled()) return;
+        if (!config.blockingEnabled()) return;
         if (stateManager.isBlocking(player)) return;
 
         stateManager.startBlocking(player);
         visualEffects.updateBlockingVisuals(player, true);
         visualEffects.showBlockingMessage(player, true);
-        visualEffects.startParticleTask(player);
+        visualEffects.sendBlockingEffects(player);  // ← Changed
 
         log.debug("{} started blocking", player.getUsername());
     }
@@ -101,7 +121,7 @@ public class BlockingSystem extends InitializableSystem {
         stateManager.stopBlocking(player);
         visualEffects.updateBlockingVisuals(player, false);
         visualEffects.showBlockingMessage(player, false);
-        visualEffects.stopParticleTask(player);
+        visualEffects.stopBlockingEffects(player);  // ← Changed
 
         log.debug("{} stopped blocking", player.getUsername());
     }
@@ -126,28 +146,21 @@ public class BlockingSystem extends InitializableSystem {
     }
 
     // ===========================
-    // CONFIGURATION
+    // CONFIGURATION ACCESS
     // ===========================
 
-    public BlockingConfig getConfig() {
+    private Double damageReductionOverride = null;
+    private Double knockbackHMultiplierOverride = null;
+    private Double knockbackVMultiplierOverride = null;
+    private Boolean showDamageMessagesOverride = null;
+    private Boolean showBlockEffectsOverride = null;
+
+    public CombatConfig getConfig() {
         return config;
     }
 
-    public void setEnabled(boolean enabled) {
-        config.setEnabled(enabled);
-
-        // If disabling, stop all active blocks
-        if (!enabled) {
-            for (Player player : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
-                if (isBlocking(player)) {
-                    stopBlocking(player);
-                }
-            }
-        }
-    }
-
     public boolean isEnabled() {
-        return config.isEnabled();
+        return config.blockingEnabled() && runtimeEnabled;
     }
 
     // TODO: Make reductions appear consistent. Seeinng 1 - reduction can be confusing.
@@ -155,28 +168,48 @@ public class BlockingSystem extends InitializableSystem {
     //  configure this, we present it like that. Now, we can use it HERE however we want to, but
     //  it's confusing to present the user with two different ways of presenting the same information.
 
-    public void setDamageReduction(double reduction) {
-        config.setDamageReduction(reduction);
-    }
-
-    public void setKnockbackHorizontalReduction(double reduction) {
-        config.setKnockbackHorizontalMultiplier(1.0 - reduction);
-    }
-
-    public void setKnockbackVerticalReduction(double reduction) {
-        config.setKnockbackVerticalMultiplier(1.0 - reduction);
-    }
-
+    // Convenience getters for blocking-specific values
     public double getDamageReduction() {
-        return config.getDamageReduction();
+        return damageReductionOverride != null ? damageReductionOverride : config.blockDamageReduction();
     }
 
     public double getKnockbackHorizontalReduction() {
-        return 1.0 - config.getKnockbackHorizontalMultiplier();
+        double multiplier = knockbackHMultiplierOverride != null ? knockbackHMultiplierOverride : config.blockKnockbackHMultiplier();
+        return 1.0 - multiplier;
     }
 
     public double getKnockbackVerticalReduction() {
-        return 1.0 - config.getKnockbackVerticalMultiplier();
+        double multiplier = knockbackVMultiplierOverride != null ? knockbackVMultiplierOverride : config.blockKnockbackVMultiplier();
+        return 1.0 - multiplier;
+    }
+
+    public boolean shouldShowDamageMessages() {
+        return showDamageMessagesOverride != null ? showDamageMessagesOverride : config.showBlockDamageMessages();
+    }
+
+    public boolean shouldShowBlockEffects() {
+        return showBlockEffectsOverride != null ? showBlockEffectsOverride : config.showBlockEffects();
+    }
+
+    // Setters for runtime configuration
+    public void setDamageReduction(double reduction) {
+        this.damageReductionOverride = reduction;
+    }
+
+    public void setKnockbackHorizontalReduction(double reduction) {
+        this.knockbackHMultiplierOverride = 1.0 - reduction;
+    }
+
+    public void setKnockbackVerticalReduction(double reduction) {
+        this.knockbackVMultiplierOverride = 1.0 - reduction;
+    }
+
+    public void setShowDamageMessages(boolean show) {
+        this.showDamageMessagesOverride = show;
+    }
+
+    public void setShowBlockEffects(boolean show) {
+        this.showBlockEffectsOverride = show;
     }
 
     // ===========================

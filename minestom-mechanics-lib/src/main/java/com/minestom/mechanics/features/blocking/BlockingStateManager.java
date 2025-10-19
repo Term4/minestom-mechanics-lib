@@ -1,7 +1,7 @@
 package com.minestom.mechanics.features.blocking;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import com.minestom.mechanics.util.ViewerBasedAnimationHandler;
 import net.minestom.server.entity.Player;
@@ -29,9 +29,9 @@ public class BlockingStateManager {
 
     // State tracking
     private final Map<UUID, Boolean> blockingPlayers = new ConcurrentHashMap<>();
-    private final BlockingConfig config;
+    private final CombatConfig config;
 
-    public BlockingStateManager(BlockingConfig config) {
+    public BlockingStateManager(CombatConfig config) {
         this.config = config;
     }
 
@@ -46,7 +46,7 @@ public class BlockingStateManager {
      * Start blocking for a player
      */
     public void startBlocking(Player player) {
-        if (!config.isEnabled()) return;
+        if (!config.blockingEnabled()) return;
         if (isBlocking(player)) return;
 
         UUID uuid = player.getUuid();

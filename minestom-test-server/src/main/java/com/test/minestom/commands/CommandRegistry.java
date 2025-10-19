@@ -4,7 +4,7 @@ import com.test.minestom.commands.combat.BlockingCommand;
 import com.test.minestom.commands.combat.BlockingConfigCommand;
 import com.test.minestom.commands.combat.KnockbackCommand;
 import com.test.minestom.commands.debug.MemCheckCommand;
-import com.minestom.mechanics.gui.views.BlockingSettingsGui;
+import com.test.minestom.gui.views.BlockingSettingsGui;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -100,10 +100,10 @@ public class CommandRegistry {
         // Setup join message with command info
         setupJoinMessages();
 
-        // Initialize BlockingSettingsGui with config reference
+        // Initialize BlockingSettingsGui with BlockingSystem reference
         try {
             var blocking = CombatManager.getInstance().getBlockingSystem();
-            BlockingSettingsGui.setConfig(blocking.getConfig());
+            BlockingSettingsGui.setBlockingSystem(blocking);
             log.debug("[CommandRegistry] BlockingSettingsGui initialized");
         } catch (Exception e) {
             log.warn("[CommandRegistry] Could not initialize BlockingSettingsGui: " + e.getMessage());

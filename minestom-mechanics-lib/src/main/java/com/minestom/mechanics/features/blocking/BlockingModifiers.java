@@ -1,7 +1,7 @@
 package com.minestom.mechanics.features.blocking;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;
@@ -19,6 +19,10 @@ import net.minestom.server.sound.SoundEvent;
 //  simplify the blocking feature package a lot, as well as provide customizability for
 //  setting if blocking reduces a certain damage type or not (something I've been wanting to do for a while)
 
+// TODO: Similar thing with knockback multipliers in the knockback modifier class.
+//  should generalize that class, then the only thing blockingmodifiers would really do is to
+//  provide feedback. Then just move that feedback to blockingvisuals in effects.
+
 /**
  * Handles damage and knockback reduction for blocking players.
  * Consolidated from BlockingDamageReducer and BlockingKnockbackReducer.
@@ -26,11 +30,11 @@ import net.minestom.server.sound.SoundEvent;
 public class BlockingModifiers {
     private static final LogUtil.SystemLogger log = LogUtil.system("BlockingModifiers");
 
-    private final BlockingConfig config;
+    private final BlockingSystem blockingSystem;
     private final BlockingStateManager stateManager;
 
-    public BlockingModifiers(BlockingConfig config, BlockingStateManager stateManager) {
-        this.config = config;
+    public BlockingModifiers(BlockingSystem blockingSystem, BlockingStateManager stateManager) {
+        this.blockingSystem = blockingSystem;
         this.stateManager = stateManager;
     }
 
@@ -38,7 +42,7 @@ public class BlockingModifiers {
      * Handle damage reduction for blocking players
      */
     public void handleDamage(EntityDamageEvent event) {
-        if (!config.isEnabled()) return;
+        if (!blockingSystem.isEnabled()) return;
         if (!(event.getEntity() instanceof Player victim)) return;
         if (!stateManager.isBlocking(victim)) return;
 
@@ -46,7 +50,7 @@ public class BlockingModifiers {
         float originalAmount = damage.getAmount();
 
         // Apply damage reduction
-        double currentReduction = config.getDamageReduction();
+        double currentReduction = blockingSystem.getDamageReduction();
         float reducedAmount = originalAmount * (float)(1.0 - currentReduction);
         damage.setAmount(reducedAmount);
 
@@ -59,36 +63,6 @@ public class BlockingModifiers {
     }
 
     /**
-     * Handle knockback reduction for blocking players
-     */
-    public void handleVelocity(EntityVelocityEvent event) {
-        if (!config.isEnabled()) return;
-        if (!(event.getEntity() instanceof Player victim)) return;
-        if (!stateManager.isBlocking(victim)) return;
-
-        Vec originalVelocity = event.getVelocity();
-
-        // Apply knockback reduction
-        double hMultiplier = config.getKnockbackHorizontalMultiplier();
-        double vMultiplier = config.getKnockbackVerticalMultiplier();
-
-        // Split velocity into horizontal and vertical components
-        Vec reducedVelocity = new Vec(
-                originalVelocity.x() * hMultiplier,
-                originalVelocity.y() * vMultiplier,
-                originalVelocity.z() * hMultiplier
-        );
-
-        event.setVelocity(reducedVelocity);
-
-        double hReduction = (1.0 - hMultiplier) * 100;
-        double vReduction = (1.0 - vMultiplier) * 100;
-
-        log.debug("{} blocked knockback (h: {:.0f}%, v: {:.0f}%)",
-                victim.getUsername(), hReduction, vReduction);
-    }
-
-    /**
      * Provide visual and audio feedback for successful blocks
      */
     private void provideFeedback(Player victim, float originalAmount, float reducedAmount) {
@@ -96,7 +70,7 @@ public class BlockingModifiers {
         if (prefs == null) return;
 
         // Action bar message
-        if (prefs.showActionBarOnBlock && config.isShowDamageMessages()) {
+        if (prefs.showActionBarOnBlock && blockingSystem.shouldShowDamageMessages()) {
             victim.sendActionBar(Component.text(
                     String.format("⛨ Blocked! %.1f → %.1f", originalAmount, reducedAmount),
                     NamedTextColor.GOLD));

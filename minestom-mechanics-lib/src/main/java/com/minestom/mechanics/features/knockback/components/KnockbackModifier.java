@@ -8,6 +8,8 @@ import net.minestom.server.entity.Player;
 
 // TODO: Ensure this is actually necessary and not handled elsewhere. ALSO maybe simplify?
 //  Seems like a lot for a simple method. ALSO would this be necessary if we separated legacy knockback from modern?
+//  MAYBE generalize this to be able to add custom knockback modifications on a per hit instance? would allow custom
+//  items (without enchants), custom projectiles, etc
 
 /**
  * Component responsible for applying modifiers to knockback.
@@ -29,17 +31,17 @@ public class KnockbackModifier {
         try {
             BlockingSystem blocking = BlockingSystem.getInstance();
             if (blocking.isBlocking(player) && blocking.isEnabled()) {
-                double hMultiplier = blocking.getConfig().getKnockbackHorizontalMultiplier();
-                double vMultiplier = blocking.getConfig().getKnockbackVerticalMultiplier();
+                double hReduction = blocking.getKnockbackHorizontalReduction();
+                double vReduction = blocking.getKnockbackVerticalReduction();
 
-                double newHorizontal = base.horizontal * hMultiplier;
-                double newVertical = base.vertical * vMultiplier;
+                double newHorizontal = base.horizontal * (1.0 - hReduction);
+                double newVertical = base.vertical * (1.0 - vReduction);
 
                 log.debug("{} blocked knockback (h: {:.0f}%, v: {:.0f}%)",
                         player.getUsername(),
-                        (1-hMultiplier)*100,
-                        (1-vMultiplier)*100);
-                
+                        hReduction*100,
+                        vReduction*100);
+
                 return new KnockbackHandler.KnockbackStrength(newHorizontal, newVertical);
             }
         } catch (IllegalStateException e) {
@@ -72,9 +74,11 @@ public class KnockbackModifier {
                                                                    KnockbackHandler.KnockbackStrength base) {
         net.minestom.server.coordinate.Vec velocity = victim.getVelocity();
         boolean isInAir = !victim.isOnGround();
+        // TODO: Move hardcoded value to constants class
         boolean isFalling = isInAir && velocity.y() < -0.1; // FALLING_VELOCITY_THRESHOLD
         
         if (isFalling) {
+            // TODO: Move hardcoded value to constants class
             // Ensure minimum vertical knockback for falling players
             double minVertical = 0.1; // MIN_FALLING_KNOCKBACK
             double newVertical = Math.max(Math.abs(base.vertical), minVertical);

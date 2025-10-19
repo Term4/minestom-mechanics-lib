@@ -1,7 +1,7 @@
-package com.minestom.mechanics.gui.views;
+package com.test.minestom.gui.views;
 
-import com.minestom.mechanics.gui.GuiBuilder;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
+import com.minestom.mechanics.features.blocking.BlockingSystem;
+import com.test.minestom.gui.GuiBuilder;
 import com.minestom.mechanics.features.blocking.BlockingStateManager;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.kyori.adventure.sound.Sound;
@@ -21,10 +21,10 @@ import static com.minestom.mechanics.util.MessageBuilder.error;
  */
 public class BlockingSettingsGui {
 
-    private static BlockingConfig globalConfig;
+    private static BlockingSystem blockingSystem;
 
-    public static void setConfig(BlockingConfig config) {
-        globalConfig = config;
+    public static void setBlockingSystem(BlockingSystem system) {
+        blockingSystem = system;
     }
 
     public static void open(Player player) {
@@ -182,11 +182,9 @@ public class BlockingSettingsGui {
     }
 
     private static net.minestom.server.item.ItemStack createInfoItem() {
-        double damageReduction = globalConfig != null ? globalConfig.getDamageReduction() : 0.5;
-        double hKnockbackReduction = globalConfig != null ?
-                (1.0 - globalConfig.getKnockbackHorizontalMultiplier()) : 0.6;
-        double vKnockbackReduction = globalConfig != null ?
-                (1.0 - globalConfig.getKnockbackVerticalMultiplier()) : 0.6;
+        double damageReduction = blockingSystem != null ? blockingSystem.getDamageReduction() : 0.5;
+        double hKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackHorizontalReduction() : 0.6;
+        double vKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackVerticalReduction() : 0.6;
 
         return GuiBuilder.infoItem(
                 Material.BOOK,
