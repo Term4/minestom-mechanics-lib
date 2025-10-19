@@ -54,36 +54,11 @@ public class KnockbackStateManager {
     }
     
     /**
-     * Check if player can receive knockback this tick.
-     */
-    public boolean canReceiveKnockback(Player player) {
-        return knockbackThisTick.add(player.getUuid());
-    }
-    
-    /**
-     * Clear knockback tracking for new tick.
-     */
-    public void clearKnockbackTracking() {
-        knockbackThisTick.clear();
-    }
-    
-    /**
      * Update player combat state.
      */
     public void updateCombatState(Player player) {
         KnockbackHandler.PlayerKnockbackData data = getOrCreatePlayerData(player);
         data.lastCombatTime = System.currentTimeMillis();
-    }
-    
-    /**
-     * Record knockback application.
-     */
-    public void recordKnockback(Player player, Vec knockback) {
-        KnockbackHandler.PlayerKnockbackData data = getPlayerData(player);
-        if (data != null) {
-            data.lastKnockback = knockback;
-            data.lastKnockbackTime = System.currentTimeMillis();
-        }
     }
     
     /**
@@ -110,7 +85,7 @@ public class KnockbackStateManager {
         KnockbackHandler.PlayerKnockbackData data = playerDataMap.remove(uuid);
         if (data != null) {
             // Clear any references inside the data
-            data.lastKnockback = Vec.ZERO;
+            //  data.lastKnockback = Vec.ZERO;
         }
 
         knockbackThisTick.remove(uuid);

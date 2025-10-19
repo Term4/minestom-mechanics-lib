@@ -16,6 +16,8 @@ import net.minestom.server.timer.TaskSchedule;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: Re-implement
+
 /**
  * Knockback synchronization handler for lag compensation
  */
@@ -28,7 +30,7 @@ public class KnockbackSyncHandler extends InitializableSystem {
     // Configuration
     private boolean enabled = false;
     private boolean offGroundSyncEnabled = true;
-    private long maxRewindTime = 300; // ms
+    private long maxRewindTime = 1000; // ms
     // private int positionHistorySize = 30; // Unused field
     private double interpolationFactor = 0.75;
 

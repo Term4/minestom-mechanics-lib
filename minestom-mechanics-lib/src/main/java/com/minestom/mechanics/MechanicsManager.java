@@ -445,14 +445,6 @@ public class MechanicsManager {
             
             int systemCount = 0;
 
-            // Initialize combat if configured
-            if (combatConfig != null) {
-                log.info("Initializing Combat System...");
-                manager.combatManager = CombatManager.getInstance().initialize(combatConfig);
-                manager.combatEnabled = true;
-                systemCount++;
-            }
-
             // Initialize gameplay if configured
             if (gameplayConfig != null) {
                 log.info("Initializing Gameplay System...");
@@ -491,6 +483,14 @@ public class MechanicsManager {
                 manager.knockbackHandler = KnockbackHandler.initialize(knockbackConfig);
                 manager.knockbackHandler.setKnockbackSyncEnabled(knockbackSyncEnabled);
                 manager.knockbackEnabled = true;
+                systemCount++;
+            }
+
+            // Initialize combat if configured
+            if (combatConfig != null) {
+                log.info("Initializing Combat System...");
+                manager.combatManager = CombatManager.getInstance().initialize(combatConfig);
+                manager.combatEnabled = true;
                 systemCount++;
             }
             

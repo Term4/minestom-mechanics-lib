@@ -57,7 +57,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		// ✅ FIX: Prevent immediate pickup (vanilla 1.8 behavior)
         // TODO: This delay seems long potentially. Should also be in a constants class
 		pickupDelay = 20; // 1 second delay before arrow can be picked up
-		
+
 		// Initialize with default arrow knockback config
 		this.knockbackConfig = ProjectileKnockbackConfig.defaultArrowKnockback();
 	}
@@ -219,8 +219,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 					double horizontalKnockback = knockbackConfig.horizontalKnockback();
 					double verticalKnockback = knockbackConfig.verticalKnockback();
 					
-					knockbackHandler.applyProjectileKnockback(living, this, shooterOriginPos, 
-						horizontalKnockback, verticalKnockback, knockback);
+					knockbackHandler.applyProjectileKnockback(living, this, shooterOriginPos, knockback);
 				}
 			} catch (Exception e) {
 				// Fallback to old system if KnockbackHandler fails
@@ -342,7 +341,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 	public void setUseKnockbackHandler(boolean useKnockbackHandler) {
 		this.useKnockbackHandler = useKnockbackHandler;
 	}
-	
+
 	public void setKnockbackConfig(ProjectileKnockbackConfig config) {
 		this.knockbackConfig = config;
 	}

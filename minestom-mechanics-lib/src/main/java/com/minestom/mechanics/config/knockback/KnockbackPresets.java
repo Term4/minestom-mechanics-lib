@@ -14,7 +14,7 @@ public final class KnockbackPresets {
                 1.0,    // airMultiplierVertical
                 0.5,    // lookWeight
                 false,   // modern
-                true    // knockbackSyncSupported
+                false    // knockbackSyncSupported
         );
     }
 
@@ -29,7 +29,7 @@ public final class KnockbackPresets {
                 1.0,    // airMultiplierVertical
                 0.0,    // lookWeight
                 false,  // modern (vanilla is legacy)
-                true   // knockbackSyncSupported
+                false   // knockbackSyncSupported
         );
     }
 
@@ -44,7 +44,7 @@ public final class KnockbackPresets {
                 1.0,    // airMultiplierVertical
                 0.0,    // lookWeight
                 false,   // modern
-                true    // knockbackSyncSupported
+                false    // knockbackSyncSupported
         );
     }
 }

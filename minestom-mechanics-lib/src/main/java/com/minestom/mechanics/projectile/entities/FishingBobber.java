@@ -192,8 +192,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
                         double horizontalKnockback = knockbackConfig.getHorizontalKnockback();
                         double verticalKnockback = knockbackConfig.getVerticalKnockback();
                             
-                            knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, getShooter().getPosition(), 
-                                horizontalKnockback, verticalKnockback, 0);
+                            knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, getShooter().getPosition());
                         }
                     } catch (Exception e) {
                         // Fallback: apply simple knockback if KnockbackHandler fails

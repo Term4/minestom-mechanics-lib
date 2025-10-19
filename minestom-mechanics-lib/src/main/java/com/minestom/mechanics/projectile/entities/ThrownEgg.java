@@ -39,8 +39,7 @@ public class ThrownEgg extends CustomEntityProjectile implements ItemHoldingProj
 						double horizontalKnockback = knockbackConfig.horizontalKnockback();
 						double verticalKnockback = knockbackConfig.verticalKnockback();
 						
-						knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos, 
-							horizontalKnockback, verticalKnockback, 0);
+						knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos);
 					}
 				} catch (Exception e) {
 					// Fallback: no knockback if KnockbackHandler fails

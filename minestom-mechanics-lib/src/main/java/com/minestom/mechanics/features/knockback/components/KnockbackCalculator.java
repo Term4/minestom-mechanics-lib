@@ -4,11 +4,11 @@ import com.minestom.mechanics.features.knockback.KnockbackHandler;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
+import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
-import net.minestom.server.entity.attribute.Attribute;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
@@ -69,78 +69,34 @@ public class KnockbackCalculator {
 
         return new Vec(dx, 0, dz);
     }
-    
+
     /**
-     * Calculate knockback strength based on type and sprint state.
+     * Calculate knockback direction for projectiles (from origin position, not attacker position).
      */
-    public KnockbackStrength calculateKnockbackStrength(LivingEntity victim,
-                                                       Entity attacker,
-                                                       KnockbackHandler.KnockbackType type,
-                                                       boolean wasSprinting) {
-        double horizontal = config.horizontal();
-        double vertical = config.vertical();
+    public Vec calculateProjectileKnockbackDirection(LivingEntity victim, Pos projectileOrigin) {
+        
+        double dx = victim.getPosition().x() - projectileOrigin.x();
+        double dz = victim.getPosition().z() - projectileOrigin.z();
 
-        // ✅ USE CAPTURED SPRINT STATE instead of checking current state
-        if (attacker instanceof Player player &&
-                wasSprinting &&  // ← Use passed-in value, not player.isSprinting()!
-                (type == KnockbackHandler.KnockbackType.ATTACK || type == KnockbackHandler.KnockbackType.DAMAGE)) {
+        double distance = Math.sqrt(dx * dx + dz * dz);
 
-            horizontal += config.sprintBonusHorizontal();
-            vertical += config.sprintBonusVertical();
-            player.setSprinting(false);
-            log.debug("Sprint bonus applied for: " + player.getUsername());
+        if (distance < MIN_KNOCKBACK_DISTANCE) {
+            dx = Math.random() * 0.02 - 0.01;
+            dz = Math.random() * 0.02 - 0.01;
+            distance = Math.sqrt(dx * dx + dz * dz);
         }
 
-        // Apply sweeping reduction
-        if (type == KnockbackHandler.KnockbackType.SWEEPING) {
-            horizontal *= 0.5;
-            vertical *= 0.5;
-        }
+        dx /= distance;
+        dz /= distance;
 
-        return new KnockbackStrength(horizontal, vertical);
+        return new Vec(dx, 0, dz);
     }
 
-    // TODO: Remove this method? It's not used anywhere. Is it needed?
-    /**
-     * Apply modifiers to knockback strength.
-     * ✅ REFACTORED: Using FALLING_VELOCITY_THRESHOLD and MIN_FALLING_KNOCKBACK constants
-     */
-    public KnockbackStrength applyModifiers(LivingEntity victim, KnockbackStrength base) {
-        double horizontal = base.horizontal;
-        double vertical = base.vertical;
-
-        Vec velocity = victim.getVelocity();
-        boolean isInAir = !victim.isOnGround();
-
-        // ✅ REFACTORED: Using constant for falling detection
-        boolean isFalling = isInAir && velocity.y() < FALLING_VELOCITY_THRESHOLD;
-
-        // Apply air multipliers
-        if (isInAir) {
-            horizontal *= config.airMultiplierHorizontal();
-            vertical *= config.airMultiplierVertical();
-        }
-
-        // ✅ REFACTORED: Using constant for 1.8 no-falling knockback
-        if (isFalling) {
-            vertical = Math.max(Math.abs(vertical), MIN_FALLING_KNOCKBACK);
-        }
-
-        // Apply knockback resistance
-        double kbResistance = victim.getAttributeValue(Attribute.KNOCKBACK_RESISTANCE);
-        horizontal *= (1 - kbResistance);
-        vertical *= (1 - kbResistance);
-
-        return new KnockbackStrength(horizontal, vertical);
-    }
-
-
-    // TODO: Remove this method? It's not used anywhere. Is it needed?
     /**
      * Calculate final velocity from knockback components.
      */
-    public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackStrength strength,
-                                     KnockbackHandler.KnockbackType type) {
+    public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackHandler.KnockbackStrength strength,
+                                      KnockbackHandler.KnockbackType type) {
         double tps = ServerFlag.SERVER_TICKS_PER_SECOND;
         double horizontal = strength.horizontal / tps;
         double vertical = strength.vertical / tps;
@@ -167,13 +123,13 @@ public class KnockbackCalculator {
                 oldVelocity.z() / 2.0 + direction.z() * horizontal * tps
         );
     }
-    
+
     /**
      * Calculate final vertical component of knockback.
      * ✅ REFACTORED: Using MIN_FALLING_KNOCKBACK constant
      */
     private double calculateVerticalComponent(LivingEntity victim, Vec oldVelocity,
-                                           double vertical, double tps) {
+                                              double vertical, double tps) {
         boolean isInAir = !victim.isOnGround();
 
         // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug (where it has a ~ -1.518 offset)
@@ -192,18 +148,5 @@ public class KnockbackCalculator {
         }
 
         return oldVelocity.y() / 2.0 + vertical * tps;
-    }
-    
-    /**
-     * Knockback strength data class.
-     */
-    public static class KnockbackStrength {
-        public final double horizontal;
-        public final double vertical;
-
-        public KnockbackStrength(double horizontal, double vertical) {
-            this.horizontal = horizontal;
-            this.vertical = vertical;
-        }
     }
 }

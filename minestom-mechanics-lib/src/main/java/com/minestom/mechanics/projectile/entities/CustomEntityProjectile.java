@@ -27,6 +27,10 @@ import java.util.Collection;
 // TODO: Potentially add a feature to prevent modern clients from sending
 //  arm swing packets when throwing projectiles? Would k
 
+// TODO: LOOOONNG way off, but make a couple extra projectile methods, like getting where
+//  the projectile landed, the direction it ended up, etc. Could make for easier
+//  custom projectiles (think rideable pearls, etc)
+
 /**
  * Base class for all custom projectile entities in the mechanics system.
  * Provides proper 1.8-style physics, collision detection, and projectile behavior.

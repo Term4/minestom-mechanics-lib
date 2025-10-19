@@ -59,8 +59,8 @@ public class TestItems {
                         Component.text("No Knockback", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackHandler.MULTIPLIER, List.of(
-                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0  // All components × 0
+                .withTag(KnockbackHandler.PROJECTILE_MULTIPLIER, List.of(
+                        -1.0, 1.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
                 ));
     }
 

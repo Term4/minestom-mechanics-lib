@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.concurrent.ThreadLocalRandom;
 
 // TODO: Probably update to extend an abstract projectile. Make sure to maintain teleportation functionality.
+//  ALSO make teleporting a toggleable boolean feature.
 
 /**
  * Ender pearl projectile
@@ -89,8 +90,7 @@ public class ThrownEnderpearl extends CustomEntityProjectile implements ItemHold
 						double horizontalKnockback = knockbackConfig.horizontalKnockback();
 						double verticalKnockback = knockbackConfig.verticalKnockback();
 						
-						knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos, 
-							horizontalKnockback, verticalKnockback, 0);
+						knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos);
 					}
 				} catch (Exception e) {
 					// Fallback: no knockback if KnockbackHandler fails

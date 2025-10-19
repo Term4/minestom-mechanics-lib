@@ -4,18 +4,20 @@ import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.features.knockback.components.*;
 import com.minestom.mechanics.features.knockback.sync.KnockbackSyncHandler;
 import com.minestom.mechanics.util.ConfigurableSystem;
-import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.server.ServerTickMonitorEvent;
+import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.tag.Tag;
 
 import java.util.List;
@@ -51,7 +53,6 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
     private final KnockbackCalculator calculator;
     private final KnockbackModifier modifier;
     private final KnockbackStateManager stateManager;
-    private final KnockbackVelocityHandler velocityHandler;
 
     // Core configuration
     private KnockbackConfig currentConfig;
@@ -69,7 +70,6 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
         this.stateManager = new KnockbackStateManager();
         this.calculator = new KnockbackCalculator(config);
         this.modifier = new KnockbackModifier();
-        this.velocityHandler = new KnockbackVelocityHandler(stateManager, knockbackSyncEnabled);
     }
 
     // ===========================
@@ -112,11 +112,6 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
             if (knockbackSyncEnabled) {
                 KnockbackSyncHandler.getInstance().removePlayer(event.getPlayer());
             }
-        });
-
-        eventHandler.addListener(ServerTickMonitorEvent.class, _ -> {
-            // Clear knockback tracking every tick
-            stateManager.clearKnockbackTracking();
         });
 
         if (knockbackSyncEnabled) {
@@ -203,49 +198,98 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
         return COMPONENT_COUNT;
     }
 
-    // ===========================
-    // KNOCKBACK APPLICATION (FULL LOGIC!)
-    // ===========================
+    /**
+     * Apply melee knockback with optional enchantment support.
+     *
+     * @param victim The entity being hit
+     * @param attacker The attacking entity
+     * @param type Type of knockback (ATTACK, DAMAGE, SWEEPING, EXPLOSION)
+     * @param wasSprinting Whether the attacker was sprinting
+     * @param kbEnchantLevel Knockback enchantment level (0 = none, 1 = Knockback I, 2 = Knockback II)
+     */
+    public void applyKnockback(LivingEntity victim, Entity attacker,
+                               KnockbackType type, boolean wasSprinting,
+                               int kbEnchantLevel) {
+        applyKnockbackInternal(victim, attacker, attacker.getPosition(),
+                type, wasSprinting, kbEnchantLevel);
+    }
 
-    public void applyKnockback(LivingEntity victim, Entity attacker, KnockbackType type, boolean wasSprinting) {
+    /**
+     * Apply melee knockback without enchantments (convenience method).
+     */
+    public void applyKnockback(LivingEntity victim, Entity attacker,
+                               KnockbackType type, boolean wasSprinting) {
+        applyKnockback(victim, attacker, type, wasSprinting, 0);
+    }
+
+    /**
+     * Legacy compatibility method for KnockbackManager.
+     */
+    @Deprecated
+    public void applyKnockback(Player victim, Entity attacker,
+                               boolean sprintBonus, int kbEnchantLevel) {
+        applyKnockback(victim, attacker, KnockbackType.ATTACK, sprintBonus, kbEnchantLevel);
+    }
+
+    /**
+     * Internal unified knockback logic for both melee and projectiles.
+     *
+     * @param victim The entity receiving knockback
+     * @param attacker The attacking entity (Player for melee, Projectile for projectiles)
+     * @param sourcePosition Position to calculate direction from (current pos for melee, origin for projectiles)
+     * @param type Type of knockback
+     * @param wasSprinting Whether attacker was sprinting (only relevant for melee)
+     * @param kbEnchantLevel Knockback enchantment level (only relevant for melee)
+     */
+    private void applyKnockbackInternal(LivingEntity victim, Entity attacker,
+                                        Pos sourcePosition, KnockbackType type,
+                                        boolean wasSprinting, int kbEnchantLevel) {
         requireInitialized();
 
-        // Prevent double knockback in same tick
-        if (victim instanceof Player player && !stateManager.canReceiveKnockback(player)) {
-            return;
-        }
+        // DEBUG: Log thread info
+        log.debug("Applying knockback on thread: {}", Thread.currentThread().getName());
 
-        // Update combat state
+        // 2. Update combat state
         if (victim instanceof Player player) {
             stateManager.updateCombatState(player);
         }
 
-        // ✅ NEW: Resolve knockback using Universal Config System
-        // For melee: attacker is Player, handUsed is MAIN_HAND
-        // For projectiles: attacker is Projectile, handUsed is null
+        // 3. Resolve from Universal Config System
         EquipmentSlot handUsed = (attacker instanceof Player && type != KnockbackType.PROJECTILE)
                 ? EquipmentSlot.MAIN_HAND
                 : null;
 
         KnockbackResult resolved = resolveKnockback(attacker, victim, handUsed);
 
-        // Calculate knockback direction
-        Vec knockbackDirection = calculator.calculateKnockbackDirection(victim, attacker);
+        // 4. Calculate direction
+        Vec direction;
+        if (type == KnockbackType.PROJECTILE) {
+            direction = calculator.calculateProjectileKnockbackDirection(victim, sourcePosition);
+        } else {
+            direction = calculator.calculateKnockbackDirection(victim, attacker);
+        }
 
-        // Calculate base strength using resolved values
+        // 5. Build base strength from resolved values
         double horizontal = resolved.horizontal;
         double vertical = resolved.vertical;
 
-        // Apply sprint bonus if applicable (only for player melee)
+        // Apply sprint bonus (melee only)
         if (attacker instanceof Player player && wasSprinting &&
                 (type == KnockbackType.ATTACK || type == KnockbackType.DAMAGE)) {
             horizontal += resolved.sprintBonusH;
             vertical += resolved.sprintBonusV;
             player.setSprinting(false);
-            log.debug("Sprint bonus applied for: " + player.getUsername());
+            log.debug("Sprint bonus applied for: {}", player.getUsername());
         }
 
-        // Apply sweeping reduction
+        // Apply enchantment bonus (melee only, AFTER tags)
+        if (kbEnchantLevel > 0 && type != KnockbackType.PROJECTILE) {
+            horizontal += kbEnchantLevel * 0.6;
+            vertical += 0.1;
+            log.debug("Knockback {} applied: +{}h", kbEnchantLevel, kbEnchantLevel * 0.6);
+        }
+
+        // Sweeping reduction
         if (type == KnockbackType.SWEEPING) {
             horizontal *= 0.5;
             vertical *= 0.5;
@@ -253,142 +297,64 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
 
         KnockbackStrength strength = new KnockbackStrength(horizontal, vertical);
 
-        // Apply modifiers (blocking, air multipliers using resolved values, falling)
-        KnockbackStrength modifiedStrength = modifier.applyBlockingReduction(victim, strength);
-        modifiedStrength = modifier.applyAirMultipliers(
-                victim, modifiedStrength, resolved.airMultH, resolved.airMultV);
-        modifiedStrength = modifier.applyFallingModifiers(victim, modifiedStrength);
+        // 6. Apply context modifiers
+        strength = modifier.applyBlockingReduction(victim, strength);
+        strength = modifier.applyAirMultipliers(victim, strength, resolved.airMultH, resolved.airMultV);
+        strength = modifier.applyFallingModifiers(victim, strength);
 
-        // Apply velocity using velocity handler
-        velocityHandler.applyKnockbackVelocity(victim, attacker, knockbackDirection,
-                modifiedStrength, type);
-    }
+        // Apply knockback resistance attribute
+        double resistance = victim.getAttributeValue(Attribute.KNOCKBACK_RESISTANCE);
+        strength = new KnockbackStrength(
+                strength.horizontal * (1 - resistance),
+                strength.vertical * (1 - resistance)
+        );
 
+        // 7. Calculate final velocity (delegate to calculator)
+        Vec finalVelocity = calculator.calculateFinalVelocity(victim, direction, strength, type);
 
-    // THIS IS ENTIRELY UNTESTED, also could probably be consolidated into one applyKnockback class...
-    /**
-     * Apply knockback with knockback enchantment level.
-     * This is a convenience method for the KnockbackManager.
-     * 
-     * @param victim The player receiving knockback
-     * @param attacker The entity causing knockback (can be null for non-entity sources)
-     * @param sprintBonus Whether the attacker was sprinting (adds extra knockback)
-     * @param kbEnchantLevel Knockback enchantment level (0 = no enchantment)
-     */
-    public void applyKnockback(Player victim, Entity attacker, boolean sprintBonus, int kbEnchantLevel) {
-        requireInitialized();
-        
-        // Determine knockback type based on enchantment level
-        KnockbackType type = KnockbackType.ATTACK;
-        if (kbEnchantLevel > 0) {
-            // For now, treat all knockback enchantments as attack type
-            // Could be extended to have different types based on level
-            type = KnockbackType.ATTACK;
+        // 8. Apply sync compensation if enabled
+        // DISABLED: Sync handler needs rework
+        /*
+        if (victim instanceof Player player && knockbackSyncEnabled) {
+            finalVelocity = KnockbackSyncHandler.getInstance()
+                    .compensateKnockback(player, finalVelocity, attacker, player.isOnGround());
         }
-        
-        // Apply knockback with the determined type
-        applyKnockback(victim, attacker, type, sprintBonus);
-        
-        // Apply additional knockback for enchantment
-        if (kbEnchantLevel > 0 && attacker != null) {
-            // Calculate additional knockback from enchantment
-            Vec direction = calculator.calculateKnockbackDirection(victim, attacker);
-            double enchantmentBonus = kbEnchantLevel * 0.5; // Each level adds 0.5 blocks of knockback
-            
-            Vec additionalVelocity = direction.normalize().mul(enchantmentBonus, 0, enchantmentBonus);
-            victim.setVelocity(victim.getVelocity().add(additionalVelocity));
-        }
-    }
+        */
 
-    // TODO: Projectile knockback SHOULD be in the knnockback feature, just not this class
+        // 9. Apply velocity
+        victim.setVelocity(finalVelocity);
 
-    /**
-     * Apply projectile knockback with full system integration.
-     * Includes iframe checking, blocking support, and all knockback modifiers.
-     * 
-     * @param victim The entity being hit
-     * @param projectile The projectile that hit
-     * @param projectileOrigin The position where the projectile was shot from
-     * @param horizontalKnockback Horizontal knockback strength
-     * @param verticalKnockback Vertical knockback strength
-     * @param punchLevel Punch enchantment level (0 = no punch)
-     */
-    public void applyProjectileKnockback(LivingEntity victim, Entity projectile, 
-                                       net.minestom.server.coordinate.Pos projectileOrigin,
-                                       double horizontalKnockback, double verticalKnockback, int punchLevel) {
-        requireInitialized();
-
-        // Prevent double knockback in same tick
-        if (victim instanceof Player player && !stateManager.canReceiveKnockback(player)) {
-            return;
-        }
-
-        // Update combat state
+        // 10. Send packet to client
         if (victim instanceof Player player) {
-            stateManager.updateCombatState(player);
+            player.sendPacket(new EntityVelocityPacket(player.getEntityId(), finalVelocity));
         }
-
-        // Calculate knockback direction from projectile origin to victim
-        Vec knockbackDirection = calculateProjectileKnockbackDirection(victim, projectileOrigin);
-
-        // Create knockback strength with projectile values
-        KnockbackStrength strength = new KnockbackStrength(horizontalKnockback, verticalKnockback);
-
-        // Apply Punch enchantment bonus if present
-        if (punchLevel > 0) {
-            double horizontalMagnitude = Math.sqrt(knockbackDirection.x() * knockbackDirection.x() + 
-                                                  knockbackDirection.z() * knockbackDirection.z());
-            if (horizontalMagnitude > 0.0001) {
-                double punchBonus = punchLevel * 0.6;
-                strength = new KnockbackStrength(
-                    strength.horizontal + punchBonus,
-                    strength.vertical + 0.1
-                );
-            }
-        }
-
-        // Apply modifiers (blocking, air, falling)
-        KnockbackStrength modifiedStrength = modifier.applyBlockingReduction(victim, strength);
-        modifiedStrength = modifier.applyAirMultipliers(victim, modifiedStrength, 
-                getAirHorizontalMultiplier(), getAirVerticalMultiplier());
-        modifiedStrength = modifier.applyFallingModifiers(victim, modifiedStrength);
-
-        // Apply velocity using velocity handler
-        velocityHandler.applyKnockbackVelocity(victim, projectile, knockbackDirection, modifiedStrength, KnockbackType.PROJECTILE);
     }
+
+    /**
+     * Apply projectile knockback with Punch enchantment support.
+     *
+     * @param victim The entity being hit
+     * @param projectile The projectile entity (tags resolved from this)
+     * @param projectileOrigin Where projectile was shot from
+     * @param punchLevel Punch enchantment level (0 = none)
+     */
+    public void applyProjectileKnockback(LivingEntity victim, Entity projectile,
+                                         Pos projectileOrigin, int punchLevel) {
+        applyKnockbackInternal(victim, projectile, projectileOrigin,
+                KnockbackType.PROJECTILE, false, punchLevel);
+    }
+
+    /**
+     * Apply projectile knockback without enchantments (convenience method).
+     */
+    public void applyProjectileKnockback(LivingEntity victim, Entity projectile,
+                                         Pos projectileOrigin) {
+        applyProjectileKnockback(victim, projectile, projectileOrigin, 0);
+    }
+
+    // TODO: Projectile knockback SHOULD be in the knockback feature, just not this class
 
     // TODO: Move out to a knockback math specific class.
-
-    /**
-     * Calculate knockback direction for projectiles (horizontal only).
-     */
-    private Vec calculateProjectileKnockbackDirection(LivingEntity victim, net.minestom.server.coordinate.Pos projectileOrigin) {
-        double dx = victim.getPosition().x() - projectileOrigin.x();
-        double dz = victim.getPosition().z() - projectileOrigin.z();
-        
-        double distance = Math.sqrt(dx * dx + dz * dz);
-        
-        // If too close, use random direction
-        if (distance < 0.0001) {
-            dx = Math.random() * 0.02 - 0.01;
-            dz = Math.random() * 0.02 - 0.01;
-            distance = Math.sqrt(dx * dx + dz * dz);
-        }
-        
-        dx /= distance;
-        dz /= distance;
-        
-        return new Vec(dx, 0, dz);
-    }
-
-    // ===========================
-    // DELEGATED TO COMPONENTS
-    // ===========================
-    // All calculation logic moved to focused components:
-    // - KnockbackCalculator: Direction and strength calculations
-    // - KnockbackModifier: Blocking, air, and falling modifiers  
-    // - KnockbackStateManager: Player state tracking
-    // - KnockbackVelocityHandler: Velocity application
 
     // ===========================
     // CONFIGURATION
@@ -399,13 +365,6 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
         this.currentConfig = config;
         this.knockbackSyncEnabled = config.knockbackSyncSupported() && knockbackSyncEnabled;
         log.debug("Config updated: modern={}, sync={}", config.modern(), config.knockbackSyncSupported());
-    }
-
-    /**
-     * Set knockback config (alias for setConfig for KnockbackManager compatibility)
-     */
-    public void setKnockbackConfig(KnockbackConfig config) {
-        setConfig(config);
     }
 
     public KnockbackConfig getserverDefaultConfig() {
@@ -533,19 +492,7 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
     public void removePlayerData(Player player) {
         stateManager.removePlayerData(player);
     }
-    
-    /**
-     * Sync knockback for a player (used by KnockbackManager)
-     */
-    public void syncKnockback(Player player) {
-        if (knockbackSyncEnabled && KnockbackSyncHandler.getInstance().isEnabled()) {
-            // Get the last knockback applied to this player
-            PlayerKnockbackData data = getPlayerData(player);
-            if (data != null && data.lastKnockback != null) {
-                KnockbackSyncHandler.getInstance().recordKnockback(player, data.lastKnockback);
-            }
-        }
-    }
+
 
     public void cleanup(Player player) {
         stateManager.removePlayerData(player);
@@ -571,8 +518,6 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
 
     public static class PlayerKnockbackData {
         public final UUID uuid;
-        public Vec lastKnockback = Vec.ZERO;
-        public long lastKnockbackTime = 0;
         public long lastCombatTime = 0;
         public double lastPing = 0;
 
@@ -588,8 +533,6 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
             return System.currentTimeMillis() - lastCombatTime < COMBAT_TIMEOUT_MS;
         }
     }
-
-    // TODO: this is duplicate code inn KnockbackCalculator.
 
     public static class KnockbackStrength {
         public final double horizontal;
