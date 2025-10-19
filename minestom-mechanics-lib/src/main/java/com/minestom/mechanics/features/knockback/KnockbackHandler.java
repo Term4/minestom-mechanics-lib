@@ -293,25 +293,9 @@ public class KnockbackHandler extends InitializableSystem {
         setConfig(config);
     }
 
-    /**
-     * @deprecated Use {@link #setConfig(KnockbackConfig)} instead
-     */
-    @Deprecated
-    public void setKnockbackProfile(KnockbackConfig config) {
-        setConfig(config);
-    }
-
     public KnockbackConfig getCurrentConfig() {
         requireInitialized();
         return currentConfig;
-    }
-
-    /**
-     * @deprecated Use {@link #getCurrentConfig()} instead
-     */
-    @Deprecated
-    public KnockbackConfig getCurrentProfile() {
-        return getCurrentConfig();
     }
 
     public void setKnockbackSyncEnabled(boolean enabled) {
