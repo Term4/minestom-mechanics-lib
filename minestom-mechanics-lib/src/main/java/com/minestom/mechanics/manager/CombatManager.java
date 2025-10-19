@@ -31,9 +31,6 @@ public class CombatManager implements ManagerLifecycle {
 
     // Current configuration
     private CombatConfig currentConfig;
-    @Deprecated
-    private CombatModeBundle currentBundle; // Deprecated - for compatibility
-
 
     // System references
     private AttackFeature attackFeature;
@@ -101,37 +98,6 @@ public class CombatManager implements ManagerLifecycle {
             log.debug("Initializing AttackFeature...");
             attackFeature = AttackFeature.initialize(rulesConfig);
 
-            initialized = true;
-            log.info("CombatManager initialized successfully");
-            return this;
-        } catch (Exception e) {
-            log.error("Failed to initialize CombatManager: " + e.getMessage(), e);
-            initialized = false;
-            return this;
-        }
-    }
-
-    /**
-     * Initialize with a CombatModeBundle.
-     * 
-     * @param bundle The combat mode bundle to use
-     * @return this manager for chaining
-     */
-    @Deprecated
-    public CombatManager initialize(CombatModeBundle bundle) {
-        this.currentBundle = bundle;
-        
-        try {
-            log.info("Mode: {}", bundle.name());
-            
-            // Step 1: BlockingSystem (modifies damage when blocking)
-            log.debug("Initializing BlockingSystem...");
-            blockingSystem = BlockingSystem.initialize(bundle.blocking());
-            
-            // Step 2: AttackFeature (player attacks - main combat logic)
-            log.debug("Initializing AttackFeature...");
-            attackFeature = AttackFeature.initialize(bundle.combatRules());
-            
             initialized = true;
             log.info("CombatManager initialized successfully");
             return this;
@@ -250,16 +216,6 @@ public class CombatManager implements ManagerLifecycle {
         }
         return blockingSystem;
     }
-
-    /**
-     * Get the current combat mode bundle
-     */
-    public CombatModeBundle getCurrentBundle() {
-        if (!initialized) {
-            throw new IllegalStateException("CombatManager not initialized");
-        }
-        return currentBundle;
-    }
     
     // ===========================
     // CONFIGURATION BUILDER
@@ -310,21 +266,6 @@ public class CombatManager implements ManagerLifecycle {
         }
         
         /**
-         * Start from a full preset and optionally override parts.
-         * 
-         * @param preset The preset to start from
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder fromPreset(CombatModeBundle preset) {
-            this.name = preset.name();
-            this.description = preset.description();
-            this.combatRules = preset.combatRules();
-            this.blocking = preset.blocking();
-            this.projectiles = preset.projectiles();
-            return this;
-        }
-        
-        /**
          * Override combat rules configuration.
          * 
          * @param combatRules The combat rules to use
@@ -357,18 +298,6 @@ public class CombatManager implements ManagerLifecycle {
             this.name = name;
             this.description = description;
             return this;
-        }
-        
-        /**
-         * Apply the configuration and initialize the combat systems.
-         * 
-         * @return the CombatManager instance
-         */
-        public CombatManager apply() {
-            CombatModeBundle bundle = new CombatModeBundle(
-                name, description, combatRules, blocking, projectiles
-            );
-            return CombatManager.this.initialize(bundle);
         }
     }
 }

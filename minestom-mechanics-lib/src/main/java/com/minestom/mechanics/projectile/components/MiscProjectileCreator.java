@@ -120,12 +120,14 @@ public class MiscProjectileCreator {
             return ProjectileKnockbackConfig.defaultEggKnockback();
         }
     }
-    
+
+    // TODO: Duplicate method, is in projectile config
     private boolean shouldInheritPlayerMomentum() {
         try {
             return com.minestom.mechanics.manager.ProjectileManager.getInstance()
                 .getProjectileConfig().shouldInheritPlayerMomentum();
         } catch (IllegalStateException e) {
+            // TODO: Should probably set default to modern ngl
             return false; // Default to false for legacy 1.8 compatibility
         }
     }

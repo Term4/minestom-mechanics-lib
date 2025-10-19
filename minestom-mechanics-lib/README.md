@@ -111,40 +111,7 @@ The library includes several pre-configured combat modes:
 
 ### Custom Combat Mode
 
-```java
-CombatModeBundle customMode = CombatModeBundle.builder()
-    .name("My Custom Mode")
-    .description("Custom combat configuration")
-    .combatRules(CombatRulesConfig.builder()
-        .attackCooldownTicks(0)
-        .knockback(KnockbackProfile.MINEMEN)
-        .criticalMultiplier(1.5f)
-        .allowSprintCrits(true)
-        .sprintWindow(true, false, 5)
-        .build())
-    .hitDetection(HitDetectionConfig.builder()
-        .reach(3.0, 5.0)
-        .hitboxExpansion(0.1, 0.2)
-        .build())
-    .damage(DamageConfig.builder()
-        .fallDamage(true, 1.0f)
-        .fireDamage(true, 1.0f)
-        .invulnerabilityTicks(10)
-        .damageReplacement(true, false)
-        .build())
-    .blocking(BlockingConfig.builder()
-        .enabled(true)
-        .damageReduction(0.5)
-        .knockbackHorizontalMultiplier(0.5)
-        .knockbackVerticalMultiplier(0.5)
-        .showDamageMessages(true)
-        .showBlockEffects(true)
-        .build())
-    .projectiles(ProjectileConfig.builder().build())
-    .build();
-
-CombatManager.getInstance().initialize(customMode);
-```
+TODO
 
 ### Runtime Configuration
 
@@ -197,7 +164,6 @@ manager.shutdown();
 
 ### Configuration Classes
 
-- `CombatModeBundle`: Complete combat configuration
 - `CombatRulesConfig`: Combat mechanics configuration
 - `HitDetectionConfig`: Hit detection settings
 - `DamageConfig`: Damage system configuration

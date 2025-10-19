@@ -8,7 +8,6 @@ import com.test.minestom.commands.CommandRegistry;
 import com.minestom.mechanics.manager.CombatManager;
 import com.test.minestom.commands.debug.EntityVisibilityTest;
 import com.minestom.mechanics.config.combat.CombatPresets;
-import com.minestom.mechanics.config.combat.CombatModeBundle;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.world.WorldInteractionConfig;
 import com.test.minestom.config.server.ServerConfig;
@@ -53,25 +52,6 @@ public class Main {
     // Pattern 1: Simple preset usage (recommended for most users)
     private static final CombatConfig COMBAT_CONFIG = CombatPresets.MINEMEN;
     private static final DamageConfig DAMAGE_CONFIG = DamagePresets.MINEMEN;
-    
-    // Pattern 2: Preset with overrides (mix and match)
-    // private static final CombatModeBundle COMBAT_BUNDLE = CombatManager.getInstance()
-    //         .configure()
-    //         .fromPreset(CombatPresets.Modes.MINEMEN)
-    //         .withHitDetection(CombatPresets.STRICT_HIT_DETECTION)
-    //         .withName("Custom Minemen", "Minemen with strict hit detection")
-    //         .apply();
-    
-    // Pattern 3: Full custom configuration (advanced users)
-    // private static final CombatModeBundle COMBAT_BUNDLE = CombatManager.getInstance()
-    //         .configure()
-    //         .withCombatRules(CombatPresets.MINEMEN_COMBAT_RULES)
-    //         .withHitDetection(CombatPresets.STRICT_HIT_DETECTION)
-    //         .withDamage(CombatPresets.COMBO_DAMAGE)
-    //         .withBlocking(CombatPresets.STANDARD_BLOCKING)
-    //         .withProjectiles(CombatPresets.DEFAULT_PROJECTILES)
-    //         .withName("Ultra Custom", "Fully customized combat")
-    //         .apply();
     
     private static final ServerConfig SERVER_CONFIG = ServerConfig.production("TkJ8OBuWtDYC");
 
@@ -162,7 +142,7 @@ public class Main {
                 .withKnockback(COMBAT_CONFIG.knockbackProfile(), true)
                 .initialize();
 
-        // Initialize projectiles separately (not handled by MechanicsManager)
+        // Initialize projectiles separately (not handled by MechanicsManager YET)
         // Using default projectile config
         com.minestom.mechanics.manager.ProjectileManager.getInstance()
                 .initialize(com.minestom.mechanics.config.combat.ProjectileConfig.builder().build());

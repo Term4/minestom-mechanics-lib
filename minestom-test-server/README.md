@@ -58,18 +58,7 @@ The test server demonstrates several mechanics modes:
 
 The server can be configured by modifying `Main.java`:
 
-```java
-// Change combat mode
-private static final CombatModeBundle COMBAT_BUNDLE = CombatPresets.Modes.VANILLA;
-
-// Custom configuration
-private static final CombatModeBundle COMBAT_BUNDLE = CombatManager.getInstance()
-    .configure()
-    .fromPreset(CombatPresets.Modes.MINEMEN)
-    .withHitDetection(CombatPresets.STRICT_HIT_DETECTION)
-    .withName("Custom Minemen", "Minemen with strict hit detection")
-    .apply();
-```
+TODO add updated methods for configuring mechanics
 
 ## Server Features
 
@@ -141,7 +130,6 @@ src/main/java/com/test/minestom/
 
 ### Testing New Combat Modes
 
-1. Create new `CombatModeBundle` in `Main.java`
 2. Test with multiple clients
 3. Verify all systems work correctly
 4. Document any issues

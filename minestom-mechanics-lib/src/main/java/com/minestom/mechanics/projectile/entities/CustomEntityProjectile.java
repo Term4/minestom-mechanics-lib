@@ -109,6 +109,8 @@ public abstract class CustomEntityProjectile extends Entity {
     }
 
     // TODO: Very mathy, could move to aformentioned math / physics package
+    //  also the spread could be too high for some projectiles
+
     /**
      * Shoot the projectile from a rotation with specified velocity and inaccuracy.
      * 
