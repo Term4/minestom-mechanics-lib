@@ -147,7 +147,7 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
         AbstractArrow arrow = arrowCreator.createArrow(arrowResult.stack(), player, bowStack, power);
         
         // Spawn arrow
-        arrowCreator.spawnArrow(arrow, player, power);
+        arrowCreator.spawnArrow(arrow, player, bowStack, power);
         
         // Play sound
         soundHandler.playBowShootSound(player, power);

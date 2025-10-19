@@ -2,6 +2,7 @@ package com.minestom.mechanics.projectile.components;
 
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -57,31 +58,34 @@ public class BowArrowCreator {
     // TODO: Could probably use one general spawn method for all projectiles?
     /**
      * Spawn the arrow in the world
-     * Fixed for 1.8 compatibility: spawn from player's face using legacy eye height
      * @param arrow The arrow to spawn
      * @param player The shooting player
+     * @param bowStack The bow that shot this arrow
      * @param power The bow power
      */
-    public void spawnArrow(AbstractArrow arrow, Player player, double power) {
+    public void spawnArrow(AbstractArrow arrow, Player player, ItemStack bowStack, double power) {
         // Calculate spawn position using configured eye height
         Pos playerPos = player.getPosition();
         Pos eyePos = com.minestom.mechanics.features.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
         Pos spawnPos = eyePos.add(0D, -com.minestom.mechanics.projectile.ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
-        
+
         // Set velocity BEFORE spawning - this calculates the correct view direction
         arrow.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f, power * 3, 1.0);
-        
+
         // Add player momentum if configured (modern feature, disabled by default for legacy 1.8)
         if (shouldInheritPlayerMomentum()) {
             Vec playerVel = player.getVelocity();
             arrow.setVelocity(arrow.getVelocity().add(playerVel.x(),
-                player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
+                    player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
         }
-        
+
+        // ✅ Copy projectile tags from bow to arrow
+        ProjectileTagRegistry.copyAllProjectileTags(bowStack, arrow);
+
         // Spawn arrow with view direction copied from arrow entity (fixes wrong direction)
-        arrow.setInstance(Objects.requireNonNull(player.getInstance()), 
-            spawnPos.withView(arrow.getPosition()));
-        
+        arrow.setInstance(Objects.requireNonNull(player.getInstance()),
+                spawnPos.withView(arrow.getPosition()));
+
         log.debug("Spawned arrow for {} at {}", player.getUsername(), spawnPos);
     }
     

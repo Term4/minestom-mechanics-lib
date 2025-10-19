@@ -295,6 +295,8 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		};
 	}
 
+    // TODO: for legacy clients, they may need their inventory force updated
+    //  Could also be an issue when I add normal pickups of dropped items
 	private boolean pickup(Player player) {
 		if (!canBePickedUp(player)) return false;
 

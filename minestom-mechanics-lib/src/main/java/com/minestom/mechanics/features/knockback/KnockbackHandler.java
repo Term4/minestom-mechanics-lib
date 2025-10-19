@@ -3,26 +3,41 @@ package com.minestom.mechanics.features.knockback;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.features.knockback.components.*;
 import com.minestom.mechanics.features.knockback.sync.KnockbackSyncHandler;
+import com.minestom.mechanics.util.ConfigurableSystem;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.server.ServerTickMonitorEvent;
+import net.minestom.server.tag.Tag;
 
+import java.util.List;
 import java.util.UUID;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
 /**
  * Main knockback system orchestrator - coordinates all knockback components.
- * ✅ REFACTORED: Now uses focused component architecture instead of monolithic design.
+ * ✅ IMPLEMENTS: Universal Mechanics Configuration System
+ *
+ * <p><b>MULTIPLIER Array Indices:</b></p>
+ * <ul>
+ *   <li>0: horizontal</li>
+ *   <li>1: vertical</li>
+ *   <li>2: sprint bonus horizontal</li>
+ *   <li>3: sprint bonus vertical</li>
+ *   <li>4: air multiplier horizontal</li>
+ *   <li>5: air multiplier vertical</li>
+ * </ul>
  */
-public class KnockbackHandler extends InitializableSystem {
+public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
 
     private static KnockbackHandler instance;
 
@@ -48,7 +63,7 @@ public class KnockbackHandler extends InitializableSystem {
     private Double customLookWeight = null;
 
     private KnockbackHandler(KnockbackConfig config) {
-        this.currentConfig = config;
+        super(config); // Pass to ConfigurableSystem
 
         // Initialize components
         this.stateManager = new KnockbackStateManager();
@@ -68,12 +83,13 @@ public class KnockbackHandler extends InitializableSystem {
         }
 
         instance = new KnockbackHandler(config);
-        instance.registerEventHandlers();
+        instance.registerEventHandlers();  // ← Make sure this is being called!
         instance.markInitialized();
 
-        log.debug("Initialized with config: modern={}, sync={}",
-                config.modern(), config.knockbackSyncSupported());
+        // ✅ Register for projectile tags
+        ProjectileTagRegistry.register(KnockbackHandler.class);
 
+        LogUtil.logInit("KnockbackHandler");
         return instance;
     }
 
@@ -116,6 +132,78 @@ public class KnockbackHandler extends InitializableSystem {
     }
 
     // ===========================
+    // UNIVERSAL CONFIG SYSTEM TAGS
+    // ===========================
+
+    /**
+     * Multiply all knockback components by this value.
+     * Can be set on: World (Instance), Player, ItemStack
+     */
+    public static final Tag<List<Double>> MULTIPLIER = Tag.Double("knockback_multiplier").list();
+
+    /**
+     * Modify specific knockback components.
+     * Format: [horizontal, vertical, sprintBonusH, sprintBonusV, airMultH, airMultV]
+     * Use 0.0 for components you don't want to change.
+     * Can be set on: World (Instance), Player, ItemStack
+     */
+    public static final Tag<List<Double>> MODIFY = Tag.Double("knockback_modify").list();
+
+    /**
+     * Override with a custom knockback config entirely.
+     * Can be set on: World (Instance), Player, ItemStack
+     */
+    public static final Tag<KnockbackConfig> CUSTOM = Tag.Transient("knockback_custom");
+
+    // Projectile tags
+    public static final Tag<List<Double>> PROJECTILE_MULTIPLIER = Tag.Double("knockback_projectile_multiplier").list();
+    public static final Tag<List<Double>> PROJECTILE_MODIFY = Tag.Double("knockback_projectile_modify").list();
+    public static final Tag<KnockbackConfig> PROJECTILE_CUSTOM = Tag.Transient("knockback_projectile_custom");
+
+    /** Number of components in MODIFY array */
+    private static final int COMPONENT_COUNT = 6;
+
+    // ===========================
+    // CONFIGURABLE SYSTEM IMPLEMENTATION
+    // ===========================
+
+    @Override
+    protected Tag<List<Double>> getMultiplierTag() {
+        return MULTIPLIER;
+    }
+
+    @Override
+    protected Tag<List<Double>> getModifyTag() {
+        return MODIFY;
+    }
+
+    @Override
+    protected Tag<KnockbackConfig> getCustomTag() {
+        return CUSTOM;
+    }
+
+    // NEW: Projectile tag getters
+    @Override
+    protected Tag<List<Double>> getProjectileMultiplierTag() {
+        return PROJECTILE_MULTIPLIER;
+    }
+
+    @Override
+    protected Tag<List<Double>> getProjectileModifyTag() {
+        return PROJECTILE_MODIFY;
+    }
+
+    @Override
+    protected Tag<KnockbackConfig> getProjectileCustomTag() {
+        return PROJECTILE_CUSTOM;
+    }
+
+    @Override
+    protected int getModifyComponentCount() {
+        return COMPONENT_COUNT;
+    }
+
+    // ===========================
     // KNOCKBACK APPLICATION (FULL LOGIC!)
     // ===========================
 
@@ -123,7 +211,7 @@ public class KnockbackHandler extends InitializableSystem {
         requireInitialized();
 
         // Prevent double knockback in same tick
-        if (!stateManager.canReceiveKnockback((Player) victim)) {
+        if (victim instanceof Player player && !stateManager.canReceiveKnockback(player)) {
             return;
         }
 
@@ -132,21 +220,48 @@ public class KnockbackHandler extends InitializableSystem {
             stateManager.updateCombatState(player);
         }
 
-        // Calculate knockback components using focused components
+        // ✅ NEW: Resolve knockback using Universal Config System
+        // For melee: attacker is Player, handUsed is MAIN_HAND
+        // For projectiles: attacker is Projectile, handUsed is null
+        EquipmentSlot handUsed = (attacker instanceof Player && type != KnockbackType.PROJECTILE)
+                ? EquipmentSlot.MAIN_HAND
+                : null;
+
+        KnockbackResult resolved = resolveKnockback(attacker, victim, handUsed);
+
+        // Calculate knockback direction
         Vec knockbackDirection = calculator.calculateKnockbackDirection(victim, attacker);
-        KnockbackCalculator.KnockbackStrength strength = calculator.calculateKnockbackStrength(victim, attacker, type, wasSprinting);
-        
-        // Convert to KnockbackHandler.KnockbackStrength for compatibility
-        KnockbackStrength handlerStrength = new KnockbackStrength(strength.horizontal, strength.vertical);
-        
-        // Apply modifiers
-        KnockbackStrength modifiedStrength = modifier.applyBlockingReduction(victim, handlerStrength);
-        modifiedStrength = modifier.applyAirMultipliers(victim, modifiedStrength, 
-                getAirHorizontalMultiplier(), getAirVerticalMultiplier());
+
+        // Calculate base strength using resolved values
+        double horizontal = resolved.horizontal;
+        double vertical = resolved.vertical;
+
+        // Apply sprint bonus if applicable (only for player melee)
+        if (attacker instanceof Player player && wasSprinting &&
+                (type == KnockbackType.ATTACK || type == KnockbackType.DAMAGE)) {
+            horizontal += resolved.sprintBonusH;
+            vertical += resolved.sprintBonusV;
+            player.setSprinting(false);
+            log.debug("Sprint bonus applied for: " + player.getUsername());
+        }
+
+        // Apply sweeping reduction
+        if (type == KnockbackType.SWEEPING) {
+            horizontal *= 0.5;
+            vertical *= 0.5;
+        }
+
+        KnockbackStrength strength = new KnockbackStrength(horizontal, vertical);
+
+        // Apply modifiers (blocking, air multipliers using resolved values, falling)
+        KnockbackStrength modifiedStrength = modifier.applyBlockingReduction(victim, strength);
+        modifiedStrength = modifier.applyAirMultipliers(
+                victim, modifiedStrength, resolved.airMultH, resolved.airMultV);
         modifiedStrength = modifier.applyFallingModifiers(victim, modifiedStrength);
 
         // Apply velocity using velocity handler
-        velocityHandler.applyKnockbackVelocity(victim, attacker, knockbackDirection, modifiedStrength, type);
+        velocityHandler.applyKnockbackVelocity(victim, attacker, knockbackDirection,
+                modifiedStrength, type);
     }
 
 
@@ -293,16 +408,16 @@ public class KnockbackHandler extends InitializableSystem {
         setConfig(config);
     }
 
-    public KnockbackConfig getCurrentConfig() {
+    public KnockbackConfig getserverDefaultConfig() {
         requireInitialized();
-        return currentConfig;
+        return serverDefaultConfig;
     }
 
     public void setKnockbackSyncEnabled(boolean enabled) {
         requireInitialized();
-        if (enabled && !currentConfig.knockbackSyncSupported()) {
+        if (enabled && !serverDefaultConfig.knockbackSyncSupported()) {
             log.warn("Cannot enable sync - not supported by current config (modern={}, syncSupported={})",
-                    currentConfig.modern(), currentConfig.knockbackSyncSupported());
+                    serverDefaultConfig.modern(), serverDefaultConfig.knockbackSyncSupported());
             return;
         }
 
@@ -319,7 +434,7 @@ public class KnockbackHandler extends InitializableSystem {
     }
 
     public boolean isKnockbackSyncEnabled() {
-        return knockbackSyncEnabled && currentConfig.knockbackSyncSupported();
+        return knockbackSyncEnabled && serverDefaultConfig.knockbackSyncSupported();
     }
 
     public boolean hasCustomAirMultipliers() {
@@ -340,22 +455,68 @@ public class KnockbackHandler extends InitializableSystem {
 
     public double getAirHorizontalMultiplier() {
         return customAirHorizontalMultiplier != null ?
-                customAirHorizontalMultiplier : currentConfig.airMultiplierHorizontal();
+                customAirHorizontalMultiplier : serverDefaultConfig.airMultiplierHorizontal();
     }
 
     public double getAirVerticalMultiplier() {
         return customAirVerticalMultiplier != null ?
-                customAirVerticalMultiplier : currentConfig.airMultiplierVertical();
+                customAirVerticalMultiplier : serverDefaultConfig.airMultiplierVertical();
     }
 
     public double getLookWeight() {
         return customLookWeight != null ?
-                customLookWeight : currentConfig.lookWeight();
+                customLookWeight : serverDefaultConfig.lookWeight();
     }
 
     public int getTrackedPlayers() {
         return stateManager.getTrackedPlayers();
     }
+
+    /**
+     * Resolve effective knockback values with Universal Config System.
+     *
+     * @param attacker The attacking entity
+     * @param victim The victim being knocked back
+     * @param handUsed The hand that was used (MAIN_HAND for melee, may vary for projectiles)
+     * @return Resolved knockback values
+     */
+    private KnockbackResult resolveKnockback(Entity attacker, LivingEntity victim, EquipmentSlot handUsed) {
+        // Use inherited resolution with a lambda to extract components
+        double[] components = resolveComponents(attacker, victim, handUsed, config -> new double[] {
+                config.horizontal(),
+                config.vertical(),
+                config.sprintBonusHorizontal(),
+                config.sprintBonusVertical(),
+                config.airMultiplierHorizontal(),
+                config.airMultiplierVertical()
+        });
+
+        // Also get the base config for other properties
+        KnockbackConfig config = resolveBaseConfig(attacker, victim, handUsed);
+
+        return new KnockbackResult(
+                components[0], // horizontal
+                components[1], // vertical
+                components[2], // sprintBonusH
+                components[3], // sprintBonusV
+                components[4], // airMultH
+                components[5], // airMultV
+                config
+        );
+    }
+
+    /**
+     * Result record holding resolved knockback values and config.
+     */
+    private record KnockbackResult(
+            double horizontal,
+            double vertical,
+            double sprintBonusH,
+            double sprintBonusV,
+            double airMultH,
+            double airMultV,
+            KnockbackConfig config
+    ) {}
 
     // ===========================
     // PLAYER DATA

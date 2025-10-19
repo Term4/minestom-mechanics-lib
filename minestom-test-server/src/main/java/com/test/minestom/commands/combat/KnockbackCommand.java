@@ -100,7 +100,7 @@ public class KnockbackCommand extends Command {
     }
 
     private void showCurrent(CommandSender sender, Object context) {
-        var config = handler.getCurrentConfig();
+        var config = handler.getserverDefaultConfig();
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(Component.text()
@@ -141,7 +141,7 @@ public class KnockbackCommand extends Command {
     }
 
     private void showList(CommandSender sender) {
-        var current = handler.getCurrentConfig();
+        var current = handler.getserverDefaultConfig();
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(headerSimple("Available Knockback Profiles"));
@@ -187,7 +187,7 @@ public class KnockbackCommand extends Command {
             return;
         }
 
-        var oldConfig = handler.getCurrentConfig();
+        var oldConfig = handler.getserverDefaultConfig();
 
         if (configEquals(config, oldConfig)) {
             sender.sendMessage(Component.text()
@@ -232,7 +232,7 @@ public class KnockbackCommand extends Command {
     }
 
     private void toggleSync(CommandSender sender, boolean enable) {
-        var config = handler.getCurrentConfig();
+        var config = handler.getserverDefaultConfig();
 
         if (!config.knockbackSyncSupported()) {
             sender.sendMessage(error("Knockback sync not supported for current config"));
@@ -300,7 +300,7 @@ public class KnockbackCommand extends Command {
     }
 
     private void showDetailedInfo(CommandSender sender) {
-        var config = handler.getCurrentConfig();
+        var config = handler.getserverDefaultConfig();
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(header("Knockback Configuration"));

@@ -2,6 +2,7 @@ package com.minestom.mechanics.projectile.components;
 
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.GameMode;
@@ -40,7 +41,7 @@ public class MiscProjectileCreator {
         
         // Create projectile
         CustomEntityProjectile projectile = createProjectile(material, player);
-        
+
         // Set item appearance
         ((ItemHoldingProjectile) projectile).setItem(stack);
         
@@ -59,6 +60,8 @@ public class MiscProjectileCreator {
             projectile.setVelocity(projectile.getVelocity().add(playerVel.x(),
                 player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
         }
+
+        ProjectileTagRegistry.copyAllProjectileTags(stack, projectile);
         
         // Spawn projectile with view direction copied from projectile entity (fixes wrong direction)
         projectile.setInstance(Objects.requireNonNull(player.getInstance()), 

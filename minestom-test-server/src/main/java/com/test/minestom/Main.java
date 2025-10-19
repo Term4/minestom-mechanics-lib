@@ -256,6 +256,12 @@ public class Main {
         inventory.setItemStack(5, ItemStack.of(Material.WHITE_WOOL, 64));
         inventory.setItemStack(9, ItemStack.of(Material.ARROW, 64));
 
+        // Test Items
+        player.getInventory().addItemStack(TestItems.knockbackStick());
+        player.getInventory().addItemStack(TestItems.knockbackEgg().withAmount(64));
+        player.getInventory().addItemStack(TestItems.noKnockbackSnowball().withAmount(64));
+        player.getInventory().addItemStack(TestItems.cannonBow());
+
         // Food
         inventory.setItemStack(8, ItemStack.of(Material.COOKED_BEEF, 64));
 
