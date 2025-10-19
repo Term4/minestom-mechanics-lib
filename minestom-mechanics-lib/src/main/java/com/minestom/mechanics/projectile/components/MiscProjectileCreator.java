@@ -17,6 +17,11 @@ import com.minestom.mechanics.projectile.entities.ThrownEgg;
 
 import java.util.Objects;
 
+// TODO: See THIS should be what we use for all projectiles.
+//  Maybe we wanna change the spawn location and stuff on a per
+//  projectile basis, but we could just pass any offsets or such to this method
+//  when it's called
+
 /**
  * Creates miscellaneous projectiles (snowballs, eggs, ender pearls).
  * Handles projectile creation and spawning logic.

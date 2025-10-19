@@ -32,6 +32,7 @@ import java.util.Collection;
  * Based on the MinestomPVP implementation with proper water physics.
  */
 public abstract class CustomEntityProjectile extends Entity {
+    // TODO: Ensure these are the correct values
     private static final BoundingBox POINT_BOX = new BoundingBox(0, 0, 0);
     private static final BoundingBox UNSTUCK_BOX = new BoundingBox(0.12, 0.6, 0.12);
     
@@ -56,7 +57,7 @@ public abstract class CustomEntityProjectile extends Entity {
     
     // Knockback configuration (common to all projectiles)
     protected boolean useKnockbackHandler = true;
-    
+
     /**
      * Constructor for custom projectile entities.
      * 
@@ -104,7 +105,8 @@ public abstract class CustomEntityProjectile extends Entity {
             this.shooterOriginPos = shooter.getPosition();
         }
     }
-    
+
+    // TODO: Very mathy, could move to aformentioned math / physics package
     /**
      * Shoot the projectile from a rotation with specified velocity and inaccuracy.
      * 
@@ -284,7 +286,8 @@ public abstract class CustomEntityProjectile extends Entity {
             onUnstuck();
         }
     }
-    
+
+    // TODO: Very mathy (could move to math / physics package). Plus ensure this is correct
     @Override
     protected void movementTick() {
         // Core physics implementation for 1.8-style projectiles

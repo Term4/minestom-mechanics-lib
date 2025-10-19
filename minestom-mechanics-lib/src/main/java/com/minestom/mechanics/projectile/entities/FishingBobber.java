@@ -217,7 +217,10 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         this.hookedEntity = entity;
         ((FishingHookMeta) getEntityMeta()).setHookedEntity(entity);
     }
-    
+
+    // TODO: Could / should remove this and apply knockback with the aformentioned
+    //  knockback package update that will include projectile knockback in the
+    //  base knockback feature package
     /**
      * Apply simple knockback as fallback when KnockbackHandler is not available
      */
@@ -263,6 +266,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         return durability;
     }
 
+    // TODO: Ensure this functions correctly
     private void pullEntity(Entity entity) {
         Entity shooter = getShooter();
         if (shooter == null) return;
@@ -377,6 +381,10 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     // ===========================
     // PROJECTILE BEHAVIOR INTERFACE
     // ===========================
+
+    // TODO: Maybe create a general projectile interface for this kinda thing?
+    //  Then we can have a more generic projectile behavior that can be used for
+    //  all projectiles, not just fishing rods. (OnHit, OnStuck, etc)
 
     @Override
     public boolean onHit(Entity projectile, Entity hit) {

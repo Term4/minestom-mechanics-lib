@@ -1,5 +1,8 @@
 package com.minestom.mechanics.projectile.config;
 
+// TODO: General projectile knockback config?? Why do we have one specific to
+//  the fishing rod? Seems repetitive and unnecessary.
+
 /**
  * Configuration for fishing rod bobber knockback settings.
  * Extends ProjectileKnockbackConfig with fishing rod specific options.

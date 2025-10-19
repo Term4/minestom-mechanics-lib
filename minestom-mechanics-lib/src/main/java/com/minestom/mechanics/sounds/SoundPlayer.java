@@ -3,6 +3,8 @@ package com.minestom.mechanics.sounds;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 
+// TODO: Unused. Mentioned earlier moving all sounds / sound handling to this sounds package
+
 /**
  * Interface for consistent sound playing across different systems.
  * ✅ ABSTRACTION: Standardizes sound playing patterns for projectiles, combat, and other mechanics.

@@ -6,6 +6,12 @@ import net.minestom.server.event.player.PlayerPacketOutEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 
+// TODO: This could be noisy in production. Make sure A. this is actually necessary,
+//  and B. make sure it only blocks sending metadata packets to itself.
+//  Potentially could remove entirely, as the issues seen before (in blocking feature and bows)
+//  COULD have been an issue with the ViewerBasedAnimationHandler, or something else in the features themselves
+//  rather than actually with the server sending self metadata packets.
+
 /**
  * Prevents modern clients from receiving metadata packets about themselves.
  *

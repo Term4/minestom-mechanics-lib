@@ -3,6 +3,8 @@ package com.minestom.mechanics.projectile.entities;
 import net.minestom.server.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+// TODO: Ensure this is necessary
+
 /**
  * Interface for projectiles that display an item
  * (snowballs, eggs, ender pearls)

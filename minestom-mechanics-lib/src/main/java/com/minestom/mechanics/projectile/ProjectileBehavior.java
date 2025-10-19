@@ -3,6 +3,11 @@ package com.minestom.mechanics.projectile;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;
 
+// TODO: This is what I was talking about earlier with a general
+//  projectile class, that handles onhit, onstuck, etc. OR ignores them.
+//  this interface isn't used really though, sooo...
+//  Still unsure if I should use an interface here or an abstract class.
+
 /**
  * Interface for defining projectile behavior patterns.
  * ✅ ABSTRACTION: Provides consistent behavior interface for all projectile types.

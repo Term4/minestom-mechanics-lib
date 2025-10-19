@@ -10,6 +10,9 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
+// TODO: Remove a TON of repeated methods. A lot of methods (i.e isReachValid)
+//  have already been done in validation classes.
+
 /**
  * Main hit detection system orchestrator - coordinates all hit detection components.
  * Replaces the monolithic HitDetectionSystem with focused component architecture.

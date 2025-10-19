@@ -1,5 +1,7 @@
 package com.minestom.mechanics.util;
 
+// TODO: Move to constants package
+
 /**
  * Centralized constants for the Minestom Mechanics library.
  * Contains commonly used magic numbers, timing values, and distances.

@@ -6,6 +6,11 @@ import com.minestom.mechanics.projectile.config.FishingRodConfig;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 
+// TODO: This probably doesn't even need to exist.
+//  Everything pretty much uses velocity calculator,
+//  and if we just move the multipliers there, it should be fine.
+//  Just need to replace any uses of FishingVelocityCalculator
+
 /**
  * Calculates fishing rod bobber velocity.
  * Handles the complex velocity calculation for fishing rod casting.
@@ -30,7 +35,9 @@ public class FishingVelocityCalculator {
         // Legacy (1.8) velocity calculation using shared utility
         double maxVelocity = 0.4F;
         Vec velocity = VelocityCalculator.calculateDirectionalVelocity(playerPitch, playerYaw, maxVelocity);
-        
+
+        // TODO: Move multipliers method to velocity calculator as to simplify
+        //  this and make adding multipliers more of a general method
         // Apply horizontal and vertical multipliers
         velocity = new Vec(
             velocity.x() * config.horizontalMultiplier(),

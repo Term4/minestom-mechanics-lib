@@ -18,6 +18,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+// TODO: Probably update to extend an abstract projectile. Make sure to maintain teleportation functionality.
+
 /**
  * Ender pearl projectile
  * FIXED: Uses DamageSystem instead of FallFeature

@@ -3,6 +3,9 @@ package com.minestom.mechanics.util;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
+// TODO: Make this more useful, or remove it...
+//  Seems unnecessary to have an entire utility class just for this
+
 /**
  * Consolidated gameplay utilities.
  * ✅ CONSOLIDATED: Merged EntityUtil functionality into general gameplay utilities.

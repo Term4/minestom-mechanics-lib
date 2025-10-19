@@ -10,6 +10,12 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+// TODO: Make sure this isn't causing issues and is done smoothly and efficiently
+//  ALSO could probably be renamed. This is only really necessary when working with older versions anyways,
+//  so if your server only supports like 1.21 or something, you're probably fine.
+//  Also make sure it's being used properly, and potentially move this to a different package?
+//  It IS a utility package though, so it might be fine here
+
 /**
  * Version-based animation handler.
  *

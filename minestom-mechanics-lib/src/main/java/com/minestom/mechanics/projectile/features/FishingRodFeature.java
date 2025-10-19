@@ -67,7 +67,9 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
             if (event.getItemStack().material() != Material.FISHING_ROD) return;
             handleFishingRod(event.getPlayer(), event.getHand());
         });
-        
+
+        // TODO: Make sure this is actually necessary, and that we should actually wait a tick.
+        //  Adding the tick delay MIGHT be necessary, but it also MIGHT cause some feel of delay for the client
         // ✅ FIXED: Handle hotbar switching - cleanup fishing bobber
         // Use delayed check to ensure the item has actually changed
         handler.addListener(PlayerChangeHeldSlotEvent.class, event -> {

@@ -13,7 +13,11 @@ import com.minestom.mechanics.projectile.entities.Arrow;
  */
 public class BowArrowManager {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowArrowManager");
-    
+
+    // TODO: Maybe generalize this for all projectiles
+    //  (they all need to be in the inventory, all get removed on use,
+    //  unless creative mode) ALSO bows can be used in creative mode
+    //  even without arrows in the inventory
     /**
      * Find an arrow in the player's inventory
      * @param player The player to search
@@ -56,7 +60,8 @@ public class BowArrowManager {
         if (stack == null || stack.isAir()) return false;
         return stack.material() == Material.ARROW;
     }
-    
+
+    // TODO: Same here, could be generalized
     /**
      * Consume an arrow from the player's inventory
      * @param player The player

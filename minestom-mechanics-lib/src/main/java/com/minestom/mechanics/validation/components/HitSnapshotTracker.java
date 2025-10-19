@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: Necessary? I think maybe, but unsure
+
 /**
  * Tracks hit snapshots for analytics and logging.
  * Stores and retrieves hit data for competitive analysis.

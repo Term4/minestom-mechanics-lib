@@ -10,6 +10,11 @@ import net.minestom.server.sound.SoundEvent;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+// TODO: Just remove this and use a separate sounds package for all sounds.
+//  ALSO right now players can hear OTHER players projectiles, but not their own.
+//  ALSO with the new sounds package, can move the blocking features sound (successful block sound)
+//  to the sounds package.
+
 /**
  * Consolidated sound handler for all projectile types.
  * ✅ CONSOLIDATED: Merged 3 sound manager classes into a single handler.

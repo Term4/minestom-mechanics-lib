@@ -9,6 +9,13 @@ import net.minestom.server.entity.Player;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.PLAYER_HEIGHT;
 
+// TODO: This is pretty solid actually,
+//  may change with potential update to how we handle
+//  disabling modern sneaking though. Right now
+//  it's FUNCTIONAL, but the way we handle modern sneaking isn't
+//  the smoothest. Would be ideal to somehow force a sync
+//  for eye height, client + server side. Dig in minestom javadocs.
+
 /**
  * Validates attack packets from clients.
  * Handles reach validation and angle checking for client-initiated attacks.

@@ -2,6 +2,8 @@ package com.minestom.mechanics.util;
 
 import org.slf4j.Logger;
 
+// TODO: I like this, but is it necessary? Does slf4j provide this functionality out of the box?
+
 /**
  * Utility class for standardized logging across all systems.
  * Ensures consistent log formatting with system prefixes.

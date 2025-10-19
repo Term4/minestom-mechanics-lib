@@ -18,6 +18,8 @@ import net.minestom.server.item.component.EnchantmentList;
 import net.minestom.server.item.enchant.Enchantment;
 import net.minestom.server.component.DataComponents;
 
+// TODO: Clean up repeated methods, update calls.
+
 /**
  * Refactored BowFeature using focused components.
  * Orchestrates bow shooting functionality through specialized components.
@@ -88,7 +90,8 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
         
         // Note: PlayerDisconnectEvent and PlayerDeathEvent cleanup is now handled by ProjectileCleanupHandler
     }
-    
+
+    // TODO: Are these not just repeats of methods we did in bow state manager?
     // ===========================
     // BOW DRAWING STATE
     // ===========================

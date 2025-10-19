@@ -1,5 +1,9 @@
 package com.minestom.mechanics.projectile.config;
 
+// TODO: Remove unnecessary default configurations, also the
+//  builder could change on update, but for now this mostly looks
+//  fine.
+
 /**
  * Configuration for fishing rod cast strength and behavior.
  * Provides configurable multipliers for velocity components and spread.

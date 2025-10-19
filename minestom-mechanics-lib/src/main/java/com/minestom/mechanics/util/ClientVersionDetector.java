@@ -11,6 +11,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: This doesn't actually detect their PROTOCOL version, just their client
+//  Not a bad thing to have, but in the future I want to have a velocity level plugin
+//  that can detect the actual protocol version, and use a plugin messager channel
+//  to send that here. Should be an optional feature though, not a requirement.
+
 /**
  * Detects client version through observable behavior patterns.
  *

@@ -1,5 +1,8 @@
 package com.minestom.mechanics.util;
 
+// TODO: This is actually pretty good. Could update with some more features maybe?
+//  But overall this is pretty good.
+
 /**
  * Base class for systems that require explicit initialization.
  * Provides common initialization state management and validation.

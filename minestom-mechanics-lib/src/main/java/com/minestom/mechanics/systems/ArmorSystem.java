@@ -14,6 +14,8 @@ import net.minestom.server.registry.RegistryKey;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
+// TODO: This is actually pretty good
+
 /**
  * Armor system that reduces damage based on armor points and toughness.
  * Integrates with DamageSystem via EntityDamageEvent.
@@ -124,6 +126,7 @@ public class ArmorSystem extends InitializableSystem {
     private int getArmorValue(ItemStack item) {
         if (item.isAir()) return 0;
 
+        // TODO: This way of doing things seems extremely inefficient, find a better way
         Material material = item.material();
 
         // Check material using Material enum (can't static import Materials class)

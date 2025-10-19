@@ -8,6 +8,8 @@ import java.util.UUID;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: This is actually pretty good.
+
 /**
  * Manages bow drawing state for players.
  * Handles tracking which players are currently drawing bows.

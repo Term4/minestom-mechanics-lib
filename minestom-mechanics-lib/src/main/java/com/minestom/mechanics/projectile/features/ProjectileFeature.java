@@ -2,6 +2,9 @@ package com.minestom.mechanics.projectile.features;
 
 import net.minestom.server.entity.Player;
 
+// TODO: Add the ability to enable / disable individual projectiles
+//  (i.e handle snowballs and eggs, but disable ender pearls)
+
 /**
  * Interface for projectile features that can be managed by ProjectileManager.
  * Provides common methods for cleanup and lifecycle management.

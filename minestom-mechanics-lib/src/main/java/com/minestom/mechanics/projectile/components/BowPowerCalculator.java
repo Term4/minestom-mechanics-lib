@@ -32,7 +32,9 @@ public class BowPowerCalculator {
     public boolean isPowerSufficient(double power) {
         return power >= 0.1;
     }
-    
+
+    // TODO: We have this method, yet we don't use it in BowArrowCreator.
+    //  Either remove it here, or use it in arrow creation.
     /**
      * Check if the power is maximum (critical hit)
      * @param power The calculated power

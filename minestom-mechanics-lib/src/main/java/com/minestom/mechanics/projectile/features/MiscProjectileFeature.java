@@ -10,6 +10,8 @@ import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
+// TODO: Ensure no repeated methods / unnecessary calls or methods
+
 /**
  * Refactored MiscProjectileFeature using focused components.
  * Orchestrates miscellaneous projectile functionality through specialized components.

@@ -5,6 +5,8 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.tag.Tag;
 import com.minestom.mechanics.projectile.entities.FishingBobber;
 
+// TODO: This is also fairly good
+
 /**
  * Manages fishing bobber state for players.
  * Handles tracking and retrieving fishing bobbers.
@@ -55,7 +57,8 @@ public class FishingBobberManager {
         player.removeTag(FISHING_BOBBER);
         log.debug("Removed active bobber for {}", player.getUsername());
     }
-    
+
+    // TODO: Return value never used?
     /**
      * Retrieve a fishing bobber and return durability damage
      * @param player The player

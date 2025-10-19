@@ -1,5 +1,7 @@
 package com.minestom.mechanics.projectile;
 
+// TODO: Move this to a general constants package that contains all constants classes
+
 /**
  * Constants used throughout the projectile system.
  * Extracted magic numbers for better maintainability and easier tuning.

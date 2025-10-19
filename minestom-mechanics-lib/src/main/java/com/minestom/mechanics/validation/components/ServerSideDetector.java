@@ -14,6 +14,10 @@ import net.minestom.server.entity.Player;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.PLAYER_HEIGHT;
 
+// TODO: This is pretty solid. Again,
+//  could change with the eye height thing mentioned
+//  in AttackPacketValidator.
+
 /**
  * Consolidated server-side hit detection with distance calculation capabilities.
  * ✅ CONSOLIDATED: Merged RayDistanceCalculator into ServerSideDetector for better cohesion.

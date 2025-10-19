@@ -12,6 +12,8 @@ import net.minestom.server.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+// TODO: Probably update to extend an abstract projectile
+
 public class ThrownEgg extends CustomEntityProjectile implements ItemHoldingProjectile {
 	
 	private ProjectileKnockbackConfig knockbackConfig;

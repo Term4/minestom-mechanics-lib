@@ -14,6 +14,11 @@ import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
+// TODO: Could change a lot with proposed builder update.
+//  ALSO a lot of getters / logging logic could probably be generalized for
+//  simplification, and for shortening code. This class has a ton of lines,
+//  and a lot of it is nearly identical code, just for different systems.
+
 /**
  * MechanicsManager - Master orchestrator for all game mechanics
  * 

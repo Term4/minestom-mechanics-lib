@@ -7,6 +7,12 @@ import net.minestom.server.event.player.PlayerDisconnectEvent;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+// TODO: Should move to the aformentioned (to be created) player package
+//  ALSO need to ensure that cleanup is done properly, and we aren't having
+//  a bunch of methods implement their own cleanup when we should be using
+//  the centralized cleanup manager. SOME systems will need their own cleanup, we just
+//  need to make sure we're being efficient.
+
 /**
  * CRITICAL MEMORY LEAK PREVENTION
  *

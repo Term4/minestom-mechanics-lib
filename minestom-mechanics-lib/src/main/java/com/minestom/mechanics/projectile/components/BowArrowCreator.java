@@ -53,7 +53,8 @@ public class BowArrowCreator {
         log.debug("Created arrow for {} with power {:.2f}", player.getUsername(), power);
         return arrow;
     }
-    
+
+    // TODO: Could probably use one general spawn method for all projectiles?
     /**
      * Spawn the arrow in the world
      * Fixed for 1.8 compatibility: spawn from player's face using legacy eye height

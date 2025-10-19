@@ -1,5 +1,7 @@
 package com.minestom.mechanics.projectile.entities;
 
+// TODO: Make sure this is working properly with any updates to abstract arrow
+
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.item.ItemStack;

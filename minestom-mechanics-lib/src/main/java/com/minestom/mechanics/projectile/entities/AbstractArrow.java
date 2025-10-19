@@ -20,11 +20,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
+// TODO: Actually this seems good thus far. Might repeat some methods from earlier classes though
+
 /**
  * IMPROVED arrow with proper water physics and better damage/knockback
  */
 public abstract class AbstractArrow extends CustomEntityProjectile {
-	private static final double ARROW_BASE_DAMAGE = 2.0;
+	// TODO: Move arrow base damage to a constants class
+    private static final double ARROW_BASE_DAMAGE = 2.0;
 
 	protected int pickupDelay;
 	protected int stuckTime;
@@ -52,6 +55,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		}
 
 		// ✅ FIX: Prevent immediate pickup (vanilla 1.8 behavior)
+        // TODO: This delay seems long potentially. Should also be in a constants class
 		pickupDelay = 20; // 1 second delay before arrow can be picked up
 		
 		// Initialize with default arrow knockback config

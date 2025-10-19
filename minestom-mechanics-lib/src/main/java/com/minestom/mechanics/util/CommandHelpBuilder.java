@@ -8,6 +8,9 @@ import java.util.List;
 
 import static com.minestom.mechanics.util.MessageBuilder.*;
 
+// TODO: Move to a different library..? Seems unnecessary for a mechanics library
+//  quick fix would be to just move it to my test server for the time being
+
 /**
  * Builder for creating consistent command help pages.
  * Compatible with all Adventure API versions.

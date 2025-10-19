@@ -4,6 +4,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
+// TODO: Move to a different library..? Seems unnecessary for a mechanics library
+//  quick fix would be to just move it to my test server for the time being
+
 /**
  * Centralized message builder for consistent chat formatting across the server.
  * Provides standardized colors, styles, and message patterns.

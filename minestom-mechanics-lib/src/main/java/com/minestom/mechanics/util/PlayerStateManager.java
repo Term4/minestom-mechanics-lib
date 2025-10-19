@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: I like the idea here, but as of now, A. it isn't being used,
+//  and B. we should move it to the aformentioned player package
+
 /**
  * Abstract base class for managing player-specific state.
  * ✅ ABSTRACTION: Provides common pattern for state management across different systems.

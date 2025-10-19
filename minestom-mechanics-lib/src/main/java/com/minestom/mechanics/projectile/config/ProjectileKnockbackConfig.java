@@ -1,5 +1,9 @@
 package com.minestom.mechanics.projectile.config;
 
+// TODO: Could / should probably move projectile knockback handling into the
+//  knockback feature package, just need to move / update calls as well
+//  I like the configurability of this though. Will need to maintain that
+
 /**
  * Configuration for projectile knockback settings.
  * Controls how much knockback projectiles apply to entities they hit.
