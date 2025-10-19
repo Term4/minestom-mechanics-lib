@@ -24,7 +24,8 @@ public class BowPowerCalculator {
         return finalPower;
     }
 
-    // TODO: Maybe increase the necessary power to shoot? Seems like people can spam arrows very easily
+    // TODO: Maybe increase the necessary power to shoot? Seems like people can spam arrows very easily.
+    //  ALSO could make configurable? at least move to a constants class...
     /**
      * Check if the power is sufficient to shoot an arrow
      * @param power The calculated power

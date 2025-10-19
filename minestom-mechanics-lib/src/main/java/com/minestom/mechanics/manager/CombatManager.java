@@ -94,10 +94,10 @@ public class CombatManager implements ManagerLifecycle {
         }
     }
 
-    @Override
     public boolean initialize() {
         return initialize(CombatPresets.MINEMEN).isInitialized();
     }
+    
     /**
      * Get a configuration builder for custom combat setup.
      * 

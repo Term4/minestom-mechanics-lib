@@ -2,75 +2,97 @@ package com.minestom.mechanics.config.gameplay;
 
 /**
  * Gameplay mechanics configuration (eye height, movement, hitbox, collision).
- * Damage configuration is now separate - see DamageConfig.
+ * Follows the same pattern as CombatConfig - nested configs with convenience delegates.
+ *
+ * Usage:
+ * <pre>
+ * GameplayConfig config = GameplayPresets.MINEMEN
+ *     .withStandingEyeHeight(1.65)
+ *     .withPlayerCollision(false);
+ * </pre>
  */
-public class GameplayConfig {
-    private final EyeHeightConfig eyeHeight;
-    private final MovementConfig movement;
-    private final HitboxConfig hitbox;
-    private final PlayerCollisionConfig playerCollision;
+public record GameplayConfig(
+        // Nested configs (complex)
+        EyeHeightConfig eyeHeight,
+        MovementConfig movement,
+        HitboxConfig hitbox,
 
-    private GameplayConfig(Builder builder) {
-        this.eyeHeight = builder.eyeHeight;
-        this.movement = builder.movement;
-        this.hitbox = builder.hitbox;
-        this.playerCollision = builder.playerCollision;
+        // Flattened (simple - just one boolean)
+        boolean playerCollisionEnabled
+) {
+    // Validation
+    public GameplayConfig {
+        if (eyeHeight == null || movement == null || hitbox == null)
+            throw new IllegalArgumentException("Nested configs cannot be null");
     }
 
-    public static Builder builder() {
-        return new Builder();
+    // ===== NESTED CONFIG "WITH" METHODS =====
+
+    public GameplayConfig withEyeHeight(EyeHeightConfig config) {
+        return new GameplayConfig(config, movement, hitbox, playerCollisionEnabled);
     }
 
-    // TODO: Add these to future "presets" package
-    // Presets
-    public static final GameplayConfig VANILLA = builder()
-            .eyeHeight(EyeHeightConfig.VANILLA)
-            .movement(MovementConfig.VANILLA)
-            .hitbox(HitboxConfig.VANILLA)
-            .playerCollision(PlayerCollisionConfig.defaultConfig())
-            .build();
-
-    public static final GameplayConfig MINEMEN = builder()
-            .eyeHeight(EyeHeightConfig.MINECRAFT_1_8)
-            .movement(MovementConfig.MINECRAFT_1_8)
-            .hitbox(HitboxConfig.MINECRAFT_1_8)
-            .playerCollision(PlayerCollisionConfig.noCollisions())
-            .build();
-
-    public static class Builder {
-        private EyeHeightConfig eyeHeight = EyeHeightConfig.VANILLA;
-        private MovementConfig movement = MovementConfig.VANILLA;
-        private HitboxConfig hitbox = HitboxConfig.VANILLA;
-        private PlayerCollisionConfig playerCollision = PlayerCollisionConfig.defaultConfig();
-
-        public Builder eyeHeight(EyeHeightConfig config) {
-            this.eyeHeight = config;
-            return this;
-        }
-
-        public Builder movement(MovementConfig config) {
-            this.movement = config;
-            return this;
-        }
-
-        public Builder hitbox(HitboxConfig config) {
-            this.hitbox = config;
-            return this;
-        }
-
-        public Builder playerCollision(PlayerCollisionConfig config) {
-            this.playerCollision = config;
-            return this;
-        }
-        
-        public GameplayConfig build() {
-            return new GameplayConfig(this);
-        }
+    public GameplayConfig withMovement(MovementConfig config) {
+        return new GameplayConfig(eyeHeight, config, hitbox, playerCollisionEnabled);
     }
 
-    // Getters
+    public GameplayConfig withHitbox(HitboxConfig config) {
+        return new GameplayConfig(eyeHeight, movement, config, playerCollisionEnabled);
+    }
+
+    // ===== FLATTENED FIELD "WITH" METHOD =====
+
+    public GameplayConfig withPlayerCollision(boolean enabled) {
+        return new GameplayConfig(eyeHeight, movement, hitbox, enabled);
+    }
+
+    // ===== CONVENIENCE DELEGATES (like CombatConfig does for knockback) =====
+
+    // Eye height delegates
+    public GameplayConfig withEyeHeightEnabled(boolean enabled) {
+        return new GameplayConfig(eyeHeight.withEnabled(enabled), movement, hitbox, playerCollisionEnabled);
+    }
+
+    public GameplayConfig withStandingEyeHeight(double height) {
+        return new GameplayConfig(eyeHeight.withStandingHeight(height), movement, hitbox, playerCollisionEnabled);
+    }
+
+    public GameplayConfig withSneakingEyeHeight(double height) {
+        return new GameplayConfig(eyeHeight.withSneakingHeight(height), movement, hitbox, playerCollisionEnabled);
+    }
+
+    // Movement delegates
+    public GameplayConfig withSwimming(boolean allow) {
+        return new GameplayConfig(eyeHeight, movement.withSwimming(allow), hitbox, playerCollisionEnabled);
+    }
+
+    public GameplayConfig withCrawling(boolean allow) {
+        return new GameplayConfig(eyeHeight, movement.withCrawling(allow), hitbox, playerCollisionEnabled);
+    }
+
+    public GameplayConfig withElytraFlying(boolean allow) {
+        return new GameplayConfig(eyeHeight, movement.withElytraFlying(allow), hitbox, playerCollisionEnabled);
+    }
+
+    // Hitbox delegates
+    public GameplayConfig withEnforceFixedHitbox(boolean enforce) {
+        return new GameplayConfig(eyeHeight, movement, hitbox.withEnforceFixed(enforce), playerCollisionEnabled);
+    }
+
+    public GameplayConfig withHitboxDimensions(double width, double height) {
+        return new GameplayConfig(eyeHeight, movement, hitbox.withDimensions(width, height), playerCollisionEnabled);
+    }
+
+    // ===== COMPATIBILITY GETTERS (for systems that expect nested configs) =====
+
     public EyeHeightConfig getEyeHeight() { return eyeHeight; }
     public MovementConfig getMovement() { return movement; }
     public HitboxConfig getHitbox() { return hitbox; }
-    public PlayerCollisionConfig getPlayerCollision() { return playerCollision; }
+
+    // For backwards compatibility with PlayerCollisionConfig
+    public PlayerCollisionConfig getPlayerCollision() {
+        return playerCollisionEnabled ?
+                PlayerCollisionConfig.defaultConfig() :
+                PlayerCollisionConfig.noCollisions();
+    }
 }

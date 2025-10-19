@@ -6,6 +6,7 @@ import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
+import com.minestom.mechanics.config.gameplay.GameplayPresets;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.config.knockback.KnockbackPresets;
 
@@ -14,7 +15,7 @@ public enum MechanicsPresets {
             "Vanilla",
             "Standard Minecraft mechanics",
             CombatPresets.VANILLA,
-            GameplayConfig.VANILLA,              // ✅ GameplayConfig for eye height, movement, etc.
+            GameplayPresets.VANILLA,              // ✅ GameplayConfig for eye height, movement, etc.
             DamagePresets.VANILLA,                // ✅ DamageConfig for damage/invuln
             HitDetectionConfig.standard(),
             true,
@@ -25,7 +26,7 @@ public enum MechanicsPresets {
             "Minemen",
             "MinemanClub competitive PvP configuration",
             CombatPresets.MINEMEN,
-            GameplayConfig.MINEMEN,               // ✅ GameplayConfig
+            GameplayPresets.MINEMEN,               // ✅ GameplayConfig
             DamagePresets.MINEMEN,                // ✅ DamageConfig
             HitDetectionConfig.standard(),
             true,
@@ -36,7 +37,7 @@ public enum MechanicsPresets {
             "Hypixel",
             "Hypixel server mechanics",
             CombatPresets.HYPIXEL,
-            GameplayConfig.VANILLA,               // ✅ GameplayConfig
+            GameplayPresets.VANILLA,               // ✅ GameplayConfig
             DamagePresets.HYPIXEL,                // ✅ DamageConfig
             HitDetectionConfig.standard(),
             true,

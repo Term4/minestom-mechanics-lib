@@ -3,6 +3,7 @@ package com.test.minestom;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
+import com.minestom.mechanics.config.gameplay.GameplayPresets;
 import com.minestom.mechanics.features.blocking.BlockingStateManager;
 import com.test.minestom.commands.CommandRegistry;
 import com.minestom.mechanics.manager.CombatManager;
@@ -135,7 +136,7 @@ public class Main {
         com.minestom.mechanics.MechanicsManager.getInstance()
                 .configure()
                 .withCombat(COMBAT_CONFIG)
-                .withGameplay(GameplayConfig.MINEMEN)
+                .withGameplay(GameplayPresets.MINEMEN)
                 .withDamage(DAMAGE_CONFIG)
                 .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.standard())
                 .withArmor(true)

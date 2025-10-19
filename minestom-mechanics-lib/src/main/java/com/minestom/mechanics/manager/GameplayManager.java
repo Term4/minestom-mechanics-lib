@@ -1,34 +1,25 @@
 package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
-import com.minestom.mechanics.config.gameplay.EyeHeightConfig;
-import com.minestom.mechanics.config.gameplay.MovementConfig;
-import com.minestom.mechanics.config.gameplay.HitboxConfig;
-import com.minestom.mechanics.config.gameplay.PlayerCollisionConfig;
 import com.minestom.mechanics.features.gameplay.EyeHeightSystem;
 import com.minestom.mechanics.features.gameplay.MovementRestrictionSystem;
 import com.minestom.mechanics.features.gameplay.HitboxSystem;
 import com.minestom.mechanics.features.gameplay.PlayerCollisionSystem;
-import net.minestom.server.MinecraftServer;
-import net.minestom.server.entity.Player;
-
-// TODO: WAY too long. Should simplify A LOT with eth builder update
 
 /**
  * GameplayManager - Manages general gameplay mechanics
- * 
+ *
  * Independent of combat systems - handles:
  * - Eye height enforcement
- * - Movement restrictions  
+ * - Movement restrictions
  * - Hitbox control
  * - Player collision control
- * - Environmental
- * 
+ *
  * Can be used with or without CombatManager.
  */
 public class GameplayManager extends AbstractManager<GameplayManager> {
     private static GameplayManager instance;
-    
+
     private EyeHeightSystem eyeHeightSystem;
     private MovementRestrictionSystem movementSystem;
     private HitboxSystem hitboxSystem;
@@ -37,58 +28,54 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
     private GameplayManager() {
         super("GameplayManager");
     }
-    
+
     public static GameplayManager getInstance() {
         if (instance == null) {
             instance = new GameplayManager();
         }
         return instance;
     }
-    
+
+    // ===========================
+    // INITIALIZATION
+    // ===========================
+
     /**
      * Initialize gameplay systems with configuration.
-     * 
+     *
      * @param config The gameplay configuration
      * @return this manager for chaining
      */
     public GameplayManager initialize(GameplayConfig config) {
         return initializeWithWrapper(() -> {
             // Initialize eye height system if enabled
-            if (config.getEyeHeight().enabled()) {
+            if (config.eyeHeight().enabled()) {
                 log.debug("Initializing EyeHeightSystem...");
-                eyeHeightSystem = EyeHeightSystem.initialize(config.getEyeHeight());
+                eyeHeightSystem = EyeHeightSystem.initialize(config.eyeHeight());
+                registerSystem(eyeHeightSystem, "EyeHeightSystem");
             }
-            
+
             // Initialize movement system if it has restrictions
-            if (config.getMovement().hasRestrictions()) {
+            if (config.movement().hasRestrictions()) {
                 log.debug("Initializing MovementRestrictionSystem...");
-                movementSystem = MovementRestrictionSystem.initialize(config.getMovement());
+                movementSystem = MovementRestrictionSystem.initialize(config.movement());
+                registerSystem(movementSystem, "MovementSystem");
             }
-            
+
             // Initialize hitbox system if fixed hitbox is enforced
-            if (config.getHitbox().enforceFixed()) {
+            if (config.hitbox().enforceFixed()) {
                 log.debug("Initializing HitboxSystem...");
-                hitboxSystem = HitboxSystem.initialize(config.getHitbox());
+                hitboxSystem = HitboxSystem.initialize(config.hitbox());
+                registerSystem(hitboxSystem, "HitboxSystem");
             }
-            
+
             // Initialize player collision system
             log.debug("Initializing PlayerCollisionSystem...");
             playerCollisionSystem = PlayerCollisionSystem.initialize(config.getPlayerCollision());
+            registerSystem(playerCollisionSystem, "PlayerCollisionSystem");
         });
     }
-    
-    /**
-     * Get a configuration builder for custom gameplay setup.
-     * 
-     * @return a new ConfigurationBuilder instance
-     */
-    public ConfigurationBuilder configure() {
-        if (initialized) {
-            throw new IllegalStateException("Cannot configure after initialization! Call shutdown() first.");
-        }
-        return new ConfigurationBuilder();
-    }
-    
+
     // ===========================
     // ABSTRACT METHOD IMPLEMENTATIONS
     // ===========================
@@ -100,119 +87,10 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
 
     @Override
     protected void logMinimalConfig() {
-        // This would need access to the config, but we don't store it
-        // For now, just log that systems are initialized
-        log.info("Gameplay systems initialized");
+        log.info("Initialized {} gameplay systems", getActiveSystemCount());
     }
 
-    @Override
-    protected void cleanup() {
-        // Clear all player data
-        MinecraftServer.getConnectionManager().getOnlinePlayers().forEach(this::cleanupPlayer);
-        
-        // Reset references
-        eyeHeightSystem = null;
-        movementSystem = null;
-        hitboxSystem = null;
-        playerCollisionSystem = null;
-    }
-
-    @Override
-    public String getStatus() {
-        if (!initialized) {
-            return "Gameplay Systems: NOT INITIALIZED";
-        }
-
-        StringBuilder status = new StringBuilder();
-        status.append("Gameplay Systems Status:\n");
-        status.append("  EyeHeightSystem: ").append(eyeHeightSystem != null ? "✓" : "✗").append("\n");
-        status.append("  MovementRestrictionSystem: ").append(movementSystem != null ? "✓" : "✗").append("\n");
-        status.append("  HitboxSystem: ").append(hitboxSystem != null ? "✓" : "✗").append("\n");
-        status.append("  PlayerCollisionSystem: ").append(playerCollisionSystem != null ? "✓" : "✗").append("\n");
-
-        return status.toString();
-    }
-    
-    @Override
-    public void cleanupPlayer(Player player) {
-        if (!initialized) return;
-
-        if (eyeHeightSystem != null) {
-            // EyeHeightSystem handles its own cleanup
-        }
-        if (movementSystem != null) {
-            // MovementRestrictionSystem handles its own cleanup
-        }
-        if (hitboxSystem != null) {
-            // HitboxSystem handles its own cleanup
-        }
-        if (playerCollisionSystem != null) {
-            // PlayerCollisionSystem handles its own cleanup
-        }
-    }
-    
-    /**
-     * Shutdown all systems (for server stop or reinitialize)
-     */
-    public void shutdown() {
-        shutdownWithWrapper(() -> {
-            // Cleanup all players first
-            MinecraftServer.getConnectionManager().getOnlinePlayers()
-                    .forEach(this::cleanupPlayer);
-
-            // Shutdown each system
-            if (eyeHeightSystem != null) {
-                try {
-                    // Systems handle their own cleanup
-                } catch (Exception e) {
-                    log.error("EyeHeightSystem shutdown failed", e);
-                }
-            }
-
-            if (movementSystem != null) {
-                try {
-                    // Systems handle their own cleanup
-                } catch (Exception e) {
-                    log.error("MovementRestrictionSystem shutdown failed", e);
-                }
-            }
-
-            if (hitboxSystem != null) {
-                try {
-                    // Systems handle their own cleanup
-                } catch (Exception e) {
-                    log.error("HitboxSystem shutdown failed", e);
-                }
-            }
-            
-            if (playerCollisionSystem != null) {
-                try {
-                    // PlayerCollisionSystem handles its own cleanup
-                } catch (Exception e) {
-                    log.error("PlayerCollisionSystem shutdown failed", e);
-                }
-            }
-
-            // Reset references
-            eyeHeightSystem = null;
-            movementSystem = null;
-            hitboxSystem = null;
-            playerCollisionSystem = null;
-        });
-    }
-    
-    // ===========================
-    // RUNTIME CONFIGURATION
-    // ===========================
-
-    /**
-     * Enable or disable player collisions at runtime
-     */
-    public void setPlayerCollisionsEnabled(boolean enabled) {
-        requireInitialized();
-        playerCollisionSystem.setEnabled(enabled);
-        log.info("Player collisions {}", enabled ? "enabled" : "disabled");
-    }
+    // cleanup(), shutdown(), getStatus(), cleanupPlayer() are AUTO-HANDLED by AbstractManager!
 
     // ===========================
     // SYSTEM ACCESS
@@ -236,105 +114,5 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
     public PlayerCollisionSystem getPlayerCollisionSystem() {
         requireInitialized();
         return playerCollisionSystem;
-    }
-    
-    // ===========================
-    // CONFIGURATION BUILDER
-    // ===========================
-    
-    /**
-     * Fluent API for configuring gameplay systems.
-     */
-    public class ConfigurationBuilder {
-        private GameplayConfig config;
-        
-        private ConfigurationBuilder() {
-            // Start with vanilla preset
-            this.config = GameplayConfig.VANILLA;
-        }
-        
-        /**
-         * Start from a full preset and optionally override parts.
-         * 
-         * @param preset The preset to start from
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder fromPreset(GameplayConfig preset) {
-            this.config = preset;
-            return this;
-        }
-        
-        /**
-         * Override eye height configuration.
-         * 
-         * @param eyeHeight The eye height config to use
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder withEyeHeight(EyeHeightConfig eyeHeight) {
-            this.config = GameplayConfig.builder()
-                .eyeHeight(eyeHeight)
-                .movement(config.getMovement())
-                .hitbox(config.getHitbox())
-                .playerCollision(config.getPlayerCollision())
-                .build();
-            return this;
-        }
-        
-        /**
-         * Override movement configuration.
-         * 
-         * @param movement The movement config to use
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder withMovement(MovementConfig movement) {
-            this.config = GameplayConfig.builder()
-                .eyeHeight(config.getEyeHeight())
-                .movement(movement)
-                .hitbox(config.getHitbox())
-                .playerCollision(config.getPlayerCollision())
-                .build();
-            return this;
-        }
-        
-        /**
-         * Override hitbox configuration.
-         * 
-         * @param hitbox The hitbox config to use
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder withHitbox(HitboxConfig hitbox) {
-            this.config = GameplayConfig.builder()
-                .eyeHeight(config.getEyeHeight())
-                .movement(config.getMovement())
-                .hitbox(hitbox)
-                .playerCollision(config.getPlayerCollision())
-                .build();
-            return this;
-        }
-        
-        /**
-         * Override player collision configuration.
-         * 
-         * @param playerCollision The player collision config to use
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder withPlayerCollision(PlayerCollisionConfig playerCollision) {
-            this.config = GameplayConfig.builder()
-                .eyeHeight(config.getEyeHeight())
-                .movement(config.getMovement())
-                .hitbox(config.getHitbox())
-                .playerCollision(playerCollision)
-                .build();
-            return this;
-        }
-        
-        /**
-         * Apply the configuration and initialize the gameplay systems.
-         * 
-         * @return the GameplayManager instance
-         */
-        public GameplayManager apply() {
-            return GameplayManager.this.initialize(config);
-        }
     }
 }

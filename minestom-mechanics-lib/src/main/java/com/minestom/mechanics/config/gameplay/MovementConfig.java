@@ -1,8 +1,8 @@
 package com.minestom.mechanics.config.gameplay;
 
 import net.minestom.server.entity.EntityPose;
-import java.util.Set;
 import java.util.EnumSet;
+import java.util.Set;
 
 // TODO: Right now I feel like this is a hacky way to solve this problem.
 //  There's probably a cleaner way, check the minestom API.
@@ -17,84 +17,76 @@ import java.util.EnumSet;
  * Control which poses and movement modes are allowed server-wide.
  */
 public record MovementConfig(
-    boolean allowSwimming,
-    boolean allowCrawling,
-    boolean allowElytraFlying,
-    boolean allowSpinAttack,
-    Set<EntityPose> allowedPoses,
-    int checkIntervalTicks
+        boolean allowSwimming,
+        boolean allowCrawling,
+        boolean allowElytraFlying,
+        boolean allowSpinAttack,
+        Set<EntityPose> allowedPoses,
+        int checkIntervalTicks
 ) {
-    
-    public static Builder builder() {
-        return new Builder();
+    // Validation
+    public MovementConfig {
+        if (checkIntervalTicks < 1)
+            throw new IllegalArgumentException("Check interval must be >= 1");
+        // Defensive copy for immutability
+        allowedPoses = EnumSet.copyOf(allowedPoses);
     }
-    
-    public static final MovementConfig MINECRAFT_1_8 = new MovementConfig(
-        false, false, false, false,
-        EnumSet.of(EntityPose.STANDING, EntityPose.SNEAKING),
-        1
-    );
-        
-    public static final MovementConfig VANILLA = new MovementConfig(
-        true, true, true, true,
-        EnumSet.allOf(EntityPose.class),
-        1
-    );
-    
+
+    // Presets
+    public static MovementConfig minecraft18() {
+        return new MovementConfig(
+                false, false, false, false,
+                EnumSet.of(EntityPose.STANDING, EntityPose.SNEAKING),
+                1
+        );
+    }
+
+    public static MovementConfig vanilla() {
+        return new MovementConfig(
+                true, true, true, true,
+                EnumSet.allOf(EntityPose.class),
+                1
+        );
+    }
+
+    // Helper
     public boolean hasRestrictions() {
         return !allowSwimming || !allowCrawling || !allowElytraFlying || !allowSpinAttack;
     }
-    
-    public static class Builder {
-        private boolean allowSwimming = true;
-        private boolean allowCrawling = true;
-        private boolean allowElytraFlying = true;
-        private boolean allowSpinAttack = true;
-        private Set<EntityPose> allowedPoses = EnumSet.allOf(EntityPose.class);
-        private int checkIntervalTicks = 1;
-        
-        public Builder allowSwimming(boolean allow) {
-            this.allowSwimming = allow;
-            return this;
-        }
-        
-        public Builder allowCrawling(boolean allow) {
-            this.allowCrawling = allow;
-            return this;
-        }
-        
-        public Builder allowElytraFlying(boolean allow) {
-            this.allowElytraFlying = allow;
-            return this;
-        }
-        
-        public Builder allowSpinAttack(boolean allow) {
-            this.allowSpinAttack = allow;
-            return this;
-        }
-        
-        public Builder allowedPoses(Set<EntityPose> poses) {
-            this.allowedPoses = poses;
-            return this;
-        }
-        
-        public Builder checkIntervalTicks(int ticks) {
-            this.checkIntervalTicks = ticks;
-            return this;
-        }
-        
-        public Builder allowAll() {
-            this.allowSwimming = true;
-            this.allowCrawling = true;
-            this.allowElytraFlying = true;
-            this.allowSpinAttack = true;
-            this.allowedPoses = EnumSet.allOf(EntityPose.class);
-            return this;
-        }
-        
-        public MovementConfig build() {
-            return new MovementConfig(allowSwimming, allowCrawling, allowElytraFlying, 
-                                    allowSpinAttack, allowedPoses, checkIntervalTicks);
-        }
+
+    // "With" methods
+    public MovementConfig withSwimming(boolean allow) {
+        return new MovementConfig(allow, allowCrawling, allowElytraFlying,
+                allowSpinAttack, allowedPoses, checkIntervalTicks);
+    }
+
+    public MovementConfig withCrawling(boolean allow) {
+        return new MovementConfig(allowSwimming, allow, allowElytraFlying,
+                allowSpinAttack, allowedPoses, checkIntervalTicks);
+    }
+
+    public MovementConfig withElytraFlying(boolean allow) {
+        return new MovementConfig(allowSwimming, allowCrawling, allow,
+                allowSpinAttack, allowedPoses, checkIntervalTicks);
+    }
+
+    public MovementConfig withSpinAttack(boolean allow) {
+        return new MovementConfig(allowSwimming, allowCrawling, allowElytraFlying,
+                allow, allowedPoses, checkIntervalTicks);
+    }
+
+    public MovementConfig withAllowedPoses(Set<EntityPose> poses) {
+        return new MovementConfig(allowSwimming, allowCrawling, allowElytraFlying,
+                allowSpinAttack, poses, checkIntervalTicks);
+    }
+
+    public MovementConfig withCheckInterval(int ticks) {
+        return new MovementConfig(allowSwimming, allowCrawling, allowElytraFlying,
+                allowSpinAttack, allowedPoses, ticks);
+    }
+
+    public MovementConfig allowAll() {
+        return new MovementConfig(true, true, true, true,
+                EnumSet.allOf(EntityPose.class), checkIntervalTicks);
     }
 }

@@ -9,25 +9,17 @@ package com.minestom.mechanics.config.gameplay;
 //  and NOT teleport them. Simple, soft velocity push originating from other players center.
 
 /**
- * Configuration for player collision settings.
- * Controls whether players can collide with each other.
- * 
- * @param enabled Whether player collisions are enabled
+ * @deprecated This config has been flattened into GameplayConfig as a single boolean.
+ * Use {@link GameplayConfig#playerCollisionEnabled()} instead.
+ * Will be removed in v2.0.
  */
-public record PlayerCollisionConfig(
-    boolean enabled
-) {
-    
-    /**
-     * Default configuration with collisions enabled
-     */
+@Deprecated(since = "1.5", forRemoval = true)
+public record PlayerCollisionConfig(boolean enabled) {
+
     public static PlayerCollisionConfig defaultConfig() {
         return new PlayerCollisionConfig(true);
     }
-    
-    /**
-     * Configuration with collisions disabled
-     */
+
     public static PlayerCollisionConfig noCollisions() {
         return new PlayerCollisionConfig(false);
     }

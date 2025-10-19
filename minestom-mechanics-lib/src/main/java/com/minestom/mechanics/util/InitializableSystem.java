@@ -7,34 +7,6 @@ package com.minestom.mechanics.util;
  * Base class for systems that require explicit initialization.
  * Provides common initialization state management and validation.
  * Includes helper methods for singleton pattern implementation.
- *
- * Usage:
- * <pre>
- * public class MySystem extends InitializableSystem {
- *     private static MySystem instance;
- *
- *     public static MySystem initialize() {
- *         if (instance != null &amp;&amp; instance.isInitialized()) {
- *             LogUtil.logAlreadyInitialized("MySystem");
- *             return instance;
- *         }
- *
- *         instance = new MySystem();
- *         instance.setup();
- *         instance.markInitialized(); // Call this when setup is complete
- *         return instance;
- *     }
- *
- *     public static MySystem getInstance() {
- *         return requireInstance(instance, "MySystem");
- *     }
- *
- *     public void someMethod() {
- *         requireInitialized(); // Validates before executing
- *         // ... method implementation
- *     }
- * }
- * </pre>
  */
 public abstract class InitializableSystem {
 

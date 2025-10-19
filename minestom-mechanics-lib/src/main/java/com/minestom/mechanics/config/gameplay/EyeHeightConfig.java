@@ -5,72 +5,54 @@ package com.minestom.mechanics.config.gameplay;
  * Useful for normalizing cross-version reach mechanics.
  */
 public record EyeHeightConfig(
-    boolean enabled,
-    double standingEyeHeight,
-    double sneakingEyeHeight,
-    double survivalReach,
-    double creativeReach,
-    boolean enforceBlockPlaceReach
+        boolean enabled,
+        double standingEyeHeight,
+        double sneakingEyeHeight,
+        double survivalReach,
+        double creativeReach,
+        boolean enforceBlockPlaceReach
 ) {
+    // Validation
+    public EyeHeightConfig {
+        if (standingEyeHeight <= 0 || sneakingEyeHeight <= 0)
+            throw new IllegalArgumentException("Eye heights must be positive");
+        if (survivalReach <= 0 || creativeReach <= 0)
+            throw new IllegalArgumentException("Reach must be positive");
+    }
+
     // TODO: Get preset values from a constants class (constants package to create from combatconstants)
     // Presets
-    public static final EyeHeightConfig MINECRAFT_1_8 = new EyeHeightConfig(
-        true, 1.62, 1.54, 4.5, 5.0, true
-    );
-        
-    public static final EyeHeightConfig VANILLA = new EyeHeightConfig(
-        false, 1.62, 1.54, 4.5, 5.0, true
-    );
-    
-    public static Builder builder() {
-        return new Builder();
+    public static EyeHeightConfig minecraft18() {
+        return new EyeHeightConfig(true, 1.62, 1.54, 4.5, 5.0, true);
     }
-    
-    public static class Builder {
-        private boolean enabled = false;
-        private double standingEyeHeight = 1.62;
-        private double sneakingEyeHeight = 1.54;
-        private double survivalReach = 4.5;
-        private double creativeReach = 5.0;
-        private boolean enforceBlockPlaceReach = true;
-        
-        public Builder enabled(boolean enabled) {
-            this.enabled = enabled;
-            return this;
-        }
-        
-        public Builder standingEyeHeight(double height) {
-            this.standingEyeHeight = height;
-            return this;
-        }
-        
-        public Builder sneakingEyeHeight(double height) {
-            this.sneakingEyeHeight = height;
-            return this;
-        }
 
-        // TODO: Make sure these aren't handled somewhere else
-        // This
-        public Builder survivalReach(double reach) {
-            this.survivalReach = reach;
-            return this;
-        }
-        // and this
-        public Builder creativeReach(double reach) {
-            this.creativeReach = reach;
-            return this;
-        }
+    public static EyeHeightConfig vanilla() {
+        return new EyeHeightConfig(false, 1.62, 1.54, 4.5, 5.0, true);
+    }
 
-        // TODO: What is this? Is this more on the survival / creative reach?
-        
-        public Builder enforceBlockPlaceReach(boolean enforce) {
-            this.enforceBlockPlaceReach = enforce;
-            return this;
-        }
-        
-        public EyeHeightConfig build() {
-            return new EyeHeightConfig(enabled, standingEyeHeight, sneakingEyeHeight, 
-                                     survivalReach, creativeReach, enforceBlockPlaceReach);
-        }
+    // "With" methods
+    public EyeHeightConfig withEnabled(boolean enabled) {
+        return new EyeHeightConfig(enabled, standingEyeHeight, sneakingEyeHeight,
+                survivalReach, creativeReach, enforceBlockPlaceReach);
+    }
+
+    public EyeHeightConfig withStandingHeight(double height) {
+        return new EyeHeightConfig(enabled, height, sneakingEyeHeight,
+                survivalReach, creativeReach, enforceBlockPlaceReach);
+    }
+
+    public EyeHeightConfig withSneakingHeight(double height) {
+        return new EyeHeightConfig(enabled, standingEyeHeight, height,
+                survivalReach, creativeReach, enforceBlockPlaceReach);
+    }
+
+    public EyeHeightConfig withReach(double survival, double creative) {
+        return new EyeHeightConfig(enabled, standingEyeHeight, sneakingEyeHeight,
+                survival, creative, enforceBlockPlaceReach);
+    }
+
+    public EyeHeightConfig withEnforceBlockPlaceReach(boolean enforce) {
+        return new EyeHeightConfig(enabled, standingEyeHeight, sneakingEyeHeight,
+                survivalReach, creativeReach, enforce);
     }
 }

@@ -4,20 +4,12 @@ import net.minestom.server.entity.Player;
 
 /**
  * Lifecycle interface for all manager classes.
- * Provides a consistent pattern for initialization, cleanup, and status reporting.
- * 
- * This interface replaces the AbstractManager class to provide more flexibility
- * while maintaining consistent lifecycle management across all managers.
+ * Provides a consistent contract for initialization, cleanup, and status reporting.
+ *
+ * Implemented by AbstractManager, which provides default implementations and helpers.
+ * All managers should extend AbstractManager rather than implementing this directly.
  */
 public interface ManagerLifecycle {
-    
-    /**
-     * Initialize the manager with required configuration.
-     * This method should be called once before the manager is used.
-     * 
-     * @return true if initialization was successful, false otherwise
-     */
-    boolean initialize();
     
     /**
      * Check if the manager is currently initialized and ready for use.
