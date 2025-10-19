@@ -1,7 +1,7 @@
 package com.minestom.mechanics.attack;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.config.combat.CombatRulesConfig;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
@@ -15,10 +15,10 @@ import static com.minestom.mechanics.config.combat.CombatConstants.*;
  */
 public class AttackCalculator {
     private static final LogUtil.SystemLogger log = LogUtil.system("AttackCalculator");
-    
-    private final CombatRulesConfig config;
-    
-    public AttackCalculator(CombatRulesConfig config) {
+
+    private final CombatConfig config;
+
+    public AttackCalculator(CombatConfig config) {
         this.config = config;
     }
     
@@ -78,9 +78,9 @@ public class AttackCalculator {
      */
     public float calculateFinalDamage(float baseDamage, boolean isCritical) {
         if (isCritical) {
-            float finalDamage = baseDamage * config.getCriticalMultiplier();
+            float finalDamage = baseDamage * config.criticalMultiplier();
             log.debug("Critical hit: {:.2f} -> {:.2f} (multiplier: {:.2f})",
-                    baseDamage, finalDamage, config.getCriticalMultiplier());
+                    baseDamage, finalDamage, config.criticalMultiplier());
             return finalDamage;
         }
         return baseDamage;
@@ -99,7 +99,7 @@ public class AttackCalculator {
         }
         
         // Check sprint requirement based on config
-        if (!config.isAllowSprintCrits() && attacker.isSprinting()) {
+        if (!config.allowSprintCrits() && attacker.isSprinting()) {
             return false;
         }
         

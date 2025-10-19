@@ -6,7 +6,8 @@ import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
-import com.minestom.mechanics.features.knockback.KnockbackProfile;
+import com.minestom.mechanics.config.knockback.KnockbackConfig;
+import com.minestom.mechanics.config.knockback.KnockbackPresets;
 
 public enum MechanicsPresets {
     VANILLA(
@@ -17,7 +18,7 @@ public enum MechanicsPresets {
             DamagePresets.VANILLA,                // ✅ DamageConfig for damage/invuln
             HitDetectionConfig.standard(),
             true,
-            KnockbackProfile.VANILLA
+            KnockbackPresets.vanilla18()
     ),
 
     MINEMEN(
@@ -28,7 +29,7 @@ public enum MechanicsPresets {
             DamagePresets.MINEMEN,                // ✅ DamageConfig
             HitDetectionConfig.standard(),
             true,
-            KnockbackProfile.MINEMEN
+            KnockbackPresets.minemen()
     ),
 
     HYPIXEL(
@@ -39,7 +40,7 @@ public enum MechanicsPresets {
             DamagePresets.HYPIXEL,                // ✅ DamageConfig
             HitDetectionConfig.standard(),
             true,
-            KnockbackProfile.HYPIXEL
+            KnockbackPresets.hypixel()
     );
 
     private final String name;
@@ -49,23 +50,23 @@ public enum MechanicsPresets {
     private final DamageConfig damageConfig;
     private final HitDetectionConfig hitDetectionConfig;
     private final boolean armorEnabled;
-    private final KnockbackProfile knockbackProfile;
+    private final KnockbackConfig knockbackConfig;
 
     MechanicsPresets(String name, String description,
                      CombatConfig combatConfig,
-                     GameplayConfig gameplayConfig,       // ✅ BOTH parameters
+                     GameplayConfig gameplayConfig,
                      DamageConfig damageConfig,
                      HitDetectionConfig hitDetectionConfig,
                      boolean armorEnabled,
-                     KnockbackProfile knockbackProfile) {
+                     KnockbackConfig knockbackConfig) {
         this.name = name;
         this.description = description;
         this.combatConfig = combatConfig;
-        this.gameplayConfig = gameplayConfig;          // ✅ Store both
+        this.gameplayConfig = gameplayConfig;
         this.damageConfig = damageConfig;
         this.hitDetectionConfig = hitDetectionConfig;
         this.armorEnabled = armorEnabled;
-        this.knockbackProfile = knockbackProfile;
+        this.knockbackConfig = knockbackConfig;
     }
 
     public String getName() {
@@ -96,7 +97,7 @@ public enum MechanicsPresets {
         return armorEnabled;
     }
 
-    public KnockbackProfile getKnockbackProfile() {
-        return knockbackProfile;
+    public KnockbackConfig getKnockbackConfig() {
+        return knockbackConfig;
     }
 }

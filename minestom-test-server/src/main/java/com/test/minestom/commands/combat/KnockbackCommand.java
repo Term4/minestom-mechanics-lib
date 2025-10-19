@@ -1,7 +1,8 @@
 package com.test.minestom.commands.combat;
 
+import com.minestom.mechanics.config.knockback.KnockbackConfig;
+import com.minestom.mechanics.config.knockback.KnockbackPresets;
 import com.minestom.mechanics.features.knockback.KnockbackHandler;
-import com.minestom.mechanics.features.knockback.KnockbackProfile;
 import com.minestom.mechanics.util.CommandHelpBuilder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -10,16 +11,26 @@ import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.arguments.ArgumentType;
 
-import static com.minestom.mechanics.util.MessageBuilder.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
+import static com.minestom.mechanics.util.MessageBuilder.*;
 
 /**
  * Knockback command for 1.8 PvP with advanced features.
- * REFACTORED VERSION - Uses MessageBuilder for consistent formatting
+ * Updated to use KnockbackConfig instead of KnockbackProfile enum.
  */
 public class KnockbackCommand extends Command {
 
     private final KnockbackHandler handler;
+
+    // Available presets
+    private static final Map<String, KnockbackConfig> PRESETS = new LinkedHashMap<>();
+    static {
+        PRESETS.put("vanilla", KnockbackPresets.vanilla18());
+        PRESETS.put("minemen", KnockbackPresets.minemen());
+        PRESETS.put("hypixel", KnockbackPresets.hypixel());
+    }
 
     public KnockbackCommand() {
         super("kb", "knockback");
@@ -40,10 +51,10 @@ public class KnockbackCommand extends Command {
                 ArgumentType.Literal("list"));
 
         // /kb set <profile> - Change profile
-        var profileArg = ArgumentType.Enum("profile", KnockbackProfile.class);
+        var profileArg = ArgumentType.Word("profile").from("vanilla", "minemen", "hypixel");
         addSyntax((sender, context) -> {
-            KnockbackProfile profile = context.get(profileArg);
-            changeProfile(sender, profile);
+            String profileName = context.get(profileArg);
+            changeProfile(sender, profileName);
         }, ArgumentType.Literal("set"), profileArg);
 
         // /kb info - Show detailed info
@@ -75,30 +86,38 @@ public class KnockbackCommand extends Command {
     private void showHelp(CommandSender sender) {
         CommandHelpBuilder.create("knockback")
                 .description("Configure knockback settings and profiles")
-                .addUsage("/kb", "Show current knockback profile")
+                .addUsage("/kb", "Show current knockback configuration")
                 .addUsage("/kb list", "List all available profiles")
                 .addUsage("/kb set <profile>", "Change to a different profile")
                 .addUsage("/kb info", "Show detailed configuration")
                 .addUsage("/kb sync <on|off>", "Toggle knockback sync (if supported)")
                 .addUsage("/kb air <h> <v>", "Set custom air multipliers")
                 .addUsage("/kb air reset", "Reset air multipliers to defaults")
+                .addNote("Available profiles: vanilla, minemen, hypixel")
                 .addNote("Sync is only available for certain profiles")
                 .addNote("Air multipliers range from 0.5x to 2.0x")
                 .send(sender);
     }
 
     private void showCurrent(CommandSender sender, Object context) {
-        var profile = handler.getCurrentProfile();
+        var config = handler.getCurrentConfig();
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(Component.text()
-                .append(Component.text("Current Profile: ", LABEL))
-                .append(Component.text(profile.name(), PRIMARY))
+                .append(Component.text("Current Knockback Config", PRIMARY))
                 .build());
 
         sender.sendMessage(Component.text()
-                .append(Component.text("  ", MUTED))
-                .append(Component.text(profile.getDescription(), LABEL))
+                .append(Component.text("  Modern: ", LABEL))
+                .append(Component.text(config.modern() ? "Yes" : "No",
+                        config.modern() ? SUCCESS : VALUE))
+                .build());
+
+        sender.sendMessage(Component.text()
+                .append(Component.text("  Base: ", LABEL))
+                .append(Component.text(
+                        String.format("H=%.3f, V=%.3f", config.horizontal(), config.vertical()),
+                        VALUE))
                 .build());
 
         // Show active features
@@ -122,28 +141,35 @@ public class KnockbackCommand extends Command {
     }
 
     private void showList(CommandSender sender) {
-        var current = handler.getCurrentProfile();
+        var current = handler.getCurrentConfig();
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(headerSimple("Available Knockback Profiles"));
         sender.sendMessage(Component.text("Use /kb set <profile> to change", LABEL));
         sender.sendMessage(Component.empty());
 
-        for (KnockbackProfile profile : KnockbackProfile.values()) {
-            boolean isCurrent = profile == current;
+        for (var entry : PRESETS.entrySet()) {
+            String name = entry.getKey();
+            KnockbackConfig config = entry.getValue();
+            boolean isCurrent = configEquals(config, current);
 
             var builder = Component.text()
                     .append(Component.text(isCurrent ? " ► " : "   ",
                             isCurrent ? SUCCESS : MUTED))
-                    .append(Component.text(profile.name(),
+                    .append(Component.text(name.toUpperCase(),
                             isCurrent ? PRIMARY : LABEL));
 
-            if (profile.isKnockbackSyncSupported()) {
+            if (config.knockbackSyncSupported()) {
                 builder.append(Component.text(" [SYNC]", INFO));
             }
 
+            if (config.modern()) {
+                builder.append(Component.text(" [MODERN]", SUCCESS));
+            }
+
             builder.append(Component.text(" - ", MUTED))
-                    .append(Component.text(profile.getDescription(),
+                    .append(Component.text(
+                            String.format("H=%.3f V=%.3f", config.horizontal(), config.vertical()),
                             isCurrent ? VALUE : LABEL));
 
             sender.sendMessage(builder.build());
@@ -151,21 +177,28 @@ public class KnockbackCommand extends Command {
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(Component.text("[SYNC] = Supports knockback sync", INFO));
+        sender.sendMessage(Component.text("[MODERN] = Modern knockback mechanics", INFO));
     }
 
-    private void changeProfile(CommandSender sender, KnockbackProfile profile) {
-        var oldProfile = handler.getCurrentProfile();
+    private void changeProfile(CommandSender sender, String profileName) {
+        KnockbackConfig config = PRESETS.get(profileName.toLowerCase());
+        if (config == null) {
+            sender.sendMessage(error("Unknown profile: " + profileName));
+            return;
+        }
 
-        if (oldProfile == profile) {
+        var oldConfig = handler.getCurrentConfig();
+
+        if (configEquals(config, oldConfig)) {
             sender.sendMessage(Component.text()
                     .append(Component.text("Already using profile: ", LABEL))
-                    .append(Component.text(profile.name(), VALUE))
+                    .append(Component.text(profileName, VALUE))
                     .build());
             return;
         }
 
-        // Change profile
-        handler.setProfile(profile);
+        // Change config
+        handler.setConfig(config);
 
         // Reset custom multipliers
         if (handler.hasCustomAirMultipliers()) {
@@ -174,13 +207,13 @@ public class KnockbackCommand extends Command {
         }
 
         // Handle sync compatibility
-        if (profile.isKnockbackSyncSupported() && !handler.isKnockbackSyncEnabled()) {
+        if (config.knockbackSyncSupported() && !handler.isKnockbackSyncEnabled()) {
             sender.sendMessage(Component.text()
                     .append(Component.text("  ℹ This profile supports sync. Use ", LABEL))
                     .append(Component.text("/kb sync on", INFO))
                     .append(Component.text(" to enable", LABEL))
                     .build());
-        } else if (!profile.isKnockbackSyncSupported() && handler.isKnockbackSyncEnabled()) {
+        } else if (!config.knockbackSyncSupported() && handler.isKnockbackSyncEnabled()) {
             handler.setKnockbackSyncEnabled(false);
             sender.sendMessage(warning("Knockback sync disabled (not supported)"));
         }
@@ -188,30 +221,29 @@ public class KnockbackCommand extends Command {
         // Broadcast change
         var message = broadcast(
                 PREFIX_COMBAT,
-                "Knockback changed: " + oldProfile.name() + " → " + profile.name()
+                "Knockback changed to: " + profileName.toUpperCase()
         );
 
         MinecraftServer.getConnectionManager().getOnlinePlayers().forEach(player ->
                 player.sendMessage(message));
 
         // Log
-        MinecraftServer.LOGGER.info("[Knockback] Profile changed: " +
-                oldProfile.name() + " → " + profile.name());
+        MinecraftServer.LOGGER.info("[Knockback] Profile changed to: " + profileName);
     }
 
     private void toggleSync(CommandSender sender, boolean enable) {
-        var profile = handler.getCurrentProfile();
+        var config = handler.getCurrentConfig();
 
-        if (!profile.isKnockbackSyncSupported()) {
-            sender.sendMessage(error("Knockback sync not supported for " + profile.name()));
+        if (!config.knockbackSyncSupported()) {
+            sender.sendMessage(error("Knockback sync not supported for current config"));
 
             sender.sendMessage(Component.empty());
             sender.sendMessage(Component.text("Supported profiles:", LABEL));
-            for (KnockbackProfile p : KnockbackProfile.values()) {
-                if (p.isKnockbackSyncSupported()) {
-                    sender.sendMessage(bullet(p.name()));
+            PRESETS.forEach((name, cfg) -> {
+                if (cfg.knockbackSyncSupported()) {
+                    sender.sendMessage(bullet(name.toUpperCase()));
                 }
-            }
+            });
             return;
         }
 
@@ -268,29 +300,28 @@ public class KnockbackCommand extends Command {
     }
 
     private void showDetailedInfo(CommandSender sender) {
-        var profile = handler.getCurrentProfile();
-        var settings = profile.getSettings();
+        var config = handler.getCurrentConfig();
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(header("Knockback Configuration"));
 
-        // Profile info
+        // Config type
         sender.sendMessage(Component.empty());
-        sender.sendMessage(labelValue("Profile", profile.name()));
-        sender.sendMessage(labelValue("Description", profile.getDescription()));
+        sender.sendMessage(labelValue("Type", config.modern() ? "Modern" : "Legacy",
+                config.modern() ? SUCCESS : VALUE));
 
         // Base values
         sender.sendMessage(Component.empty());
         sender.sendMessage(headerSimple("Base Values"));
-        sender.sendMessage(labelValue("  Horizontal", String.format("%.3f", settings.horizontal())));
-        sender.sendMessage(labelValue("  Vertical", String.format("%.3f", settings.vertical())));
-        sender.sendMessage(labelValue("  Vertical Limit", String.format("%.3f", settings.verticalLimit())));
+        sender.sendMessage(labelValue("  Horizontal", String.format("%.3f", config.horizontal())));
+        sender.sendMessage(labelValue("  Vertical", String.format("%.3f", config.vertical())));
+        sender.sendMessage(labelValue("  Vertical Limit", String.format("%.3f", config.verticalLimit())));
 
         // Sprint bonus
         sender.sendMessage(Component.empty());
         sender.sendMessage(headerSimple("Sprint Bonus"));
-        sender.sendMessage(labelValue("  Extra Horizontal", String.format("%.3f", settings.extraHorizontal())));
-        sender.sendMessage(labelValue("  Extra Vertical", String.format("%.3f", settings.extraVertical())));
+        sender.sendMessage(labelValue("  Horizontal", String.format("%.3f", config.sprintBonusHorizontal())));
+        sender.sendMessage(labelValue("  Vertical", String.format("%.3f", config.sprintBonusVertical())));
 
         // Air multipliers
         sender.sendMessage(Component.empty());
@@ -311,15 +342,26 @@ public class KnockbackCommand extends Command {
         // Other settings
         sender.sendMessage(Component.empty());
         sender.sendMessage(headerSimple("Other Settings"));
-        sender.sendMessage(labelValue("  Look Weight", String.format("%.0f%%", profile.getLookWeight() * 100)));
+        sender.sendMessage(labelValue("  Look Weight", String.format("%.0f%%", handler.getLookWeight() * 100)));
 
         String syncStatus = handler.isKnockbackSyncEnabled() ? "Enabled" :
-                (profile.isKnockbackSyncSupported() ? "Available" : "Not Supported");
+                (config.knockbackSyncSupported() ? "Available" : "Not Supported");
         NamedTextColor syncColor = handler.isKnockbackSyncEnabled() ? SUCCESS :
-                (profile.isKnockbackSyncSupported() ? VALUE : ERROR);
+                (config.knockbackSyncSupported() ? VALUE : ERROR);
         sender.sendMessage(labelValue("  KB Sync", syncStatus, syncColor));
 
         sender.sendMessage(Component.empty());
         sender.sendMessage(separator());
+    }
+
+    /**
+     * Helper method to compare two configs for equality
+     */
+    private boolean configEquals(KnockbackConfig a, KnockbackConfig b) {
+        return Math.abs(a.horizontal() - b.horizontal()) < 0.001 &&
+                Math.abs(a.vertical() - b.vertical()) < 0.001 &&
+                Math.abs(a.verticalLimit() - b.verticalLimit()) < 0.001 &&
+                Math.abs(a.sprintBonusHorizontal() - b.sprintBonusHorizontal()) < 0.001 &&
+                Math.abs(a.sprintBonusVertical() - b.sprintBonusVertical()) < 0.001;
     }
 }

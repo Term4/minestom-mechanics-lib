@@ -139,7 +139,7 @@ public class Main {
                 .withDamage(DAMAGE_CONFIG)
                 .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.standard())
                 .withArmor(true)
-                .withKnockback(COMBAT_CONFIG.knockbackProfile(), true)
+                .withKnockback(COMBAT_CONFIG.knockbackConfig(), true)  // ← CHANGED
                 .initialize();
 
         // Initialize projectiles separately (not handled by MechanicsManager YET)
@@ -293,7 +293,9 @@ public class Main {
 
         player.sendMessage(Component.text()
                 .append(Component.text("   Knockback: ", NamedTextColor.GRAY))
-                .append(Component.text(COMBAT_CONFIG.knockbackProfile().name(), NamedTextColor.AQUA))
+                .append(Component.text(
+                        COMBAT_CONFIG.knockbackConfig().modern() ? "MODERN" : "LEGACY",
+                        NamedTextColor.AQUA))
                 .build());
 
         player.sendMessage(Component.text()

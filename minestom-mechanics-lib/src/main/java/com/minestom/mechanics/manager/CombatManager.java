@@ -67,12 +67,9 @@ public class CombatManager implements ManagerLifecycle {
         try {
             log.info("Initializing with CombatConfig");
 
-            // Convert CombatConfig to legacy configs for existing systems
-            // TODO: Refactor AttackFeature and BlockingSystem to use CombatConfig directly
-
             // Create blocking config from CombatConfig fields
             BlockingConfig blockingConfig = BlockingConfig.builder()
-                    .enabled(true) // Blocking is a feature toggle now, not config
+                    .enabled(true)
                     .damageReduction(config.blockDamageReduction())
                     .knockbackHorizontalMultiplier(config.blockKnockbackHorizontal())
                     .knockbackVerticalMultiplier(config.blockKnockbackVertical())
@@ -80,23 +77,12 @@ public class CombatManager implements ManagerLifecycle {
                     .showBlockEffects(config.showBlockEffects())
                     .build();
 
-            // Create combat rules config from CombatConfig fields
-            CombatRulesConfig rulesConfig = CombatRulesConfig.builder()
-                    .removeAttackCooldown(config.removeAttackCooldown())
-                    .knockback(config.knockbackProfile())
-                    .criticalMultiplier(config.criticalMultiplier())
-                    .allowSprintCrits(config.allowSprintCrits())
-                    .sprintWindow(config.dynamicSprintWindow(),
-                            config.sprintWindowDouble(),
-                            config.sprintWindowMaxTicks())
-                    .build();
-
-            // Initialize systems with converted configs
+            // Initialize systems directly with CombatConfig
             log.debug("Initializing BlockingSystem...");
             blockingSystem = BlockingSystem.initialize(blockingConfig);
 
             log.debug("Initializing AttackFeature...");
-            attackFeature = AttackFeature.initialize(rulesConfig);
+            attackFeature = AttackFeature.initialize(config);  // ← Pass CombatConfig directly!
 
             initialized = true;
             log.info("CombatManager initialized successfully");
@@ -231,58 +217,35 @@ public class CombatManager implements ManagerLifecycle {
     public class ConfigurationBuilder {
         private String name;
         private String description;
-        private CombatRulesConfig combatRules;
-        private com.minestom.mechanics.config.blocking.BlockingConfig blocking;
-        private com.minestom.mechanics.config.combat.ProjectileConfig projectiles;
+        private CombatConfig combat;  // ← Changed from CombatRulesConfig
+        private BlockingConfig blocking;
+        private ProjectileConfig projectiles;
 
         private ConfigurationBuilder() {
             // Start with default MINEMEN preset
-            CombatConfig defaultConfig = CombatPresets.MINEMEN;
+            this.combat = CombatPresets.MINEMEN;
             this.name = "Custom";
             this.description = "Custom configuration";
 
-            // Convert CombatConfig to legacy configs
-            this.combatRules = CombatRulesConfig.builder()
-                    .removeAttackCooldown(defaultConfig.removeAttackCooldown())
-                    .knockback(defaultConfig.knockbackProfile())
-                    .criticalMultiplier(defaultConfig.criticalMultiplier())
-                    .allowSprintCrits(defaultConfig.allowSprintCrits())
-                    .sprintWindow(defaultConfig.dynamicSprintWindow(),
-                            defaultConfig.sprintWindowDouble(),
-                            defaultConfig.sprintWindowMaxTicks())
-                    .build();
-
             this.blocking = BlockingConfig.builder()
                     .enabled(true)
-                    .damageReduction(defaultConfig.blockDamageReduction())
-                    .knockbackHorizontalMultiplier(defaultConfig.blockKnockbackHorizontal())
-                    .knockbackVerticalMultiplier(defaultConfig.blockKnockbackVertical())
-                    .showDamageMessages(defaultConfig.showBlockDamageMessages())
-                    .showBlockEffects(defaultConfig.showBlockEffects())
+                    .damageReduction(combat.blockDamageReduction())
+                    .knockbackHorizontalMultiplier(combat.blockKnockbackHorizontal())
+                    .knockbackVerticalMultiplier(combat.blockKnockbackVertical())
+                    .showDamageMessages(combat.showBlockDamageMessages())
+                    .showBlockEffects(combat.showBlockEffects())
                     .build();
 
             // Default projectiles (not in CombatConfig)
             this.projectiles = ProjectileConfig.builder().build();
         }
-        
-        /**
-         * Override combat rules configuration.
-         * 
-         * @param combatRules The combat rules to use
-         * @return this builder for chaining
-         */
-        public ConfigurationBuilder withCombatRules(CombatRulesConfig combatRules) {
-            this.combatRules = combatRules;
+
+        public ConfigurationBuilder withCombat(CombatConfig combat) {  // ← New method
+            this.combat = combat;
             return this;
         }
-        
-        /**
-         * Override blocking configuration.
-         * 
-         * @param blocking The blocking config to use
-         * @return this builder for chaining
-         */
-         public ConfigurationBuilder withBlocking(com.minestom.mechanics.config.blocking.BlockingConfig blocking) {
+
+        public ConfigurationBuilder withBlocking(BlockingConfig blocking) {
             this.blocking = blocking;
             return this;
         }

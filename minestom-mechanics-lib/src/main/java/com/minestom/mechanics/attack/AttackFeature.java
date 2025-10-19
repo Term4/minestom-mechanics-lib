@@ -3,7 +3,7 @@ package com.minestom.mechanics.attack;
 import com.minestom.mechanics.damage.DamageFeature;
 import com.minestom.mechanics.features.knockback.KnockbackHandler;
 import com.minestom.mechanics.validation.HitDetectionFeature;
-import com.minestom.mechanics.config.combat.CombatRulesConfig;
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.GameplayUtils;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
@@ -41,7 +41,7 @@ public class AttackFeature extends InitializableSystem {
     // TODO: Consider moving all tick away from attackfeature to be handled by invulnerabilitytracker and damagefeature
     //  Alternatively, could leave this here for future updates with 1.9 hit cooldown tracking, but would probably want to
     //  make tracking conditional for efficiency
-    private final CombatRulesConfig config;
+    private final CombatConfig config;
     private final Map<UUID, Long> lastAttackTime = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastAttackTick = new ConcurrentHashMap<>();
     private long currentTick = 0;
@@ -51,23 +51,23 @@ public class AttackFeature extends InitializableSystem {
     private final SprintBonusCalculator sprintBonusCalculator;
     
     private static final long ATTACK_DEDUPE_MS = MechanicsConstants.ATTACK_DEDUPE_MS;
-    
-    private AttackFeature(CombatRulesConfig config) {
+
+    private AttackFeature(CombatConfig config) {
         this.config = config;
         this.attackCalculator = new AttackCalculator(config);
         this.sprintBonusCalculator = new SprintBonusCalculator(config);
     }
-    
-    public static AttackFeature initialize(CombatRulesConfig config) {
+
+    public static AttackFeature initialize(CombatConfig config) {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("AttackFeature");
             return instance;
         }
-        
+
         instance = new AttackFeature(config);
         instance.registerListeners();
         instance.markInitialized();
-        
+
         LogUtil.logInit("AttackFeature");
         return instance;
     }
@@ -85,7 +85,7 @@ public class AttackFeature extends InitializableSystem {
         sprintBonusCalculator.startSprintTracking();
         
         // Remove attack cooldown on spawn if configured
-        if (config.shouldRemoveAttackCooldown()) {
+        if (config.removeAttackCooldown()) {
             handler.addListener(PlayerSpawnEvent.class, event -> {
                 removeAttackCooldown(event.getPlayer());
             });
@@ -294,8 +294,8 @@ public class AttackFeature extends InitializableSystem {
         }
         return instance;
     }
-    
-    public CombatRulesConfig getConfig() {
+
+    public CombatConfig getConfig() {
         return config;
     }
 }

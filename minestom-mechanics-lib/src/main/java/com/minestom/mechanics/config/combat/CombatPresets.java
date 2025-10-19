@@ -1,6 +1,6 @@
 package com.minestom.mechanics.config.combat;
 
-import com.minestom.mechanics.features.knockback.KnockbackProfile;
+import com.minestom.mechanics.config.knockback.KnockbackPresets;
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
 /**
@@ -22,7 +22,7 @@ public final class CombatPresets {
             // Attack
             true, CRITICAL_HIT_MULTIPLIER, true,
             // Knockback
-            KnockbackProfile.MINEMEN,
+            KnockbackPresets.minemen(),
             // Sprint window
             true, false, 5,
             // Blocking
@@ -39,7 +39,7 @@ public final class CombatPresets {
             // Attack
             true, CRITICAL_HIT_MULTIPLIER, false,
             // Knockback
-            KnockbackProfile.VANILLA,
+            KnockbackPresets.vanilla18(),
             // Sprint window
             false, false, DEFAULT_SPRINT_WINDOW_MAX_TICKS,
             // Blocking
@@ -56,7 +56,7 @@ public final class CombatPresets {
             // Attack
             true, CRITICAL_HIT_MULTIPLIER, true,
             // Knockback
-            KnockbackProfile.HYPIXEL,
+            KnockbackPresets.hypixel(),
             // Sprint window
             true, false, 5,
             // Blocking
@@ -79,7 +79,7 @@ public final class CombatPresets {
             // Attack
             true, CRITICAL_HIT_MULTIPLIER, false,
             // Knockback
-            KnockbackProfile.VANILLA,
+            KnockbackPresets.vanilla18(),
             // Sprint window
             false, false, 3,
             // Blocking

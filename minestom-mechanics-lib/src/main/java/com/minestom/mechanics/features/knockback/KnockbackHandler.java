@@ -1,5 +1,6 @@
 package com.minestom.mechanics.features.knockback;
 
+import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.features.knockback.components.*;
 import com.minestom.mechanics.features.knockback.sync.KnockbackSyncHandler;
 import com.minestom.mechanics.util.InitializableSystem;
@@ -38,7 +39,7 @@ public class KnockbackHandler extends InitializableSystem {
     private final KnockbackVelocityHandler velocityHandler;
 
     // Core configuration
-    private KnockbackProfile currentProfile;
+    private KnockbackConfig currentConfig;
     private boolean knockbackSyncEnabled = false;
 
     // Custom overrides
@@ -46,12 +47,12 @@ public class KnockbackHandler extends InitializableSystem {
     private Double customAirVerticalMultiplier = null;
     private Double customLookWeight = null;
 
-    private KnockbackHandler(KnockbackProfile profile) {
-        this.currentProfile = profile;
-        
+    private KnockbackHandler(KnockbackConfig config) {
+        this.currentConfig = config;
+
         // Initialize components
         this.stateManager = new KnockbackStateManager();
-        this.calculator = new KnockbackCalculator(profile);
+        this.calculator = new KnockbackCalculator(config);
         this.modifier = new KnockbackModifier();
         this.velocityHandler = new KnockbackVelocityHandler(stateManager, knockbackSyncEnabled);
     }
@@ -60,17 +61,18 @@ public class KnockbackHandler extends InitializableSystem {
     // INITIALIZATION (STANDARDIZED!)
     // ===========================
 
-    public static KnockbackHandler initialize(KnockbackProfile profile) {
+    public static KnockbackHandler initialize(KnockbackConfig config) {
         if (instance != null && instance.initialized) {
             LogUtil.logAlreadyInitialized("KnockbackHandler");
             return instance;
         }
 
-        instance = new KnockbackHandler(profile);
+        instance = new KnockbackHandler(config);
         instance.registerEventHandlers();
         instance.markInitialized();
 
-        log.debug("Initialized with profile: {}", profile.name());
+        log.debug("Initialized with config: modern={}, sync={}",
+                config.modern(), config.knockbackSyncSupported());
 
         return instance;
     }
@@ -277,29 +279,46 @@ public class KnockbackHandler extends InitializableSystem {
     // CONFIGURATION
     // ===========================
 
-    public void setProfile(KnockbackProfile profile) {
+    public void setConfig(KnockbackConfig config) {
         requireInitialized();
-        this.currentProfile = profile;
-        this.knockbackSyncEnabled = profile.isKnockbackSyncSupported() && knockbackSyncEnabled;
-        log.debug("Profile set to: {}", profile.name());
-    }
-    
-    /**
-     * Set knockback profile (alias for setProfile for KnockbackManager compatibility)
-     */
-    public void setKnockbackProfile(KnockbackProfile profile) {
-        setProfile(profile);
+        this.currentConfig = config;
+        this.knockbackSyncEnabled = config.knockbackSyncSupported() && knockbackSyncEnabled;
+        log.debug("Config updated: modern={}, sync={}", config.modern(), config.knockbackSyncSupported());
     }
 
-    public KnockbackProfile getCurrentProfile() {
+    /**
+     * Set knockback config (alias for setConfig for KnockbackManager compatibility)
+     */
+    public void setKnockbackConfig(KnockbackConfig config) {
+        setConfig(config);
+    }
+
+    /**
+     * @deprecated Use {@link #setConfig(KnockbackConfig)} instead
+     */
+    @Deprecated
+    public void setKnockbackProfile(KnockbackConfig config) {
+        setConfig(config);
+    }
+
+    public KnockbackConfig getCurrentConfig() {
         requireInitialized();
-        return currentProfile;
+        return currentConfig;
+    }
+
+    /**
+     * @deprecated Use {@link #getCurrentConfig()} instead
+     */
+    @Deprecated
+    public KnockbackConfig getCurrentProfile() {
+        return getCurrentConfig();
     }
 
     public void setKnockbackSyncEnabled(boolean enabled) {
         requireInitialized();
-        if (enabled && !currentProfile.isKnockbackSyncSupported()) {
-            log.warn("Cannot enable sync for profile: {}", currentProfile.name());
+        if (enabled && !currentConfig.knockbackSyncSupported()) {
+            log.warn("Cannot enable sync - not supported by current config (modern={}, syncSupported={})",
+                    currentConfig.modern(), currentConfig.knockbackSyncSupported());
             return;
         }
 
@@ -316,38 +335,38 @@ public class KnockbackHandler extends InitializableSystem {
     }
 
     public boolean isKnockbackSyncEnabled() {
-        return knockbackSyncEnabled && currentProfile.isKnockbackSyncSupported();
-    }
-
-    public void setCustomAirMultipliers(double horizontal, double vertical) {
-        requireInitialized();
-        this.customAirHorizontalMultiplier = horizontal;
-        this.customAirVerticalMultiplier = vertical;
-    }
-
-    public void resetAirMultipliers() {
-        requireInitialized();
-        this.customAirHorizontalMultiplier = null;
-        this.customAirVerticalMultiplier = null;
+        return knockbackSyncEnabled && currentConfig.knockbackSyncSupported();
     }
 
     public boolean hasCustomAirMultipliers() {
         return customAirHorizontalMultiplier != null || customAirVerticalMultiplier != null;
     }
 
+    public void resetAirMultipliers() {
+        customAirHorizontalMultiplier = null;
+        customAirVerticalMultiplier = null;
+        log.debug("Reset custom air multipliers");
+    }
+
+    public void setCustomAirMultipliers(double horizontal, double vertical) {
+        customAirHorizontalMultiplier = horizontal;
+        customAirVerticalMultiplier = vertical;
+        log.debug("Set custom air multipliers: h={}, v={}", horizontal, vertical);
+    }
+
     public double getAirHorizontalMultiplier() {
         return customAirHorizontalMultiplier != null ?
-                customAirHorizontalMultiplier : currentProfile.getAirHorizontalMultiplier();
+                customAirHorizontalMultiplier : currentConfig.airMultiplierHorizontal();
     }
 
     public double getAirVerticalMultiplier() {
         return customAirVerticalMultiplier != null ?
-                customAirVerticalMultiplier : currentProfile.getAirVerticalMultiplier();
+                customAirVerticalMultiplier : currentConfig.airMultiplierVertical();
     }
 
     public double getLookWeight() {
         return customLookWeight != null ?
-                customLookWeight : currentProfile.getLookWeight();
+                customLookWeight : currentConfig.lookWeight();
     }
 
     public int getTrackedPlayers() {

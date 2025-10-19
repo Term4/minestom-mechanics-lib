@@ -23,7 +23,8 @@ public class BowPowerCalculator {
         log.debug("Bow power calculated: {} ticks -> {:.2f} power", ticks, finalPower);
         return finalPower;
     }
-    
+
+    // TODO: Maybe increase the necessary power to shoot? Seems like people can spam arrows very easily
     /**
      * Check if the power is sufficient to shoot an arrow
      * @param power The calculated power
@@ -35,6 +36,8 @@ public class BowPowerCalculator {
 
     // TODO: We have this method, yet we don't use it in BowArrowCreator.
     //  Either remove it here, or use it in arrow creation.
+    //  ALSO are we haulting the power counter at 1? or do we keep increasing it
+    //  if players keep holding the bow..? Could hit int limit if someone held their bow for a long time lmao
     /**
      * Check if the power is maximum (critical hit)
      * @param power The calculated power

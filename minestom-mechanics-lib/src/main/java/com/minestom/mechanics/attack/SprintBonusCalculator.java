@@ -1,6 +1,6 @@
 package com.minestom.mechanics.attack;
 
-import com.minestom.mechanics.config.combat.CombatRulesConfig;
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
@@ -31,11 +31,11 @@ import static com.minestom.mechanics.config.combat.CombatConstants.*;
 public class SprintBonusCalculator {
     private static final LogUtil.SystemLogger log = LogUtil.system("SprintBonusCalculator");
     
-    private final CombatRulesConfig config;
+    private final CombatConfig config;
     private final Map<UUID, SprintStateBuffer> sprintBuffers = new ConcurrentHashMap<>();
     private Task sprintTrackingTask;
-    
-    public SprintBonusCalculator(CombatRulesConfig config) {
+
+    public SprintBonusCalculator(CombatConfig config) {
         this.config = config;
     }
     
@@ -74,7 +74,7 @@ public class SprintBonusCalculator {
     private int calculateSprintWindowTicks(Player player) {
         int windowTicks;
         
-        if (config.isDynamicSprintWindow()) {
+        if (config.dynamicSprintWindow()) {
             // Dynamic: scales with player's ping (one-way latency)
             long rttMs = player.getLatency();
             long oneWayLatency = rttMs / 2;
@@ -83,16 +83,16 @@ public class SprintBonusCalculator {
                     (double) (oneWayLatency * ServerFlag.SERVER_TICKS_PER_SECOND) / 1000
             );
             
-            if (config.isSprintWindowDouble()) {
+            if (config.sprintWindowDouble()) {
                 windowTicks *= 2;
             }
         } else {
             // Fixed: use configured value
-            windowTicks = config.getSprintWindowMaxTicks();
+            windowTicks = config.sprintWindowMaxTicks();
         }
         
         // Enforce limits
-        windowTicks = Math.min(windowTicks, config.getSprintWindowMaxTicks());
+        windowTicks = Math.min(windowTicks, config.sprintWindowMaxTicks());
         windowTicks = Math.max(windowTicks, 1);
         
         return windowTicks;

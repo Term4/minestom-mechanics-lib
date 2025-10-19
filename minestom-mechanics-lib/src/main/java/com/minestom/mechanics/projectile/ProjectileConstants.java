@@ -31,7 +31,7 @@ public class ProjectileConstants {
      * Prevents projectiles from immediately hitting the player who shot them.
      * 6 ticks = 0.3 seconds
      */
-    public static final int SHOOTER_COLLISION_DELAY_TICKS = 6;
+    public static final int SHOOTER_COLLISION_DELAY_TICKS = 5;
     
     // ===========================
     // HITBOX CONSTANTS

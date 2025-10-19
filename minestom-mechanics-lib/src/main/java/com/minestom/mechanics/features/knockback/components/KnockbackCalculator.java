@@ -1,7 +1,7 @@
 package com.minestom.mechanics.features.knockback.components;
 
 import com.minestom.mechanics.features.knockback.KnockbackHandler;
-import com.minestom.mechanics.features.knockback.KnockbackProfile;
+import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;
@@ -23,11 +23,11 @@ import static com.minestom.mechanics.config.combat.CombatConstants.*;
 public class KnockbackCalculator {
     
     private static final LogUtil.SystemLogger log = LogUtil.system("KnockbackCalculator");
-    
-    private final KnockbackProfile profile;
-    
-    public KnockbackCalculator(KnockbackProfile profile) {
-        this.profile = profile;
+
+    private final KnockbackConfig config;
+
+    public KnockbackCalculator(KnockbackConfig config) {
+        this.config = config;
     }
     
     /**
@@ -51,7 +51,7 @@ public class KnockbackCalculator {
         dz /= distance;
 
         // Apply look weight if configured
-        double lookWeight = profile.getLookWeight();
+        double lookWeight = config.lookWeight();
         if (lookWeight > 0 && attacker instanceof Player) {
             double yaw = Math.toRadians(attacker.getPosition().yaw());
             double lookX = -Math.sin(yaw);
@@ -77,17 +77,16 @@ public class KnockbackCalculator {
                                                        Entity attacker,
                                                        KnockbackHandler.KnockbackType type,
                                                        boolean wasSprinting) {
-        KnockbackHandler.KnockbackSettings settings = profile.getSettings();
-        double horizontal = settings.horizontal();
-        double vertical = settings.vertical();
+        double horizontal = config.horizontal();
+        double vertical = config.vertical();
 
         // ✅ USE CAPTURED SPRINT STATE instead of checking current state
         if (attacker instanceof Player player &&
                 wasSprinting &&  // ← Use passed-in value, not player.isSprinting()!
                 (type == KnockbackHandler.KnockbackType.ATTACK || type == KnockbackHandler.KnockbackType.DAMAGE)) {
 
-            horizontal += settings.extraHorizontal();
-            vertical += settings.extraVertical();
+            horizontal += config.sprintBonusHorizontal();
+            vertical += config.sprintBonusVertical();
             player.setSprinting(false);
             log.debug("Sprint bonus applied for: " + player.getUsername());
         }
@@ -118,8 +117,8 @@ public class KnockbackCalculator {
 
         // Apply air multipliers
         if (isInAir) {
-            horizontal *= profile.getAirHorizontalMultiplier();
-            vertical *= profile.getAirVerticalMultiplier();
+            horizontal *= config.airMultiplierHorizontal();
+            vertical *= config.airMultiplierVertical();
         }
 
         // ✅ REFACTORED: Using constant for 1.8 no-falling knockback

@@ -5,7 +5,9 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
+import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.damage.DamageFeature;
+import com.minestom.mechanics.features.knockback.KnockbackHandler;
 import com.minestom.mechanics.features.knockback.KnockbackProfile;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.manager.GameplayManager;
@@ -49,7 +51,7 @@ public class MechanicsManager {
     private DamageFeature damageFeature;
     private HitboxManager hitboxManager;
     private ArmorManager armorManager;
-    private KnockbackManager knockbackManager;
+    private KnockbackHandler knockbackHandler;
 
     // Track which systems are enabled
     private boolean combatEnabled = false;
@@ -93,7 +95,7 @@ public class MechanicsManager {
                 .withDamage(preset.getDamageConfig())
                 .withHitbox(preset.getHitDetectionConfig())
                 .withArmor(preset.isArmorEnabled())
-                .withKnockback(preset.getKnockbackProfile());
+                .withKnockback(preset.getKnockbackConfig());
         
         return builder.initialize();
     }
@@ -142,8 +144,8 @@ public class MechanicsManager {
         if (armorEnabled && armorManager != null) {
             armorManager.cleanupPlayer(player);
         }
-        if (knockbackEnabled && knockbackManager != null) {
-            knockbackManager.cleanupPlayer(player);
+        if (knockbackEnabled && knockbackHandler != null) {
+            knockbackHandler.cleanup(player);
         }
     }
     
@@ -207,10 +209,10 @@ public class MechanicsManager {
                 log.error("Armor shutdown failed", e);
             }
         }
-        
-        if (knockbackEnabled && knockbackManager != null) {
+
+        if (knockbackEnabled && knockbackHandler != null) {
             try {
-                knockbackManager.shutdown();
+                knockbackHandler.shutdown();
                 log.info("Knockback system shut down");
             } catch (Exception e) {
                 log.error("Knockback shutdown failed", e);
@@ -223,7 +225,7 @@ public class MechanicsManager {
         damageFeature = null;
         hitboxManager = null;
         armorManager = null;
-        knockbackManager = null;
+        knockbackHandler = null;
 
         combatEnabled = false;
         gameplayEnabled = false;
@@ -275,12 +277,20 @@ public class MechanicsManager {
         }
         return armorManager;
     }
-    
-    public KnockbackManager getKnockbackManager() {
+
+    public KnockbackHandler getKnockbackHandler() {
         if (!knockbackEnabled) {
             throw new IllegalStateException("Knockback system not enabled!");
         }
-        return knockbackManager;
+        return knockbackHandler;
+    }
+
+    /**
+     * @deprecated Use {@link #getKnockbackHandler()} instead. KnockbackManager is deprecated.
+     */
+    @Deprecated
+    public KnockbackHandler getKnockbackManager() {
+        return getKnockbackHandler();
     }
     
     /**
@@ -313,7 +323,7 @@ public class MechanicsManager {
                 status.append("\n").append(armorManager.getStatus());
             }
             if (knockbackEnabled) {
-                status.append("\n").append(knockbackManager.getStatus());
+                status.append("\n  KnockbackHandler: ✓");
             }
         }
         
@@ -344,7 +354,7 @@ public class MechanicsManager {
         private boolean armorEnabled = true;
         
         // Knockback configuration
-        private KnockbackProfile knockbackProfile = null;
+        private KnockbackConfig knockbackConfig = null;
         private boolean knockbackSyncEnabled = false;
         
         private ConfigurationBuilder() {}
@@ -408,16 +418,16 @@ public class MechanicsManager {
         /**
          * Enable knockback with the specified profile
          */
-        public ConfigurationBuilder withKnockback(KnockbackProfile profile) {
-            this.knockbackProfile = profile;
+        public ConfigurationBuilder withKnockback(KnockbackConfig config) {
+            this.knockbackConfig = config;
             return this;
         }
         
         /**
          * Enable knockback with profile and sync settings
          */
-        public ConfigurationBuilder withKnockback(KnockbackProfile profile, boolean syncEnabled) {
-            this.knockbackProfile = profile;
+        public ConfigurationBuilder withKnockback(KnockbackConfig config, boolean syncEnabled) {
+            this.knockbackConfig = config;
             this.knockbackSyncEnabled = syncEnabled;
             return this;
         }
@@ -473,10 +483,10 @@ public class MechanicsManager {
             }
             
             // Initialize knockback if configured
-            if (knockbackProfile != null) {
+            if (knockbackConfig != null) {
                 log.info("Initializing Knockback System...");
-                manager.knockbackManager = KnockbackManager.getInstance()
-                        .initialize(knockbackProfile, knockbackSyncEnabled);
+                manager.knockbackHandler = KnockbackHandler.initialize(knockbackConfig);
+                manager.knockbackHandler.setKnockbackSyncEnabled(knockbackSyncEnabled);
                 manager.knockbackEnabled = true;
                 systemCount++;
             }
