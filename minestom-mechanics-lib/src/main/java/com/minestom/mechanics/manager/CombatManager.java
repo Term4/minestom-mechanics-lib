@@ -42,8 +42,8 @@ public class CombatManager extends AbstractManager<CombatManager> {
             BlockingConfig blockingConfig = BlockingConfig.builder()
                     .enabled(true)
                     .damageReduction(config.blockDamageReduction())
-                    .knockbackHorizontalMultiplier(config.blockKnockbackHorizontal())
-                    .knockbackVerticalMultiplier(config.blockKnockbackVertical())
+                    .knockbackHorizontalMultiplier(config.blockKnockbackHMultiplier())
+                    .knockbackVerticalMultiplier(config.blockKnockbackVMultiplier())
                     .showDamageMessages(config.showBlockDamageMessages())
                     .showBlockEffects(config.showBlockEffects())
                     .build();

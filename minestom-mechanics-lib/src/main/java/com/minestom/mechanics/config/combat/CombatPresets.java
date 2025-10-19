@@ -26,7 +26,7 @@ public final class CombatPresets {
             // Sprint window
             true, false, 5,
             // Blocking
-            0.5, 0.5, 0.5, true, true
+            true, 0.5, 0.05, 0.05, true, true
     );
 
     /**
@@ -43,7 +43,7 @@ public final class CombatPresets {
             // Sprint window
             false, false, DEFAULT_SPRINT_WINDOW_MAX_TICKS,
             // Blocking
-            DEFAULT_BLOCKING_DAMAGE_REDUCTION, DEFAULT_BLOCKING_KB_HORIZONTAL,
+            true, DEFAULT_BLOCKING_DAMAGE_REDUCTION, DEFAULT_BLOCKING_KB_HORIZONTAL,
             DEFAULT_BLOCKING_KB_VERTICAL, true, true
     );
 
@@ -60,7 +60,7 @@ public final class CombatPresets {
             // Sprint window
             true, false, 5,
             // Blocking
-            0.5, 0.6, 0.6, true, true
+            true,0.5, 0.05, 0.05, true, true
     );
 
     /**
@@ -83,6 +83,6 @@ public final class CombatPresets {
             // Sprint window
             false, false, 3,
             // Blocking
-            0.5, 0.8, 0.8, true, true
+            true,0.5, 0.05, 0.05, true, true
     );
 }
