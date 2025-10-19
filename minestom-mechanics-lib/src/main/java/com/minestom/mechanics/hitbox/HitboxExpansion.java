@@ -18,8 +18,8 @@ public class HitboxExpansion {
      * Constructor for HitDetectionConfig.
      */
     public HitboxExpansion(HitDetectionConfig config) {
-        this.primaryExpansion = config.getHitboxExpansionPrimary();
-        this.limitExpansion = config.getHitboxExpansionLimit();
+        this.primaryExpansion = config.hitboxExpansionPrimary();
+        this.limitExpansion = config.hitboxExpansionLimit();
     }
     
     /**

@@ -53,9 +53,7 @@ public enum MechanicsPresets {
         "Hypixel server mechanics",
         CombatPresets.Modes.VANILLA, // Hypixel uses mostly vanilla combat
         GameplayConfig.VANILLA,
-        HitDetectionConfig.builder()
-            .reach(3.0, 4.5)
-            .build(),
+        HitDetectionConfig.standard(),
         true,
         KnockbackProfile.HYPIXEL
     );

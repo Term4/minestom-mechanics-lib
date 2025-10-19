@@ -2,297 +2,214 @@ package com.minestom.mechanics.config.combat;
 
 import static com.minestom.mechanics.config.combat.CombatConstants.*;
 
-// TODO: Linked with CombatModeBundle's todo
-
 /**
- * Configuration for hit detection and validation settings.
- * Contains reach distances and hitbox expansion for combat hit detection.
- * 
- * This class focuses on the technical aspects of hit detection:
- * - Server-side reach for raycasting
- * - Attack packet reach for anticheat validation
- * - Hitbox expansion for lag compensation
+ * Configuration for hit detection and validation.
+ *
+ * <p>Controls how the server validates and processes combat hits, including reach
+ * distances for raycasting and packet validation, hitbox expansion for lag
+ * compensation, and optional angle validation for anticheat.</p>
+ *
+ * <h2>Quick Start</h2>
+ * <pre>{@code
+ * // Use a preset
+ * HitDetectionConfig config = HitDetectionConfig.standard();
+ *
+ * // Customize from preset
+ * HitDetectionConfig config = HitDetectionConfig.strict()
+ *     .withServerSideReach(3.2)
+ *     .withHitboxExpansion(0.15, 0.3);
+ *
+ * // Build from scratch
+ * HitDetectionConfig config = new HitDetectionConfig(
+ *     3.5, 6.5, 0.15, 0.3, 45.0, true, true
+ * );
+ * }</pre>
+ *
+ * @param serverSideReach Server-side reach for raycasting in blocks (typical: 3.0).
+ *                        This is the "fair" reach given to all clients via server-side hit detection.
+ * @param attackPacketReach Maximum reach for validating client attack packets (typical: 6.0).
+ *                          Anticheat upper bound that's lenient to account for lag.
+ * @param hitboxExpansionPrimary Primary hitbox expansion per side (0.1 = 1.8 standard).
+ *                               Applied to all hit detection checks.
+ * @param hitboxExpansionLimit Maximum hitbox expansion for lag compensation.
+ *                             Used for benefit-of-the-doubt scenarios.
+ * @param angleThreshold Maximum angle in degrees for hit validation (0-180).
+ *                       Only used when angle validation is enabled.
+ * @param enableAngleValidation Whether to validate attack angles.
+ *                              Can help detect some types of killaura.
+ * @param trackHitSnapshots Whether to track hit snapshots for debugging.
+ *                          Useful for development and troubleshooting.
  */
-public class HitDetectionConfig {
-    
-    // Reach settings
-    private final double serverSideReach;
-    private final double attackPacketReach;
-    
-    // Hitbox expansion settings
-    private final double hitboxExpansionPrimary;
-    private final double hitboxExpansionLimit;
-    
-    // Additional settings
-    private final double angleThreshold;
-    private final boolean enableAngleValidation;
-    private final boolean trackHitSnapshots;
-    
-    private HitDetectionConfig(Builder builder) {
-        this.serverSideReach = builder.serverSideReach;
-        this.attackPacketReach = builder.attackPacketReach;
-        this.hitboxExpansionPrimary = builder.hitboxExpansionPrimary;
-        this.hitboxExpansionLimit = builder.hitboxExpansionLimit;
-        this.angleThreshold = builder.angleThreshold;
-        this.enableAngleValidation = builder.enableAngleValidation;
-        this.trackHitSnapshots = builder.trackHitSnapshots;
+public record HitDetectionConfig(
+        double serverSideReach,
+        double attackPacketReach,
+        double hitboxExpansionPrimary,
+        double hitboxExpansionLimit,
+        double angleThreshold,
+        boolean enableAngleValidation,
+        boolean trackHitSnapshots
+) {
+
+    // Validation
+    public HitDetectionConfig {
+        if (serverSideReach <= 0 || serverSideReach < MIN_REACH_DISTANCE || serverSideReach > MAX_REACH_VALIDATION) {
+            throw new IllegalArgumentException("Invalid server-side reach: " + serverSideReach);
+        }
+        if (attackPacketReach <= 0 || attackPacketReach > MAX_REACH_VALIDATION) {
+            throw new IllegalArgumentException("Invalid attack packet reach: " + attackPacketReach);
+        }
+        if (serverSideReach > attackPacketReach) {
+            throw new IllegalStateException("Server-side reach cannot exceed attack packet reach");
+        }
+        if (hitboxExpansionPrimary < 0.0 || hitboxExpansionPrimary > 0.5) {
+            throw new IllegalArgumentException("Invalid primary hitbox expansion: " + hitboxExpansionPrimary);
+        }
+        if (hitboxExpansionLimit < 0.0 || hitboxExpansionLimit > 0.5) {
+            throw new IllegalArgumentException("Invalid hitbox expansion limit: " + hitboxExpansionLimit);
+        }
+        if (hitboxExpansionPrimary > hitboxExpansionLimit) {
+            throw new IllegalArgumentException("Primary expansion cannot exceed limit");
+        }
+        if (angleThreshold < 0.0 || angleThreshold > 180.0) {
+            throw new IllegalArgumentException("Invalid angle threshold: " + angleThreshold);
+        }
     }
-    
-    public HitDetectionConfig(double serverSideReach, double attackPacketReach, double angleThreshold, boolean trackHitSnapshots) {
-        this.serverSideReach = serverSideReach;
-        this.attackPacketReach = attackPacketReach;
-        this.hitboxExpansionPrimary = HITBOX_EXPANSION_PRIMARY;
-        this.hitboxExpansionLimit = HITBOX_EXPANSION_LIMIT;
-        this.angleThreshold = angleThreshold;
-        this.enableAngleValidation = false; // Default to disabled
-        this.trackHitSnapshots = trackHitSnapshots;
-    }
-    
-    public static Builder builder() {
-        return new Builder();
-    }
-    
-    public static HitDetectionConfig defaultConfig() {
-        return builder().build();
-    }
-    
-    // Getters
+
+    // ===========================
+    // PRESETS
+    // ===========================
+
     /**
-     * Get the reach used for server-side hit detection from swing packets.
-     * This is the "fair" reach that gives all clients equal reach via raycasting.
+     * Standard hit detection configuration.
+     *
+     * <p>Balanced settings for general 1.8-style PvP:</p>
+     * <ul>
+     *   <li>Server-side reach: 3.0 blocks</li>
+     *   <li>Attack packet reach: 6.0 blocks</li>
+     *   <li>Primary hitbox expansion: 0.1 (1.8 standard)</li>
+     *   <li>Expansion limit: 0.3</li>
+     *   <li>Angle validation: disabled</li>
+     * </ul>
+     *
+     * @return standard hit detection configuration
      */
-    public double getServerSideReach() {
-        return serverSideReach;
+    public static HitDetectionConfig standard() {
+        return new HitDetectionConfig(SERVER_SIDE_REACH, ATTACK_PACKET_REACH,
+                HITBOX_EXPANSION_PRIMARY, HITBOX_EXPANSION_LIMIT, 90.0, false, true);
     }
-    
+
     /**
-     * Get the maximum reach for validating client-sent attack packets.
-     * This is an anticheat upper bound that's lenient to account for lag.
+     * Strict hit detection for anticheat compatibility.
+     *
+     * <p>Tighter validation with angle checking enabled:</p>
+     * <ul>
+     *   <li>Server-side reach: 3.0 blocks</li>
+     *   <li>Attack packet reach: 4.5 blocks (strict)</li>
+     *   <li>Primary hitbox expansion: 0.1</li>
+     *   <li>Expansion limit: 0.105 (very strict)</li>
+     *   <li>Angle validation: enabled (90°)</li>
+     * </ul>
+     *
+     * @return strict hit detection configuration
      */
-    public double getAttackPacketReach() {
-        return attackPacketReach;
+    public static HitDetectionConfig strict() {
+        return new HitDetectionConfig(3.0, 4.5, 0.1, 0.105, 90.0, true, true);
     }
-    
+
     /**
-     * Get primary hitbox expansion (standard 1.8-style).
+     * Lenient hit detection for high ping players.
+     *
+     * <p>More generous validation to reduce false positives:</p>
+     * <ul>
+     *   <li>Server-side reach: 3.5 blocks (lenient)</li>
+     *   <li>Attack packet reach: 7.0 blocks (very lenient)</li>
+     *   <li>Primary hitbox expansion: 0.15</li>
+     *   <li>Expansion limit: 0.4 (generous)</li>
+     *   <li>Angle validation: disabled</li>
+     * </ul>
+     *
+     * @return lenient hit detection configuration
      */
-    public double getHitboxExpansionPrimary() {
-        return hitboxExpansionPrimary;
+    public static HitDetectionConfig lenient() {
+        return new HitDetectionConfig(3.5, 7.0, 0.15, 0.4, 45.0, false, true);
     }
-    
+
+    // ===========================
+    // "WITH" METHODS
+    // ===========================
+
     /**
-     * Get maximum hitbox expansion for lag compensation.
+     * Create a copy with a different server-side reach.
+     *
+     * @param reach the new server-side reach in blocks
+     * @return a new config with the updated value
      */
-    public double getHitboxExpansionLimit() {
-        return hitboxExpansionLimit;
+    public HitDetectionConfig withServerSideReach(double reach) {
+        return new HitDetectionConfig(reach, attackPacketReach, hitboxExpansionPrimary,
+                hitboxExpansionLimit, angleThreshold, enableAngleValidation, trackHitSnapshots);
     }
-    
+
     /**
-     * Get angle threshold for hit validation.
+     * Create a copy with a different attack packet reach.
+     *
+     * @param reach the new attack packet reach in blocks
+     * @return a new config with the updated value
      */
-    public double getAngleThreshold() {
-        return angleThreshold;
+    public HitDetectionConfig withAttackPacketReach(double reach) {
+        return new HitDetectionConfig(serverSideReach, reach, hitboxExpansionPrimary,
+                hitboxExpansionLimit, angleThreshold, enableAngleValidation, trackHitSnapshots);
     }
-    
+
     /**
-     * Check if angle validation is enabled.
+     * Create a copy with different reach values.
+     *
+     * <p>Convenience method to set both reach values at once.</p>
+     *
+     * @param serverSide the server-side reach in blocks
+     * @param attackPacket the attack packet reach in blocks
+     * @return a new config with the updated values
      */
-    public boolean isAngleValidationEnabled() {
-        return enableAngleValidation;
+    public HitDetectionConfig withReach(double serverSide, double attackPacket) {
+        return new HitDetectionConfig(serverSide, attackPacket, hitboxExpansionPrimary,
+                hitboxExpansionLimit, angleThreshold, enableAngleValidation, trackHitSnapshots);
     }
-    
+
     /**
-     * Check if hit snapshots should be tracked.
+     * Create a copy with different hitbox expansion values.
+     *
+     * <p>Convenience method to set both expansion values at once.</p>
+     *
+     * @param primary the primary expansion value
+     * @param limit the expansion limit value
+     * @return a new config with the updated values
      */
-    public boolean shouldTrackHitSnapshots() {
-        return trackHitSnapshots;
+    public HitDetectionConfig withHitboxExpansion(double primary, double limit) {
+        return new HitDetectionConfig(serverSideReach, attackPacketReach, primary,
+                limit, angleThreshold, enableAngleValidation, trackHitSnapshots);
     }
-    
-    public static class Builder {
-        private double serverSideReach = SERVER_SIDE_REACH;
-        private double attackPacketReach = ATTACK_PACKET_REACH;
-        private double hitboxExpansionPrimary = HITBOX_EXPANSION_PRIMARY;
-        private double hitboxExpansionLimit = HITBOX_EXPANSION_LIMIT;
-        private double angleThreshold = 90.0; // Default angle threshold in degrees
-        private boolean enableAngleValidation = false; // Default to disabled
-        private boolean trackHitSnapshots = true; // Default to tracking snapshots
-        
-        /**
-         * Configure reach settings with clear semantics.
-         *
-         * @param serverSideReach Reach for server-side raycasting (swings). This is the "fair"
-         *                        reach given to all clients via server-side hit detection.
-         *                        Typically 3.0 blocks for 1.8.9-style PvP.
-         * @param attackPacketReach Maximum reach for client attack packets (anticheat upper bound).
-         *                          More lenient to account for network lag and edge cases.
-         *                          Typically 4.0-5.0 blocks.
-         */
-        public Builder reach(double serverSideReach, double attackPacketReach) {
-            // Validate server-side reach
-            if (serverSideReach <= 0) {
-                throw new IllegalArgumentException("Server-side reach must be positive: " + serverSideReach);
-            }
-            if (serverSideReach < MIN_REACH_DISTANCE) {
-                throw new IllegalArgumentException(
-                        "Server-side reach too low (min " + MIN_REACH_DISTANCE + "): " + serverSideReach);
-            }
-            if (serverSideReach > MAX_REACH_VALIDATION) {
-                throw new IllegalArgumentException(
-                        "Server-side reach too high (max " + MAX_REACH_VALIDATION + "): " + serverSideReach);
-            }
-            
-            // Validate attack packet reach
-            if (attackPacketReach <= 0) {
-                throw new IllegalArgumentException("Attack packet reach must be positive: " + attackPacketReach);
-            }
-            if (attackPacketReach > MAX_REACH_VALIDATION) {
-                throw new IllegalArgumentException(
-                        "Attack packet reach too high (max " + MAX_REACH_VALIDATION + "): " + attackPacketReach);
-            }
-            
-            // Ensure attack packet reach >= server-side reach
-            if (serverSideReach > attackPacketReach) {
-                throw new IllegalArgumentException(
-                        "Server-side reach cannot exceed attack packet reach: " +
-                                serverSideReach + " > " + attackPacketReach);
-            }
-            
-            this.serverSideReach = serverSideReach;
-            this.attackPacketReach = attackPacketReach;
-            return this;
-        }
-        
-        /**
-         * Set only the server-side reach (for swings/raycasting).
-         * Attack packet reach remains at its current value.
-         */
-        public Builder serverSideReach(double reach) {
-            if (reach <= 0) {
-                throw new IllegalArgumentException("Server-side reach must be positive: " + reach);
-            }
-            if (reach < MIN_REACH_DISTANCE) {
-                throw new IllegalArgumentException(
-                        "Server-side reach too low (min " + MIN_REACH_DISTANCE + "): " + reach);
-            }
-            if (reach > MAX_REACH_VALIDATION) {
-                throw new IllegalArgumentException(
-                        "Server-side reach too high (max " + MAX_REACH_VALIDATION + "): " + reach);
-            }
-            
-            this.serverSideReach = reach;
-            return this;
-        }
-        
-        /**
-         * Set only the attack packet reach (anticheat upper bound).
-         * Server-side reach remains at its current value.
-         */
-        public Builder attackPacketReach(double reach) {
-            if (reach <= 0) {
-                throw new IllegalArgumentException("Attack packet reach must be positive: " + reach);
-            }
-            if (reach > MAX_REACH_VALIDATION) {
-                throw new IllegalArgumentException(
-                        "Attack packet reach too high (max " + MAX_REACH_VALIDATION + "): " + reach);
-            }
-            
-            this.attackPacketReach = reach;
-            return this;
-        }
-        
-        /**
-         * Configure hitbox expansion settings.
-         * 
-         * @param primary Primary hitbox expansion (0.1 = 1.8 client standard)
-         * @param limit Maximum hitbox expansion for lag compensation
-         */
-        public Builder hitboxExpansion(double primary, double limit) {
-            if (primary < 0.0 || primary > 0.5) {
-                throw new IllegalArgumentException("Primary hitbox expansion must be between 0.0 and 0.5: " + primary);
-            }
-            if (limit < 0.0 || limit > 0.5) {
-                throw new IllegalArgumentException("Limit hitbox expansion must be between 0.0 and 0.5: " + limit);
-            }
-            if (primary > limit) {
-                throw new IllegalArgumentException("Primary expansion cannot exceed limit: " + primary + " > " + limit);
-            }
-            
-            this.hitboxExpansionPrimary = primary;
-            this.hitboxExpansionLimit = limit;
-            return this;
-        }
-        
-        /**
-         * Set only the primary hitbox expansion.
-         */
-        public Builder hitboxExpansionPrimary(double expansion) {
-            if (expansion < 0.0 || expansion > 0.5) {
-                throw new IllegalArgumentException("Primary hitbox expansion must be between 0.0 and 0.5: " + expansion);
-            }
-            if (expansion > this.hitboxExpansionLimit) {
-                throw new IllegalArgumentException("Primary expansion cannot exceed limit: " + expansion + " > " + this.hitboxExpansionLimit);
-            }
-            
-            this.hitboxExpansionPrimary = expansion;
-            return this;
-        }
-        
-        /**
-         * Set only the limit hitbox expansion.
-         */
-        public Builder hitboxExpansionLimit(double expansion) {
-            if (expansion < 0.0 || expansion > 0.5) {
-                throw new IllegalArgumentException("Limit hitbox expansion must be between 0.0 and 0.5: " + expansion);
-            }
-            if (this.hitboxExpansionPrimary > expansion) {
-                throw new IllegalArgumentException("Primary expansion cannot exceed limit: " + this.hitboxExpansionPrimary + " > " + expansion);
-            }
-            
-            this.hitboxExpansionLimit = expansion;
-            return this;
-        }
-        
-        /**
-         * Configure angle validation settings.
-         * 
-         * @param enabled Whether angle validation is enabled
-         * @param threshold Angle threshold in degrees (0-180)
-         */
-        public Builder angleValidation(boolean enabled, double threshold) {
-            if (threshold < 0.0 || threshold > 180.0) {
-                throw new IllegalArgumentException("Angle threshold must be between 0.0 and 180.0: " + threshold);
-            }
-            
-            this.enableAngleValidation = enabled;
-            this.angleThreshold = threshold;
-            return this;
-        }
-        
-        /**
-         * Enable angle validation with default threshold (90 degrees).
-         */
-        public Builder enableAngleValidation() {
-            this.enableAngleValidation = true;
-            return this;
-        }
-        
-        /**
-         * Disable angle validation.
-         */
-        public Builder disableAngleValidation() {
-            this.enableAngleValidation = false;
-            return this;
-        }
-        
-        public HitDetectionConfig build() {
-            // Validate that server-side reach doesn't exceed attack packet reach
-            if (serverSideReach > attackPacketReach) {
-                throw new IllegalStateException(
-                        "Server-side reach (" + serverSideReach + ") cannot exceed " +
-                                "attack packet reach (" + attackPacketReach + ")");
-            }
-            
-            return new HitDetectionConfig(this);
-        }
+
+    /**
+     * Create a copy with angle validation enabled or disabled.
+     *
+     * @param enabled whether angle validation should be enabled
+     * @return a new config with the updated value
+     */
+    public HitDetectionConfig withAngleValidation(boolean enabled) {
+        return new HitDetectionConfig(serverSideReach, attackPacketReach, hitboxExpansionPrimary,
+                hitboxExpansionLimit, angleThreshold, enabled, trackHitSnapshots);
+    }
+
+    /**
+     * Create a copy with angle validation settings.
+     *
+     * <p>Convenience method to set both angle validation and threshold.</p>
+     *
+     * @param enabled whether angle validation should be enabled
+     * @param threshold the angle threshold in degrees (0-180)
+     * @return a new config with the updated values
+     */
+    public HitDetectionConfig withAngleValidation(boolean enabled, double threshold) {
+        return new HitDetectionConfig(serverSideReach, attackPacketReach, hitboxExpansionPrimary,
+                hitboxExpansionLimit, threshold, enabled, trackHitSnapshots);
     }
 }

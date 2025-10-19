@@ -153,7 +153,7 @@ public class Main {
                 .configure()
                 .withCombat(COMBAT_BUNDLE)
                 .withGameplay(GameplayConfig.MINEMEN)
-                .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.defaultConfig())
+                .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.standard())
                 .withArmor(true)
                 .withKnockback(COMBAT_BUNDLE.combatRules().getKnockbackProfile(), true)
                 .initialize();

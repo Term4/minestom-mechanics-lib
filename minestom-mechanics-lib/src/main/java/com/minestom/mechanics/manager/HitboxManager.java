@@ -40,28 +40,29 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
     // ===========================
     // INITIALIZATION
     // ===========================
-    
+
     /**
-     * Initialize with default configurations
-     */
-    public HitboxManager initialize() {
-        return initialize(HitDetectionConfig.defaultConfig());
-    }
-    
-    /**
-     * Initialize with specific configuration
-     * 
-     * @param hitDetectionConfig Configuration for hit detection/validation
+     * Initialize with specific configuration.
+     *
+     * @param hitDetectionConfig configuration for hit detection/validation
      * @return this manager for chaining
      */
     public HitboxManager initialize(HitDetectionConfig hitDetectionConfig) {
         this.hitDetectionConfig = hitDetectionConfig;
-        
+
         return initializeWithWrapper(() -> {
-            // Initialize HitDetectionFeature
             log.debug("Initializing HitDetectionFeature...");
             hitDetectionFeature = HitDetectionFeature.initialize(hitDetectionConfig);
         });
+    }
+
+    /**
+     * Initialize with default standard configuration.
+     *
+     * @return this manager for chaining
+     */
+    public HitboxManager initialize() {
+        return initialize(HitDetectionConfig.standard());
     }
     
     // ===========================
@@ -75,36 +76,24 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
 
     @Override
     protected void logMinimalConfig() {
-        log.debug("Server-side Reach: {} blocks", hitDetectionConfig.getServerSideReach());
-        log.debug("Attack Packet Reach: {} blocks", hitDetectionConfig.getAttackPacketReach());
-        if (hitDetectionConfig.isAngleValidationEnabled()) {
-            log.debug("Angle Validation: enabled ({}°)", hitDetectionConfig.getAngleThreshold());
+        log.debug("Server-side Reach: {} blocks", hitDetectionConfig.serverSideReach());
+        log.debug("Attack Packet Reach: {} blocks", hitDetectionConfig.attackPacketReach());
+        if (hitDetectionConfig.enableAngleValidation()) {
+            log.debug("Angle Validation: enabled ({}°)", hitDetectionConfig.angleThreshold());
         } else {
             log.debug("Angle Validation: disabled");
         }
-        log.debug("Snapshot Tracking: {}", hitDetectionConfig.shouldTrackHitSnapshots() ? "enabled" : "disabled");
+        log.debug("Snapshot Tracking: {}", hitDetectionConfig.trackHitSnapshots() ? "enabled" : "disabled");
     }
 
     @Override
     protected void cleanup() {
-        // Clear all player data
-        MinecraftServer.getConnectionManager().getOnlinePlayers().forEach(this::cleanupPlayer);
-        
-        // Reset references
         hitDetectionFeature = null;
     }
 
     @Override
     public String getStatus() {
-        if (!initialized) {
-            return "Hitbox Systems: NOT INITIALIZED";
-        }
-        
-        StringBuilder status = new StringBuilder();
-        status.append("Hitbox System Status:\n");
-        status.append("  HitDetectionFeature: ").append(hitDetectionFeature != null ? "✓" : "✗").append("\n");
-        
-        return status.toString();
+        return initialized ? "HitboxManager: ✓" : "HitboxManager: NOT INITIALIZED";
     }
     
     @Override
@@ -120,20 +109,27 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
     // ===========================
     // RUNTIME CONFIGURATION
     // ===========================
-    
+
     /**
-     * Update hit detection reach values at runtime
+     * Get the current hit detection configuration.
+     *
+     * @return the current hit detection config
      */
-    public void updateReachValues(double serverSideReach, double attackPacketReach) {
+    public HitDetectionConfig getConfig() {
         requireInitialized();
-        hitDetectionConfig = new HitDetectionConfig(
-            serverSideReach,
-            attackPacketReach,
-            hitDetectionConfig.getAngleThreshold(),
-            hitDetectionConfig.shouldTrackHitSnapshots()
-        );
-        hitDetectionFeature.updateConfig(hitDetectionConfig);
-        log.info("Updated reach values - Server: {}, Packet: {}", serverSideReach, attackPacketReach);
+        return hitDetectionConfig;
+    }
+
+    /**
+     * Update the hit detection configuration at runtime.
+     *
+     * @param newConfig the new hit detection configuration
+     */
+    public void updateConfig(HitDetectionConfig newConfig) {
+        requireInitialized();
+        this.hitDetectionConfig = newConfig;
+        hitDetectionFeature.updateConfig(newConfig);
+        log.info("Hit detection config updated");
     }
     
     /**
@@ -162,7 +158,16 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
     // ===========================
     // SYSTEM ACCESS (for advanced use)
     // ===========================
-    
+
+    /**
+     * Get the hit detection feature for advanced use cases.
+     *
+     * <p>Provides access to hit validation, server-side raycasting,
+     * and hit analytics. Most users won't need this - use {@link #getConfig()}
+     * and {@link #updateConfig(HitDetectionConfig)} for configuration instead.</p>
+     *
+     * @return the hit detection feature
+     */
     public HitDetectionFeature getHitDetectionFeature() {
         requireInitialized();
         return hitDetectionFeature;

@@ -59,7 +59,7 @@ public class ServerSideDetector {
      * Find the closest entity target within reach.
      */
     private LivingEntity findClosestEntityTarget(Player attacker, Pos eyePos, Vec direction) {
-        double maxReach = hitDetectionConfig.getServerSideReach();
+        double maxReach = hitDetectionConfig.serverSideReach();
         LivingEntity closestTarget = null;
         double closestDistance = Double.MAX_VALUE;
 

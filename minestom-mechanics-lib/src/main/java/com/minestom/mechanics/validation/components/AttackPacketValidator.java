@@ -50,8 +50,8 @@ public class AttackPacketValidator {
         double dz = victimPos.z() - attackerEye.z();
         double horizontalDist = Math.sqrt(dx * dx + dz * dz);
         
-        double maxReach = hitDetectionConfig.getAttackPacketReach();
-        double limitExpansion = hitDetectionConfig.getHitboxExpansionLimit();
+        double maxReach = hitDetectionConfig.attackPacketReach();
+        double limitExpansion = hitDetectionConfig.hitboxExpansionLimit();
         
         // Quick check: if horizontal distance alone exceeds max reach + expansion, reject immediately
         if (horizontalDist > maxReach + limitExpansion) {

@@ -24,6 +24,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 
+// TODO: Potentially add a feature to prevent modern clients from sending
+//  arm swing packets when throwing projectiles? Would k
 
 /**
  * Base class for all custom projectile entities in the mechanics system.

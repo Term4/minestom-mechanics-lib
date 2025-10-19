@@ -55,7 +55,7 @@ public class HitDetectionFeature extends InitializableSystem {
         instance.markInitialized();
 
         log.debug("Initialized with server reach: {:.2f}b, attack packet reach: {:.2f}b",
-                hitDetectionConfig.getServerSideReach(), hitDetectionConfig.getAttackPacketReach());
+                hitDetectionConfig.serverSideReach(), hitDetectionConfig.attackPacketReach());
 
         log.debug("Snapshot-based validation: Fast distance check → Precise ray logging");
 
@@ -84,7 +84,7 @@ public class HitDetectionFeature extends InitializableSystem {
         // Calculate precise distance for logging/analytics
         Pos attackerEye = EyeHeightSystem.getInstance().getEyePosition(attacker);
         Pos victimPos = victim.getPosition();
-        double maxReach = hitDetectionConfig.getAttackPacketReach();
+        double maxReach = hitDetectionConfig.attackPacketReach();
 
         // Use the player's actual look direction for accurate ray casting
         // This ensures different look angles (head, middle, feet) produce different distances
@@ -121,7 +121,7 @@ public class HitDetectionFeature extends InitializableSystem {
             // Store precise snapshot for server-side hits too
             Pos attackerEye = EyeHeightSystem.getInstance().getEyePosition(attacker);
             Pos victimPos = target.getPosition();
-            double maxReach = hitDetectionConfig.getServerSideReach();
+            double maxReach = hitDetectionConfig.serverSideReach();
 
             // Use the player's actual look direction for accurate ray casting
             Vec lookDirection = attackerEye.direction();

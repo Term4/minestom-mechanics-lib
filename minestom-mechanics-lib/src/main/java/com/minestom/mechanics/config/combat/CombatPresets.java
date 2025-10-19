@@ -53,19 +53,14 @@ public class CombatPresets {
     /**
      * Standard hit detection (3.0 server-side, 5.0 attack packet).
      */
-    public static final HitDetectionConfig STANDARD_HIT_DETECTION = HitDetectionConfig.builder()
-            .reach(3.0, 5.0)
-            .hitboxExpansion(0.1, 0.2)
-            .build();
+    public static final HitDetectionConfig STANDARD_HIT_DETECTION = HitDetectionConfig.standard()
+            .withHitboxExpansion(0.1, 0.2);
     
     /**
      * Strict hit detection for anticheat compatibility.
      */
-    public static final HitDetectionConfig STRICT_HIT_DETECTION = HitDetectionConfig.builder()
-            .reach(3.0, 4.5)
-            .hitboxExpansion(0.1, 0.105)
-            .build();
-    
+    public static final HitDetectionConfig STRICT_HIT_DETECTION = HitDetectionConfig.strict();
+
     // Damage configuration has been moved to GameplayConfig to avoid duplication
     
     /**
