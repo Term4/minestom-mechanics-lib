@@ -1,6 +1,6 @@
 package com.minestom.mechanics.projectile.entities;
 
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
 import net.minestom.server.entity.Entity;
@@ -15,13 +15,14 @@ import org.jetbrains.annotations.Nullable;
 
 // TODO: Probably update to extend an abstract projectile
 
+// TODO: Add boolean for if the eggs should spawn chickens
+
 public class ThrownEgg extends CustomEntityProjectile implements ItemHoldingProjectile {
 
     private ProjectileKnockbackConfig knockbackConfig;
 
     public ThrownEgg(@Nullable Entity shooter) {
         super(shooter, EntityType.EGG);
-        // Initialize with default egg knockback config
         this.knockbackConfig = ProjectileKnockbackPresets.EGG;
     }
 
@@ -33,9 +34,13 @@ public class ThrownEgg extends CustomEntityProjectile implements ItemHoldingProj
         if (((LivingEntity) entity).damage(new Damage(DamageType.THROWN, this, getShooter(), null, 0))) {
             if (isUseKnockbackHandler()) {
                 try {
-                    KnockbackHandler.getInstance().applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos);
+                    // Get applicator from ProjectileManager
+                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
+
+                    applicator.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos, 0);
                 } catch (Exception e) {
-                    // Fallback: no knockback if KnockbackHandler fails
+                    // Fallback: no knockback if applicator fails
                 }
             }
         }

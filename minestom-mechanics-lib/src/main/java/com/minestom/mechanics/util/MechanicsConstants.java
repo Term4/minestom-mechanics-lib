@@ -58,6 +58,9 @@ public final class MechanicsConstants {
     /** Default velocity multiplier for fishing rods */
     public static final double FISHING_ROD_MAX_VELOCITY = 0.4;
 
+    /** Minimum downward velocity to be considered "falling" */
+    public static final double FALLING_VELOCITY_THRESHOLD = 0;
+
     // ===========================
     // KNOCKBACK CONSTANTS
     // ===========================
@@ -76,6 +79,9 @@ public final class MechanicsConstants {
 
     /** Default sprint vertical knockback */
     public static final double DEFAULT_SPRINT_VERTICAL = 0.1;
+
+    /** Minimum vertical knockback for falling entities */
+    public static final double MIN_FALLING_KNOCKBACK = 0.1;
 
     // ===========================
     // PLAYER CONSTANTS

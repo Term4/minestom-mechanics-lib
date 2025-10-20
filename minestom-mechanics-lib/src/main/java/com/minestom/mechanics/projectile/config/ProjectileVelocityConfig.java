@@ -15,7 +15,9 @@ public record ProjectileVelocityConfig(
         double horizontalMultiplier,  // X/Z axis (distance)
         double verticalMultiplier,    // Y axis (height/arc)
         double spreadMultiplier,      // Inaccuracy
-        double gravity                // Drop rate
+        double gravity,               // Drop rate
+        double horizontalAirResistance, // Horizontal Drag (how much it slows down in the air)
+        double verticalAirResistance    // Vertical Drag
 ) {
 
     // Validation
@@ -31,29 +33,29 @@ public record ProjectileVelocityConfig(
      * Set both horizontal and vertical multipliers uniformly (convenience method).
      */
     public ProjectileVelocityConfig withMultiplier(double multiplier) {
-        return new ProjectileVelocityConfig(multiplier, multiplier, spreadMultiplier, gravity);
+        return new ProjectileVelocityConfig(multiplier, multiplier, spreadMultiplier, gravity, horizontalAirResistance, verticalAirResistance);
     }
 
-    public ProjectileVelocityConfig withHorizontalMultiplier(double multiplier) {
-        return new ProjectileVelocityConfig(multiplier, verticalMultiplier, spreadMultiplier, gravity);
+    public ProjectileVelocityConfig withMultipliers(double horizontal, double vertical) {
+        return new ProjectileVelocityConfig(horizontal, vertical, spreadMultiplier, gravity, horizontalAirResistance, verticalAirResistance);
     }
 
-    public ProjectileVelocityConfig withVerticalMultiplier(double multiplier) {
-        return new ProjectileVelocityConfig(horizontalMultiplier, multiplier, spreadMultiplier, gravity);
-    }
-
-    public ProjectileVelocityConfig withSpreadMultiplier(double multiplier) {
-        return new ProjectileVelocityConfig(horizontalMultiplier, verticalMultiplier, multiplier, gravity);
+    public ProjectileVelocityConfig withSpread(double multiplier) {
+        return new ProjectileVelocityConfig(horizontalMultiplier, verticalMultiplier, multiplier, gravity, horizontalAirResistance, verticalAirResistance);
     }
 
     public ProjectileVelocityConfig withGravity(double gravity) {
-        return new ProjectileVelocityConfig(horizontalMultiplier, verticalMultiplier, spreadMultiplier, gravity);
+        return new ProjectileVelocityConfig(horizontalMultiplier, verticalMultiplier, spreadMultiplier, gravity, horizontalAirResistance, verticalAirResistance);
+    }
+
+    public ProjectileVelocityConfig withDrag(double horizontalDrag, double verticalDrag) {
+        return new ProjectileVelocityConfig(horizontalMultiplier, verticalMultiplier, spreadMultiplier, gravity, horizontalDrag, verticalDrag);
     }
 
     /**
      * Set custom horizontal and vertical multipliers independently.
      */
-    public ProjectileVelocityConfig withCustom(double horizontal, double vertical) {
-        return new ProjectileVelocityConfig(horizontal, vertical, spreadMultiplier, gravity);
+    public ProjectileVelocityConfig withCustom(double horizontal, double vertical, double spread, double gravity, double horizontalDrag, double verticalDrag) {
+        return new ProjectileVelocityConfig(horizontal, vertical, spread, gravity, horizontalDrag, verticalDrag);
     }
 }

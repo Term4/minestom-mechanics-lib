@@ -1,7 +1,8 @@
 package com.minestom.mechanics.features.knockback.components;
 
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
+import com.minestom.mechanics.util.GameplayUtils;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
@@ -74,7 +75,7 @@ public class KnockbackCalculator {
      * Calculate knockback direction for projectiles (from origin position, not attacker position).
      */
     public Vec calculateProjectileKnockbackDirection(LivingEntity victim, Pos projectileOrigin) {
-        
+
         double dx = victim.getPosition().x() - projectileOrigin.x();
         double dz = victim.getPosition().z() - projectileOrigin.z();
 
@@ -95,11 +96,11 @@ public class KnockbackCalculator {
     /**
      * Calculate final velocity from knockback components.
      */
-    public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackHandler.KnockbackStrength strength,
-                                      KnockbackHandler.KnockbackType type) {
+    public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackStrength strength,
+                                      KnockbackType type) {
         double tps = ServerFlag.SERVER_TICKS_PER_SECOND;
-        double horizontal = strength.horizontal / tps;
-        double vertical = strength.vertical / tps;
+        double horizontal = strength.horizontal() / tps;
+        double vertical = strength.vertical() / tps;
 
         Vec oldVelocity = victim.getVelocity();
 
@@ -126,27 +127,22 @@ public class KnockbackCalculator {
 
     /**
      * Calculate final vertical component of knockback.
-     * ✅ REFACTORED: Using MIN_FALLING_KNOCKBACK constant
      */
     private double calculateVerticalComponent(LivingEntity victim, Vec oldVelocity,
                                               double vertical, double tps) {
-        boolean isInAir = !victim.isOnGround();
-
-        // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug (where it has a ~ -1.518 offset)
-        boolean isFalling = isInAir && oldVelocity.y() <= 0.0;
-
         if (victim.isOnGround()) {
             return oldVelocity.y() / 2.0 + vertical * tps;
         }
 
-        // TODO: Investigate if this is needed at all. Seems arbitrary, if someone configures
-        //  their knockback profile in a way that would result in vertical being < MIN_FALLING_KNOCKBACK,
-        //  we should allow that, not override it. If they get upset that's kinda their fault
-        // ✅ REFACTORED: Using constant for no-falling KB
+        // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug (where it has a ~ -1.518 offset)
+        boolean isFalling = GameplayUtils.isFalling(victim);
+
         if (isFalling) {
             return Math.max(vertical * tps, MIN_FALLING_KNOCKBACK);
         }
-
+        // TODO: Investigate if this is needed at all. Seems arbitrary, if someone configures
+        //  their knockback profile in a way that would result in vertical being < MIN_FALLING_KNOCKBACK,
+        //  we should allow that, not override it. If they get upset that's kinda their fault
         return oldVelocity.y() / 2.0 + vertical * tps;
     }
 }

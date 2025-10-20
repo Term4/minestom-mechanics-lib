@@ -1,6 +1,6 @@
 package com.minestom.mechanics.features.knockback.sync;
 
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -137,7 +137,7 @@ public class KnockbackSyncHandler extends InitializableSystem {
         dz /= horizontalDistance;
 
         // Apply look weight if configured
-        double lookWeight = KnockbackHandler.getInstance().getLookWeight();
+        double lookWeight = KnockbackSystem.getInstance().getLookWeight();
         if (lookWeight > 0) {
             double yaw = Math.toRadians(attackerPos.yaw());
             double lookX = -Math.sin(yaw);
@@ -292,7 +292,7 @@ public class KnockbackSyncHandler extends InitializableSystem {
         }
 
         // Update knockback handler
-        KnockbackHandler.PlayerKnockbackData kbData = KnockbackHandler.getInstance().getPlayerData(player);
+        KnockbackSystem.PlayerKnockbackData kbData = KnockbackSystem.getInstance().getPlayerData(player);
         if (kbData != null) {
             kbData.lastPing = tracker.getAveragePing();
         }

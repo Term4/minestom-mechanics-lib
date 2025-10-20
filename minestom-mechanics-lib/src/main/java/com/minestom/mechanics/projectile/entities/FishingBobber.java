@@ -1,10 +1,11 @@
 package com.minestom.mechanics.projectile.entities;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
 import com.minestom.mechanics.projectile.ProjectileBehavior;
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
@@ -163,26 +164,26 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         if (entity instanceof Player) {
             // Apply damage first
             if (((LivingEntity) entity).damage(new Damage(DamageType.GENERIC, null, null, null, 0))) {
-                // Use the integrated KnockbackHandler system for consistent knockback
+                // Use the integrated knockback system for consistent knockback
                 if (isUseKnockbackHandler()) {
                     try {
-                        KnockbackHandler knockbackHandler = KnockbackHandler.getInstance();
-                        if (knockbackHandler != null) {
-                            // Determine knockback origin based on mode
-                            Pos knockbackOrigin;
-                            if (knockbackMode == ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE) {
-                                // Knockback away from bobber position (vanilla behavior)
-                                knockbackOrigin = this.getPosition();
-                            } else {
-                                // Knockback from shooter position (like normal projectiles)
-                                knockbackOrigin = getShooter() != null ? getShooter().getPosition() : this.getPosition();
-                            }
+                        var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+                        KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
 
-                            knockbackHandler.applyProjectileKnockback((LivingEntity) entity, this, knockbackOrigin);
+                        // Determine knockback origin based on mode
+                        Pos knockbackOrigin;
+                        if (knockbackMode == ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE) {
+                            // Knockback away from bobber position (vanilla behavior)
+                            knockbackOrigin = this.getPosition();
+                        } else {
+                            // Knockback from shooter position (like normal projectiles)
+                            knockbackOrigin = getShooter() != null ? getShooter().getPosition() : this.getPosition();
                         }
+
+                        applicator.applyProjectileKnockback((LivingEntity) entity, this, knockbackOrigin, 0);
                     } catch (Exception e) {
-                        // No knockback if KnockbackHandler fails
-                        log.debug("KnockbackHandler failed, no knockback applied");
+                        // No knockback if applicator fails
+                        log.debug("KnockbackApplicator failed, no knockback applied");
                     }
                 }
             }
@@ -221,21 +222,33 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         return durability;
     }
 
-    // TODO: Ensure this functions correctly
+    /**
+     * Pull hooked entity towards the shooter.
+     * Configurable to allow/disallow pulling players.
+     */
     private void pullEntity(Entity entity) {
         Entity shooter = getShooter();
         if (shooter == null) return;
 
-        // Only pull non-player entities (fish, items, etc.)
-        // Players should not be pulled by fishing rods
+        // Check if we should pull players (configurable)
         if (entity instanceof Player) {
-            return;
+            var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+            var config = projectileManager.getProjectileConfig();
+
+            if (!config.isFishingRodPullPlayers()) {
+                return; // Don't pull players if disabled
+            }
         }
 
+        // Calculate pull velocity towards shooter
         Pos shooterPos = shooter.getPosition();
         Pos pos = getPosition();
-        Vec velocity = new Vec(shooterPos.x() - pos.x(), shooterPos.y() - pos.y(),
-                shooterPos.z() - pos.z()).mul(0.1);
+        Vec velocity = new Vec(
+                shooterPos.x() - pos.x(),
+                shooterPos.y() - pos.y(),
+                shooterPos.z() - pos.z()
+        ).mul(0.1);
+
         velocity = velocity.mul(ServerFlag.SERVER_TICKS_PER_SECOND);
         entity.setVelocity(entity.getVelocity().add(velocity));
     }

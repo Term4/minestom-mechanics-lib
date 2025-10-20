@@ -1,8 +1,7 @@
 package com.minestom.mechanics.features.knockback.components;
 
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.LogUtil;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Player;
 import net.minestom.server.tag.Tag;
 
@@ -31,9 +30,11 @@ public class KnockbackStateManager {
     private static final Tag<Boolean> KB_GROUNDED = Tag.Boolean("kb_grounded").defaultValue(true);
     
     // Player data tracking
-    private final Map<UUID, KnockbackHandler.PlayerKnockbackData> playerDataMap = new ConcurrentHashMap<>();
+    private final Map<UUID, KnockbackSystem.PlayerKnockbackData> playerDataMap = new ConcurrentHashMap<>();
     private final Set<UUID> knockbackThisTick = ConcurrentHashMap.newKeySet();
-    
+
+
+    // TODO: keep this, or find a better way. Could be a nice utility class
     /**
      * Track ground state for knockback calculations.
      * ✅ REFACTORED: Using GROUND_STATE_DELAY_MS constant
@@ -57,21 +58,21 @@ public class KnockbackStateManager {
      * Update player combat state.
      */
     public void updateCombatState(Player player) {
-        KnockbackHandler.PlayerKnockbackData data = getOrCreatePlayerData(player);
+        KnockbackSystem.PlayerKnockbackData data = getOrCreatePlayerData(player);
         data.lastCombatTime = System.currentTimeMillis();
     }
     
     /**
      * Get or create player data.
      */
-    public KnockbackHandler.PlayerKnockbackData getOrCreatePlayerData(Player player) {
-        return playerDataMap.computeIfAbsent(player.getUuid(), KnockbackHandler.PlayerKnockbackData::new);
+    public KnockbackSystem.PlayerKnockbackData getOrCreatePlayerData(Player player) {
+        return playerDataMap.computeIfAbsent(player.getUuid(), KnockbackSystem.PlayerKnockbackData::new);
     }
     
     /**
      * Get player data.
      */
-    public KnockbackHandler.PlayerKnockbackData getPlayerData(Player player) {
+    public KnockbackSystem.PlayerKnockbackData getPlayerData(Player player) {
         return playerDataMap.get(player.getUuid());
     }
     
@@ -82,7 +83,7 @@ public class KnockbackStateManager {
         UUID uuid = player.getUuid();
 
         // Remove from maps
-        KnockbackHandler.PlayerKnockbackData data = playerDataMap.remove(uuid);
+        KnockbackSystem.PlayerKnockbackData data = playerDataMap.remove(uuid);
         if (data != null) {
             // Clear any references inside the data
             //  data.lastKnockback = Vec.ZERO;

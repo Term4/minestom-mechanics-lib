@@ -78,6 +78,15 @@ public class CombatManager extends AbstractManager<CombatManager> {
     // RUNTIME OPERATIONS
     // ===========================
 
+    /**
+     * Get the current combat configuration.
+     * Used by other systems that need access to combat config (like ProjectileManager).
+     */
+    public CombatConfig getCombatConfig() {
+        requireInitialized();
+        return currentConfig;
+    }
+
     public void setBlockingEnabled(boolean enabled) {
         requireInitialized();
         blockingSystem.setRuntimeEnabled(enabled);

@@ -1,7 +1,9 @@
 package com.minestom.mechanics.attack;
 
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
+import com.minestom.mechanics.features.knockback.components.KnockbackType;
 import com.minestom.mechanics.validation.HitDetectionFeature;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.GameplayUtils;
@@ -52,10 +54,14 @@ public class AttackFeature extends InitializableSystem {
     
     private static final long ATTACK_DEDUPE_MS = MechanicsConstants.ATTACK_DEDUPE_MS;
 
+    // Knockback components
+    private KnockbackApplicator knockbackApplicator;
+
     private AttackFeature(CombatConfig config) {
         this.config = config;
         this.attackCalculator = new AttackCalculator(config);
         this.sprintBonusCalculator = new SprintBonusCalculator(config);
+        this.knockbackApplicator = new KnockbackApplicator(config.knockbackConfig());
     }
 
     public static AttackFeature initialize(CombatConfig config) {
@@ -195,11 +201,12 @@ public class AttackFeature extends InitializableSystem {
         
         // Apply knockback if allowed
         if (shouldApplyKnockback(victim)) {
-            KnockbackHandler.getInstance().applyKnockback(
+            knockbackApplicator.applyKnockback(
                     victim,
                     attacker,
-                    KnockbackHandler.KnockbackType.ATTACK,
-                    result.hadSprintBonus()
+                    KnockbackType.ATTACK,
+                    result.hadSprintBonus(),
+                    0   // Placeholder for enchantment level
             );
         }
         

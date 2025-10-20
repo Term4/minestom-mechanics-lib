@@ -1,7 +1,8 @@
 package com.minestom.mechanics.projectile.entities;
 
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
 import net.minestom.server.coordinate.Pos;
@@ -82,12 +83,15 @@ public class ThrownEnderpearl extends CustomEntityProjectile implements ItemHold
     public boolean onHit(Entity entity) {
         // Only apply knockback if damage actually went through
         if (((LivingEntity) entity).damage(DamageType.THROWN, 0)) {
-            // Apply knockback using integrated KnockbackHandler system (disabled by default for ender pearls)
+            // Apply knockback (disabled by default for ender pearls)
             if (isUseKnockbackHandler()) {
                 try {
-                    KnockbackHandler.getInstance().applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos);
+                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
+
+                    applicator.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos, 0);
                 } catch (Exception e) {
-                    // Fallback: no knockback if KnockbackHandler fails
+                    // Fallback: no knockback if applicator fails
                 }
             }
         }

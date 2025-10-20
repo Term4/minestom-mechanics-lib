@@ -1,6 +1,7 @@
 package com.minestom.mechanics.projectile.entities;
 
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
 import net.minestom.server.entity.Entity;
@@ -35,9 +36,12 @@ public class Snowball extends CustomEntityProjectile implements ItemHoldingProje
         if (((LivingEntity) entity).damage(new Damage(DamageType.THROWN, this, getShooter(), null, damage))) {
             if (isUseKnockbackHandler()) {
                 try {
-                    KnockbackHandler.getInstance().applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos);
+                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
+
+                    applicator.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos, 0);
                 } catch (Exception e) {
-                    // Fallback: no knockback if KnockbackHandler fails
+                    // Fallback: no knockback if applicator fails
                 }
             }
         }

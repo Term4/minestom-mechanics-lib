@@ -1,5 +1,6 @@
 package com.minestom.mechanics.util;
 
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
@@ -24,6 +25,18 @@ public class GameplayUtils {
             return player.getUsername();
         }
         return entity.getClass().getSimpleName();
+    }
+
+    /**
+     * Check if an entity is falling (in air with downward velocity).
+     *
+     * @param entity The entity to check
+     * @return True if the entity is falling
+     */
+    public static boolean isFalling(LivingEntity entity) {
+        Vec velocity = entity.getVelocity();
+        boolean isInAir = !entity.isOnGround();
+        return isInAir && velocity.y() < MechanicsConstants.FALLING_VELOCITY_THRESHOLD;
     }
 }
 

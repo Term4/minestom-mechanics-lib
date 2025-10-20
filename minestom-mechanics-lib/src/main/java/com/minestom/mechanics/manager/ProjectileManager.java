@@ -1,5 +1,6 @@
 package com.minestom.mechanics.manager;
 
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
 import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
 import com.minestom.mechanics.projectile.features.BowFeature;
 import com.minestom.mechanics.projectile.features.FishingRodFeature;
@@ -8,22 +9,8 @@ import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.events.ProjectileCleanupHandler;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 
-// TODO: Simplify, unnecessarily long...
-
 /**
  * Projectile Manager - Initializes all projectile systems
- * ✅ REFACTORED: Now extends AbstractManager for consistency
- *
- * Handles:
- * - Bows &amp; Arrows (with focused components)
- * - Fishing Rods (with focused components)
- * - Snowballs, Eggs, Ender Pearls (with focused components)
- *
- * Usage:
- * <pre>
- * // In Main.java, after CombatManager.initialize()
- * ProjectileManager.getInstance().initialize();
- * </pre>
  */
 public class ProjectileManager extends AbstractManager<ProjectileManager> {
     private static ProjectileManager instance;
@@ -32,13 +19,15 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
     private BowFeature bowFeature;
     private FishingRodFeature fishingRodFeature;
     private MiscProjectileFeature miscProjectileFeature;
-    
+
     // Configuration
     private ProjectileConfig projectileConfig;
 
+    // Knockback applicator (shared by all projectiles)
+    private KnockbackApplicator knockbackApplicator;
+
     private ProjectileManager() {
         super("ProjectileManager");
-        // Initialize with default config
         this.projectileConfig = ProjectileConfig.defaultConfig();
     }
 
@@ -49,14 +38,15 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         return instance;
     }
 
-    /**
-     * Initialize all projectile systems with a specific configuration.
-     * Call this once at server startup, after CombatManager.
-     */
     public ProjectileManager initialize(ProjectileConfig config) {
         this.projectileConfig = config;
-        
+
         return initializeWithWrapper(() -> {
+            // Initialize knockback applicator from CombatManager's config
+            log.debug("Initializing KnockbackApplicator for projectiles...");
+            var combatConfig = CombatManager.getInstance().getCombatConfig();
+            this.knockbackApplicator = new KnockbackApplicator(combatConfig.knockbackConfig());
+
             // Initialize bow feature
             log.debug("Initializing BowFeature...");
             bowFeature = BowFeature.initialize();
@@ -80,10 +70,6 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         });
     }
 
-    /**
-     * Initialize all projectile systems with default configuration.
-     * Call this once at server startup, after CombatManager.
-     */
     public ProjectileManager initialize() {
         return initialize(ProjectileConfig.defaultConfig());
     }
@@ -113,6 +99,7 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         bowFeature = null;
         fishingRodFeature = null;
         miscProjectileFeature = null;
+        knockbackApplicator = null;
     }
 
     @Override
@@ -126,19 +113,17 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         status.append("  BowFeature: ").append(bowFeature != null ? "✓" : "✗").append("\n");
         status.append("  FishingRodFeature: ").append(fishingRodFeature != null ? "✓" : "✗").append("\n");
         status.append("  MiscProjectileFeature: ").append(miscProjectileFeature != null ? "✓" : "✗").append("\n");
+        status.append("  KnockbackApplicator: ").append(knockbackApplicator != null ? "✓" : "✗").append("\n");
 
         return status.toString();
     }
 
-    /**
-     * Shutdown all systems (for server stop or reinitialize)
-     */
     public void shutdown() {
         shutdownWithWrapper(() -> {
-            // Reset references
             bowFeature = null;
             fishingRodFeature = null;
             miscProjectileFeature = null;
+            knockbackApplicator = null;
         });
     }
 
@@ -161,65 +146,32 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         return miscProjectileFeature;
     }
 
+    /**
+     * Get the shared knockback applicator for all projectiles.
+     * Projectile entities should use this to apply knockback.
+     */
+    public KnockbackApplicator getKnockbackApplicator() {
+        requireInitialized();
+        return knockbackApplicator;
+    }
+
     // ===========================
-    // CONFIGURATION GETTERS/SETTERS
+    // CONFIGURATION
     // ===========================
 
+    /**
+     * Get the base projectile configuration.
+     * This is the default/fallback used when no tags are present.
+     *
+     * For runtime modifications, use tags:
+     * - KnockbackSystem.PROJECTILE_MULTIPLIER
+     * - KnockbackSystem.PROJECTILE_MODIFY
+     * - KnockbackSystem.PROJECTILE_CUSTOM
+     *
+     * To change the base config permanently, reinitialize with a new config.
+     */
     public ProjectileConfig getProjectileConfig() {
+        requireInitialized();
         return projectileConfig;
-    }
-
-    public void setProjectileConfig(ProjectileConfig config) {
-        this.projectileConfig = config;
-        // Update individual features if already initialized
-        if (fishingRodFeature != null) {
-            fishingRodFeature.setConfig(config.getFishingRodVelocityConfig());
-        }
-    }
-
-    // Knockback configuration getters
-    public ProjectileKnockbackConfig getArrowKnockbackConfig() {
-        return projectileConfig.getArrowKnockbackConfig();
-    }
-
-    public ProjectileKnockbackConfig getSnowballKnockbackConfig() {
-        return projectileConfig.getSnowballKnockbackConfig();
-    }
-
-    public ProjectileKnockbackConfig getEggKnockbackConfig() {
-        return projectileConfig.getEggKnockbackConfig();
-    }
-
-    public ProjectileKnockbackConfig getEnderPearlKnockbackConfig() {
-        return projectileConfig.getEnderPearlKnockbackConfig();
-    }
-
-    public ProjectileKnockbackConfig getFishingRodKnockbackConfig() {
-        return projectileConfig.getFishingRodKnockbackConfig();
-    }
-
-    public ProjectileConfig.FishingRodKnockbackMode getFishingRodKnockbackMode() {
-        return projectileConfig.getFishingRodKnockbackMode();
-    }
-
-    // Velocity configuration getters
-    public ProjectileVelocityConfig getArrowVelocityConfig() {
-        return projectileConfig.getArrowVelocityConfig();
-    }
-
-    public ProjectileVelocityConfig getSnowballVelocityConfig() {
-        return projectileConfig.getSnowballVelocityConfig();
-    }
-
-    public ProjectileVelocityConfig getEggVelocityConfig() {
-        return projectileConfig.getEggVelocityConfig();
-    }
-
-    public ProjectileVelocityConfig getEnderPearlVelocityConfig() {
-        return projectileConfig.getEnderPearlVelocityConfig();
-    }
-
-    public ProjectileVelocityConfig getFishingRodVelocityConfig() {
-        return projectileConfig.getFishingRodVelocityConfig();
     }
 }

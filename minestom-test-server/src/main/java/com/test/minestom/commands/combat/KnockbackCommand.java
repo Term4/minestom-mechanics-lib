@@ -2,7 +2,7 @@ package com.test.minestom.commands.combat;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.config.knockback.KnockbackPresets;
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.CommandHelpBuilder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -22,7 +22,7 @@ import static com.minestom.mechanics.util.MessageBuilder.*;
  */
 public class KnockbackCommand extends Command {
 
-    private final KnockbackHandler handler;
+    private final KnockbackSystem handler;
 
     // Available presets
     private static final Map<String, KnockbackConfig> PRESETS = new LinkedHashMap<>();
@@ -34,7 +34,7 @@ public class KnockbackCommand extends Command {
 
     public KnockbackCommand() {
         super("kb", "knockback");
-        this.handler = KnockbackHandler.getInstance();
+        this.handler = KnockbackSystem.getInstance();
         setupCommands();
     }
 

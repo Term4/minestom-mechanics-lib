@@ -5,14 +5,9 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
-import com.minestom.mechanics.config.gameplay.GameplayPresets;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.gameplay.EyeHeightSystem;
-import com.minestom.mechanics.features.gameplay.HitboxSystem;
-import com.minestom.mechanics.features.gameplay.MovementRestrictionSystem;
-import com.minestom.mechanics.features.gameplay.PlayerCollisionSystem;
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.manager.GameplayManager;
 import com.minestom.mechanics.manager.HitboxManager;
@@ -54,7 +49,7 @@ public class MechanicsManager {
     private DamageFeature damageFeature;
     private HitboxManager hitboxManager;
     private ArmorManager armorManager;
-    private KnockbackHandler knockbackHandler;
+    private KnockbackSystem knockbackSystem;
 
     // Track which systems are enabled
     private boolean combatEnabled = false;
@@ -147,8 +142,8 @@ public class MechanicsManager {
         if (armorEnabled && armorManager != null) {
             armorManager.cleanupPlayer(player);
         }
-        if (knockbackEnabled && knockbackHandler != null) {
-            knockbackHandler.cleanup(player);
+        if (knockbackEnabled && knockbackSystem != null) {
+            knockbackSystem.cleanup(player);
         }
     }
     
@@ -213,9 +208,9 @@ public class MechanicsManager {
             }
         }
 
-        if (knockbackEnabled && knockbackHandler != null) {
+        if (knockbackEnabled && knockbackSystem != null) {
             try {
-                knockbackHandler.shutdown();
+                knockbackSystem.shutdown();
                 log.info("Knockback system shut down");
             } catch (Exception e) {
                 log.error("Knockback shutdown failed", e);
@@ -228,7 +223,7 @@ public class MechanicsManager {
         damageFeature = null;
         hitboxManager = null;
         armorManager = null;
-        knockbackHandler = null;
+        knockbackSystem = null;
 
         combatEnabled = false;
         gameplayEnabled = false;
@@ -281,18 +276,18 @@ public class MechanicsManager {
         return armorManager;
     }
 
-    public KnockbackHandler getKnockbackHandler() {
+    public KnockbackSystem getKnockbackHandler() {
         if (!knockbackEnabled) {
             throw new IllegalStateException("Knockback system not enabled!");
         }
-        return knockbackHandler;
+        return knockbackSystem;
     }
 
     /**
      * @deprecated Use {@link #getKnockbackHandler()} instead. KnockbackManager is deprecated.
      */
     @Deprecated
-    public KnockbackHandler getKnockbackManager() {
+    public KnockbackSystem getKnockbackManager() {
         return getKnockbackHandler();
     }
     
@@ -480,8 +475,8 @@ public class MechanicsManager {
             // Initialize knockback if configured
             if (knockbackConfig != null) {
                 log.info("Initializing Knockback System...");
-                manager.knockbackHandler = KnockbackHandler.initialize(knockbackConfig);
-                manager.knockbackHandler.setKnockbackSyncEnabled(knockbackSyncEnabled);
+                manager.knockbackSystem = KnockbackSystem.initialize(knockbackConfig);
+                manager.knockbackSystem.setKnockbackSyncEnabled(knockbackSyncEnabled);
                 manager.knockbackEnabled = true;
                 systemCount++;
             }

@@ -1,5 +1,6 @@
 package com.minestom.mechanics.projectile.entities;
 
+import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -10,7 +11,7 @@ import net.minestom.server.entity.metadata.projectile.AbstractArrowMeta;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.packet.server.play.CollectItemPacket;
 import net.minestom.server.utils.MathUtils;
-import com.minestom.mechanics.features.knockback.KnockbackHandler;
+import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -211,46 +212,28 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 			}
 
 		// Apply knockback using integrated KnockbackHandler system
-		if (useKnockbackHandler) {
-			try {
-				KnockbackHandler knockbackHandler = KnockbackHandler.getInstance();
-				if (knockbackHandler != null) {
-					// Use config values for arrow knockback
-					double horizontalKnockback = knockbackConfig.horizontalKnockback();
-					double verticalKnockback = knockbackConfig.verticalKnockback();
-					
-					knockbackHandler.applyProjectileKnockback(living, this, shooterOriginPos, knockback);
-				}
-			} catch (Exception e) {
-				// Fallback to old system if KnockbackHandler fails
-				if (knockback > 0) {
-					Vec knockbackVec = getVelocity()
-							.mul(1, 0, 1)
-							.normalize().mul(knockback * 0.6);
-					knockbackVec = knockbackVec.add(0, 0.1, 0)
-							.mul(ServerFlag.SERVER_TICKS_PER_SECOND / 2.0);
+            if (useKnockbackHandler) {
+                try {
+                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
 
-					if (knockbackVec.lengthSquared() > 0) {
-						Vec newVel = living.getVelocity().add(knockbackVec);
-						living.setVelocity(newVel);
-					}
-				}
-			}
-		} else {
-			// Fallback to old system if disabled
-			if (knockback > 0) {
-				Vec knockbackVec = getVelocity()
-						.mul(1, 0, 1)
-						.normalize().mul(knockback * 0.6);
-				knockbackVec = knockbackVec.add(0, 0.1, 0)
-						.mul(ServerFlag.SERVER_TICKS_PER_SECOND / 2.0);
+                    applicator.applyProjectileKnockback(living, this, shooterOriginPos, knockback);
+                } catch (Exception e) {
+                    // Fallback to old system if applicator fails
+                    if (knockback > 0) {
+                        Vec knockbackVec = getVelocity()
+                                .mul(1, 0, 1)
+                                .normalize().mul(knockback * 0.6);
+                        knockbackVec = knockbackVec.add(0, 0.1, 0)
+                                .mul(ServerFlag.SERVER_TICKS_PER_SECOND / 2.0);
 
-				if (knockbackVec.lengthSquared() > 0) {
-					Vec newVel = living.getVelocity().add(knockbackVec);
-					living.setVelocity(newVel);
-				}
-			}
-		}
+                        if (knockbackVec.lengthSquared() > 0) {
+                            Vec newVel = living.getVelocity().add(knockbackVec);
+                            living.setVelocity(newVel);
+                        }
+                    }
+                }
+            }
 
 			onHurt(living);
 

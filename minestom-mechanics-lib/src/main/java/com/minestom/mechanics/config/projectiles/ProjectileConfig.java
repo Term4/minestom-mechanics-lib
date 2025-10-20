@@ -5,11 +5,13 @@ import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
 import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
 import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
 
-// TODO: Add an option for modern vs legacy projectiles (already exists, kinda, player momentum)
+// TODO: Add an option for modern vs legacy projectiles (already exists, kinda, player momentum, just less explicit)
 //  ALSO could add general configurable option in projectileconfig for
 //  allowing / disallowing players from hitting themselves with a specified
 //  projectile (would be useful for minigames / rules).
 //  ALSO could add same option for being able to hit team members.
+
+// TODO: Add fireballs as a projectile
 
 /**
  * Immutable configuration for all projectile-related settings.
@@ -29,6 +31,9 @@ import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
  * </pre>
  */
 public record ProjectileConfig(
+        // Player momentum inheritance (modern feature, disabled for legacy 1.8)
+        boolean inheritPlayerMomentum,
+
         // Knockback configurations (what happens on hit)
         ProjectileKnockbackConfig arrowKnockback,
         ProjectileKnockbackConfig snowballKnockback,
@@ -45,9 +50,7 @@ public record ProjectileConfig(
 
         // Fishing rod specific
         FishingRodKnockbackMode fishingRodKnockbackMode,
-
-        // Player momentum inheritance (modern feature, disabled for legacy 1.8)
-        boolean inheritPlayerMomentum
+        boolean fishingRodPullPlayers
 ) {
 
     /**
@@ -58,6 +61,9 @@ public record ProjectileConfig(
         BOBBER_RELATIVE,
         /** Knockback from shooter/player position (like normal projectiles) */
         ORIGIN_RELATIVE
+    }
+    public boolean isFishingRodPullPlayers() {
+        return fishingRodPullPlayers;
     }
 
     // Validation
@@ -79,6 +85,8 @@ public record ProjectileConfig(
 
     public static ProjectileConfig defaultConfig() {
         return new ProjectileConfig(
+                // Inherit Player momentum
+                true,   // Modern behavior. Inherits player momentum
                 // Knockback
                 ProjectileKnockbackPresets.ARROW,
                 ProjectileKnockbackPresets.SNOWBALL,
@@ -93,8 +101,7 @@ public record ProjectileConfig(
                 ProjectileVelocityPresets.FISHING_ROD,
                 // Fishing rod mode
                 FishingRodKnockbackMode.BOBBER_RELATIVE,
-                // Player momentum
-                false  // Legacy 1.8 behavior by default
+                true  // Pull hooked players with fishing rod
         );
     }
 
@@ -118,84 +125,91 @@ public record ProjectileConfig(
     // ===== ARROW =====
 
     public ProjectileConfig withArrowKnockback(ProjectileKnockbackConfig config) {
-        return new ProjectileConfig(config, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, config, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     public ProjectileConfig withArrowVelocity(ProjectileVelocityConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, config, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     // ===== SNOWBALL =====
 
     public ProjectileConfig withSnowballKnockback(ProjectileKnockbackConfig config) {
-        return new ProjectileConfig(arrowKnockback, config, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, config, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     public ProjectileConfig withSnowballVelocity(ProjectileVelocityConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, config, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     // ===== EGG =====
 
     public ProjectileConfig withEggKnockback(ProjectileKnockbackConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, config, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, config, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     public ProjectileConfig withEggVelocity(ProjectileVelocityConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, config, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     // ===== ENDER PEARL =====
 
     public ProjectileConfig withEnderPearlKnockback(ProjectileKnockbackConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, config,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, config,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     public ProjectileConfig withEnderPearlVelocity(ProjectileVelocityConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, config,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     // ===== FISHING ROD =====
 
     public ProjectileConfig withFishingRodKnockback(ProjectileKnockbackConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 config, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inheritPlayerMomentum);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     public ProjectileConfig withFishingRodVelocity(ProjectileVelocityConfig config) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                config, fishingRodKnockbackMode, inheritPlayerMomentum);
+                config, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 
     public ProjectileConfig withFishingRodKnockbackMode(FishingRodKnockbackMode mode) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, mode, inheritPlayerMomentum);
+                fishingRodVelocity, mode, fishingRodPullPlayers);
+    }
+
+    // Add this:
+    public ProjectileConfig withFishingRodPullPlayers(boolean pullPlayers) {
+        return new ProjectileConfig(inheritPlayerMomentum, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+                fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
+                fishingRodVelocity, fishingRodKnockbackMode, pullPlayers);
     }
 
     // ===== PLAYER MOMENTUM =====
 
     public ProjectileConfig withInheritPlayerMomentum(boolean inherit) {
-        return new ProjectileConfig(arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
+        return new ProjectileConfig(inherit, arrowKnockback, snowballKnockback, eggKnockback, enderPearlKnockback,
                 fishingRodKnockback, arrowVelocity, snowballVelocity, eggVelocity, enderPearlVelocity,
-                fishingRodVelocity, fishingRodKnockbackMode, inherit);
+                fishingRodVelocity, fishingRodKnockbackMode, fishingRodPullPlayers);
     }
 }
