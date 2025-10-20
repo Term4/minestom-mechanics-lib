@@ -24,6 +24,12 @@ import static com.minestom.mechanics.constants.CombatConstants.*;
 //  then see if they were sprinting X ticks ago based on that? Isn't that what we already do?
 //  Why doesn't it work?
 
+// UPDATE!!! I think I figured it out. Minemen doesn't use actual predictions or anything,
+// they just add ~5 or so ticks to the sprint window (which is only ~250ms, not awful) but dude...
+// they also do some sort of hit queue, where you have an additional window BEYOND the typical
+// 10 ticks of invulnerability.
+//
+
 /**
  * Calculates sprint bonus for attacks.
  * Single responsibility: Only sprint bonus logic.

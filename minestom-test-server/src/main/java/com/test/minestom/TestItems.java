@@ -54,13 +54,13 @@ public class TestItems {
      */
     public static ItemStack noKnockbackSnowball() {
         return ItemStack.builder(Material.SNOWBALL)
-                .set(DataComponents.CUSTOM_NAME, Component.text("Feather Snowball", NamedTextColor.WHITE, TextDecoration.BOLD))
+                .set(DataComponents.CUSTOM_NAME, Component.text("Grapple Snowball", NamedTextColor.WHITE, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
-                        Component.text("No Knockback", NamedTextColor.GRAY)
+                        Component.text("Pull your enemies towards you!", NamedTextColor.GRAY)
                 ))
                 .build()
                 .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
-                        -1.0, 1.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
+                        -1.0, 5.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
                 ));
     }
 
@@ -71,14 +71,14 @@ public class TestItems {
         return ItemStack.builder(Material.BOW)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Cannon Bow", NamedTextColor.RED, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
-                        Component.text("10x Horizontal, 1.5x Vertical", NamedTextColor.GRAY)
+                        Component.text("5x Horizontal, 3x Vertical", NamedTextColor.GRAY)
                 ))
                 .build()
                 .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
-                        10.0,  // horizontal × 10
-                        1.5,   // vertical × 1.5
-                        10.0,  // sprint bonus horizontal × 10 (scales with base)
-                        1.5,   // sprint bonus vertical × 1.5 (scales with base)
+                        5.0,  // horizontal × 5
+                        3.0,   // vertical × 1.5
+                        1.0,  // sprint bonus horizontal × 10 (scales with base)
+                        1.0,   // sprint bonus vertical × 1.5 (scales with base)
                         1.0,   // air multiplier horizontal (NO CHANGE - already a multiplier!)
                         1.0    // air multiplier vertical (NO CHANGE - already a multiplier!)
                 ));

@@ -11,6 +11,9 @@ package com.minestom.mechanics.config.projectiles.advanced;
  *     .withGravity(0.02);
  * </pre>
  */
+
+// TODO: Add tag support for projectile velocities
+
 public record ProjectileVelocityConfig(
         double horizontalMultiplier,  // X/Z axis (distance)
         double verticalMultiplier,    // Y axis (height/arc)

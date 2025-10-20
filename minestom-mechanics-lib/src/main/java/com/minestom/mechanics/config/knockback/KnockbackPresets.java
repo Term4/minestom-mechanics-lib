@@ -4,7 +4,7 @@ public final class KnockbackPresets {
     private KnockbackPresets() {} // Prevent instantiation
 
     public static KnockbackConfig minemen() {
-        return new KnockbackConfig(
+        return KnockbackConfig.validated(
                 0.375,  // horizontal
                 0.365,  // vertical
                 0.45,   // verticalLimit
@@ -14,13 +14,12 @@ public final class KnockbackPresets {
                 1.0,    // airMultiplierVertical
                 0.5,    // lookWeight
                 false,   // modern
-                false,    // knockbackSyncSupported
-                false
+                false    // knockbackSyncSupported
         );
     }
 
     public static KnockbackConfig vanilla18() {
-        return new KnockbackConfig(
+        return KnockbackConfig.validated(
                 0.4,    // horizontal
                 0.4,    // vertical
                 0.4,    // verticalLimit
@@ -30,13 +29,12 @@ public final class KnockbackPresets {
                 1.0,    // airMultiplierVertical
                 0.0,    // lookWeight
                 false,  // modern (vanilla is legacy)
-                false,   // knockbackSyncSupported
-                false
+                false   // knockbackSyncSupported
         );
     }
 
     public static KnockbackConfig hypixel() {
-        return new KnockbackConfig(
+        return KnockbackConfig.validated(
                 0.42,   // horizontal
                 0.36,   // vertical
                 0.38,   // verticalLimit
@@ -46,8 +44,7 @@ public final class KnockbackPresets {
                 1.0,    // airMultiplierVertical
                 0.0,    // lookWeight
                 false,   // modern
-                false,    // knockbackSyncSupported
-                false
+                false    // knockbackSyncSupported
         );
     }
 }

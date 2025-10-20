@@ -98,7 +98,7 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
         KnockbackConfig baseConfig = getBaseConfigForProjectile(attacker);
 
         // Build config from resolved components
-        return new KnockbackConfig(
+        return KnockbackConfig.unvalidated(
                 components[0], // horizontal
                 components[1], // vertical
                 baseConfig.verticalLimit(),
@@ -108,8 +108,7 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 components[5], // airMultV
                 baseConfig.lookWeight(),
                 baseConfig.modern(),
-                false, // sync disabled
-                true
+                false // sync disabled
         );
     }
 
@@ -158,12 +157,15 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 pkbConfig = projectileConfig.getFishingRodKnockbackConfig();
             }
 
+            // TODO: Remove? Just don't even allow snowballs to hit?
+            //  ACTUALLY that should go in the options I mentioned earlier about teams
+            //  for projectiles
             if (pkbConfig != null && pkbConfig.enabled()) {
-                return new KnockbackConfig(
+                return KnockbackConfig.validated(
                         pkbConfig.horizontalKnockback(),
                         pkbConfig.verticalKnockback(),
                         pkbConfig.verticalLimit(),
-                        0.0, 0.0, 1.0, 1.0, 0.0, false, false, false
+                        0.0, 0.0, 1.0, 1.0, 0.0, false, false
                 );
             }
         } catch (Exception e) {
