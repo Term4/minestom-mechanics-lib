@@ -4,6 +4,7 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.config.gameplay.GameplayPresets;
+import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.features.blocking.BlockingStateManager;
 import com.test.minestom.commands.CommandRegistry;
 import com.minestom.mechanics.manager.CombatManager;
@@ -145,7 +146,7 @@ public class Main {
         // Initialize projectiles separately (not handled by MechanicsManager YET)
         // Using default projectile config
         com.minestom.mechanics.manager.ProjectileManager.getInstance()
-                .initialize(com.minestom.mechanics.config.combat.ProjectileConfig.builder().build());
+                .initialize(ProjectileConfig.defaultConfig());
 
         ClientVersionDetector.getInstance();
         ViewerBasedAnimationHandler.getInstance();

@@ -1,13 +1,12 @@
 package com.minestom.mechanics.manager;
 
+import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
 import com.minestom.mechanics.projectile.features.BowFeature;
 import com.minestom.mechanics.projectile.features.FishingRodFeature;
 import com.minestom.mechanics.projectile.features.MiscProjectileFeature;
-import com.minestom.mechanics.projectile.config.FishingRodConfig;
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
-import com.minestom.mechanics.projectile.config.FishingRodKnockbackConfig;
 import com.minestom.mechanics.events.ProjectileCleanupHandler;
-import com.minestom.mechanics.config.combat.ProjectileConfig;
+import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 
 // TODO: Simplify, unnecessarily long...
 
@@ -40,7 +39,7 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
     private ProjectileManager() {
         super("ProjectileManager");
         // Initialize with default config
-        this.projectileConfig = ProjectileConfig.builder().build();
+        this.projectileConfig = ProjectileConfig.defaultConfig();
     }
 
     public static ProjectileManager getInstance() {
@@ -73,10 +72,10 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
             // Register centralized cleanup handlers
             log.debug("Registering cleanup handlers...");
             ProjectileCleanupHandler.registerCleanupListeners();
-            
+
             // Set configurations on initialized features
             if (fishingRodFeature != null) {
-                fishingRodFeature.setConfig(config.getFishingRodConfig());
+                fishingRodFeature.setConfig(config.getFishingRodVelocityConfig());
             }
         });
     }
@@ -86,7 +85,7 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
      * Call this once at server startup, after CombatManager.
      */
     public ProjectileManager initialize() {
-        return initialize(ProjectileConfig.builder().build());
+        return initialize(ProjectileConfig.defaultConfig());
     }
 
     // ===========================
@@ -161,45 +160,66 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         requireInitialized();
         return miscProjectileFeature;
     }
-    
+
     // ===========================
     // CONFIGURATION GETTERS/SETTERS
     // ===========================
-    
+
     public ProjectileConfig getProjectileConfig() {
         return projectileConfig;
     }
-    
+
     public void setProjectileConfig(ProjectileConfig config) {
         this.projectileConfig = config;
         // Update individual features if already initialized
         if (fishingRodFeature != null) {
-            fishingRodFeature.setConfig(config.getFishingRodConfig());
+            fishingRodFeature.setConfig(config.getFishingRodVelocityConfig());
         }
     }
-    
-    // Convenience getters for individual configs
-    public FishingRodConfig getFishingRodConfig() {
-        return projectileConfig.getFishingRodConfig();
-    }
-    
+
+    // Knockback configuration getters
     public ProjectileKnockbackConfig getArrowKnockbackConfig() {
         return projectileConfig.getArrowKnockbackConfig();
     }
-    
+
     public ProjectileKnockbackConfig getSnowballKnockbackConfig() {
         return projectileConfig.getSnowballKnockbackConfig();
     }
-    
+
     public ProjectileKnockbackConfig getEggKnockbackConfig() {
         return projectileConfig.getEggKnockbackConfig();
     }
-    
+
     public ProjectileKnockbackConfig getEnderPearlKnockbackConfig() {
         return projectileConfig.getEnderPearlKnockbackConfig();
     }
-    
-    public FishingRodKnockbackConfig getFishingRodKnockbackConfig() {
+
+    public ProjectileKnockbackConfig getFishingRodKnockbackConfig() {
         return projectileConfig.getFishingRodKnockbackConfig();
+    }
+
+    public ProjectileConfig.FishingRodKnockbackMode getFishingRodKnockbackMode() {
+        return projectileConfig.getFishingRodKnockbackMode();
+    }
+
+    // Velocity configuration getters
+    public ProjectileVelocityConfig getArrowVelocityConfig() {
+        return projectileConfig.getArrowVelocityConfig();
+    }
+
+    public ProjectileVelocityConfig getSnowballVelocityConfig() {
+        return projectileConfig.getSnowballVelocityConfig();
+    }
+
+    public ProjectileVelocityConfig getEggVelocityConfig() {
+        return projectileConfig.getEggVelocityConfig();
+    }
+
+    public ProjectileVelocityConfig getEnderPearlVelocityConfig() {
+        return projectileConfig.getEnderPearlVelocityConfig();
+    }
+
+    public ProjectileVelocityConfig getFishingRodVelocityConfig() {
+        return projectileConfig.getFishingRodVelocityConfig();
     }
 }

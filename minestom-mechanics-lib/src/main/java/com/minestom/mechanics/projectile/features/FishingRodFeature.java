@@ -1,8 +1,11 @@
 package com.minestom.mechanics.projectile.features;
 
-import com.minestom.mechanics.projectile.components.*;
-import com.minestom.mechanics.projectile.config.FishingRodConfig;
-import com.minestom.mechanics.projectile.config.FishingRodKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.ProjectileConfig;
+import com.minestom.mechanics.projectile.components.ProjectileSoundHandler;
+import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
+import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
+import com.minestom.mechanics.projectile.entities.FishingBobber;
+import com.minestom.mechanics.projectile.utils.VelocityCalculator;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -10,176 +13,214 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
-import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
-import net.minestom.server.timer.TaskSchedule;
+import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.item.Material;
-import com.minestom.mechanics.projectile.entities.FishingBobber;
+import net.minestom.server.tag.Tag;
+import net.minestom.server.timer.TaskSchedule;
 
 import java.util.Objects;
 
+// TODO: Fix players not being able to hit themselves with fishing rod
+
 /**
- * Refactored FishingRodFeature using focused components.
- * Orchestrates fishing rod functionality through specialized components.
+ * Manages fishing rod functionality - casting, retrieving, and bobber lifecycle.
+ * Consolidated design: All fishing rod logic in one place.
  */
 public class FishingRodFeature extends InitializableSystem implements ProjectileFeature {
-    
+
     private static FishingRodFeature instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("FishingRodFeature");
-    
-    // Component references
-    private final FishingBobberManager bobberManager;
-    private FishingVelocityCalculator velocityCalculator;
+
+    // Bobber tracking
+    private static final Tag<FishingBobber> FISHING_BOBBER = Tag.Transient("fishingBobber");
+
+    // Configuration and components
+    private ProjectileVelocityConfig config;
     private final ProjectileSoundHandler soundHandler;
-    
-    // Configuration
-    private FishingRodConfig config;
-    
+
     private FishingRodFeature() {
-        // Initialize with default configuration
-        this.config = FishingRodConfig.defaultConfig();
-        
-        // Initialize components
-        this.bobberManager = new FishingBobberManager();
-        this.velocityCalculator = new FishingVelocityCalculator(config);
+        this.config = ProjectileVelocityPresets.FISHING_ROD;
         this.soundHandler = new ProjectileSoundHandler();
     }
-    
+
+    // ===========================
+    // INITIALIZATION
+    // ===========================
+
     public static FishingRodFeature initialize() {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("FishingRodFeature");
             return instance;
         }
-        
+
         instance = new FishingRodFeature();
         instance.registerListeners();
         instance.markInitialized();
-        
+
         LogUtil.logInit("FishingRodFeature");
         return instance;
     }
-    
+
     private void registerListeners() {
         var handler = MinecraftServer.getGlobalEventHandler();
-        
-        // Handle fishing rod usage
+
+        // Handle fishing rod usage (cast/retrieve)
         handler.addListener(PlayerUseItemEvent.class, event -> {
             if (event.getItemStack().material() != Material.FISHING_ROD) return;
             handleFishingRod(event.getPlayer(), event.getHand());
         });
 
-        // TODO: Make sure this is actually necessary, and that we should actually wait a tick.
-        //  Adding the tick delay MIGHT be necessary, but it also MIGHT cause some feel of delay for the client
-        // ✅ FIXED: Handle hotbar switching - cleanup fishing bobber
-        // Use delayed check to ensure the item has actually changed
+        // Handle hotbar switching - cleanup bobber if player switches away from rod
         handler.addListener(PlayerChangeHeldSlotEvent.class, event -> {
-            // Schedule a delayed check to ensure the item has actually changed
+            // Delayed check to ensure item has actually changed
             MinecraftServer.getSchedulerManager().buildTask(() -> {
                 handleSlotChange(event.getPlayer());
             }).delay(TaskSchedule.tick(1)).schedule();
         });
-        
-        // Note: PlayerDeathEvent and PlayerDisconnectEvent cleanup is now handled by ProjectileCleanupHandler
+
+        // Note: PlayerDeathEvent and PlayerDisconnectEvent cleanup handled by ProjectileCleanupHandler
     }
-    
+
+    // ===========================
+    // CORE LOGIC
+    // ===========================
+
     private void handleFishingRod(Player player, PlayerHand hand) {
-        if (bobberManager.hasActiveBobber(player)) {
+        if (hasActiveBobber(player)) {
             // Retrieve existing bobber
-            bobberManager.retrieveBobber(player);
-            
-            // Durability damage disabled for now
-            
+            retrieveBobber(player);
             soundHandler.playFishingRetrieveSound(player);
         } else {
             // Cast new bobber
+            castBobber(player);
             soundHandler.playFishingCastSound(player);
-            
-            FishingBobber bobber = new FishingBobber(player, true); // Always legacy mode
-            // Set knockback configuration
-            bobber.setKnockbackConfig(getFishingRodKnockbackConfig());
-            bobberManager.setActiveBobber(player, bobber);
-            
-            // Calculate spawn position and velocity using FishingVelocityCalculator
-            Pos playerPos = player.getPosition();
-            float playerPitch = playerPos.pitch();
-            float playerYaw = playerPos.yaw();
-
-            // Use velocity calculator for consistent velocity calculation
-            Pos spawnPos = velocityCalculator.calculateSpawnPosition(player);
-            Vec velocity = velocityCalculator.calculateVelocity(playerPos, playerPitch, playerYaw);
-
-            bobber.setInstance(Objects.requireNonNull(player.getInstance()), spawnPos);
-            bobber.setVelocity(velocity);
-            
-            log.debug("Cast fishing bobber for {} at {}", player.getUsername(), spawnPos);
         }
     }
-    
-    /**
-     * Handle hotbar slot changes - cleanup fishing bobber if player switches away from fishing rod
-     */
+
+    private void castBobber(Player player) {
+        FishingBobber bobber = new FishingBobber(player, true); // Always legacy mode
+
+        // Set knockback configuration from ProjectileManager
+        try {
+            var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+            var projectileConfig = projectileManager.getProjectileConfig();
+            bobber.setKnockbackConfig(projectileConfig.getFishingRodKnockbackConfig());
+            bobber.setKnockbackMode(projectileConfig.getFishingRodKnockbackMode());
+        } catch (IllegalStateException e) {
+            // ProjectileManager not initialized, use defaults
+            bobber.setKnockbackConfig(com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets.FISHING_ROD);
+            bobber.setKnockbackMode(ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE);
+        }
+
+        // Store bobber on player
+        player.setTag(FISHING_BOBBER, bobber);
+
+        // Calculate spawn position and velocity
+        Pos playerPos = player.getPosition();
+        Pos spawnPos = VelocityCalculator.calculateSpawnOffset(player);
+        Vec velocity = calculateFishingVelocity(playerPos, playerPos.pitch(), playerPos.yaw());
+
+        // Spawn bobber in world
+        bobber.setInstance(Objects.requireNonNull(player.getInstance()), spawnPos);
+        bobber.setVelocity(velocity);
+
+        log.debug("Cast fishing bobber for {} at {}", player.getUsername(), spawnPos);
+    }
+
     private void handleSlotChange(Player player) {
-        if (bobberManager.hasActiveBobber(player)) {
-            // Check if the new held item is still a fishing rod
-            var currentItem = player.getItemInMainHand();
-            var offhandItem = player.getItemInOffHand();
-            
-            // Only cleanup if neither hand has a fishing rod
-            if (currentItem.material() != Material.FISHING_ROD && offhandItem.material() != Material.FISHING_ROD) {
-                // Player switched away from fishing rod - cleanup bobber
-                bobberManager.removeActiveBobber(player);
-                log.debug("Cleaned up fishing bobber for {} due to hotbar switch", player.getUsername());
-            }
+        if (!hasActiveBobber(player)) return;
+
+        // Check if player still has a fishing rod in either hand
+        var mainHand = player.getItemInMainHand();
+        var offHand = player.getItemInOffHand();
+
+        if (mainHand.material() != Material.FISHING_ROD && offHand.material() != Material.FISHING_ROD) {
+            // Player switched away from fishing rod - cleanup bobber
+            removeActiveBobber(player);
+            log.debug("Cleaned up fishing bobber for {} due to hotbar switch", player.getUsername());
         }
     }
-    
-    
+
+    // ===========================
+    // BOBBER MANAGEMENT
+    // ===========================
+
+    private void retrieveBobber(Player player) {
+        FishingBobber bobber = player.getTag(FISHING_BOBBER);
+        if (bobber != null) {
+            bobber.retrieve();
+            bobber.remove();
+        }
+        player.removeTag(FISHING_BOBBER);
+    }
+
+    private void removeActiveBobber(Player player) {
+        FishingBobber bobber = player.getTag(FISHING_BOBBER);
+        if (bobber != null) {
+            bobber.remove();
+        }
+        player.removeTag(FISHING_BOBBER);
+    }
+
+    // ===========================
+    // VELOCITY CALCULATION
+    // ===========================
+
+    private Vec calculateFishingVelocity(Pos playerPos, float playerPitch, float playerYaw) {
+        // Base velocity from player's aim
+        double maxVelocity = 0.4F;
+        Vec velocity = VelocityCalculator.calculateDirectionalVelocity(playerPitch, playerYaw, maxVelocity);
+
+        // Apply horizontal and vertical multipliers
+        velocity = new Vec(
+                velocity.x() * config.horizontalMultiplier(),
+                velocity.y() * config.verticalMultiplier(),
+                velocity.z() * config.horizontalMultiplier()
+        );
+
+        // Apply spread with multiplier
+        double spread = 0.0075 * config.spreadMultiplier();
+        velocity = VelocityCalculator.applySpread(velocity, spread);
+
+        // Convert to per-tick velocity
+        return VelocityCalculator.toPerTickVelocity(velocity, 0.75);
+    }
+
     // ===========================
     // PUBLIC API
     // ===========================
-    
+
     public boolean hasActiveBobber(Player player) {
-        return bobberManager.hasActiveBobber(player);
+        return player.hasTag(FISHING_BOBBER);
     }
-    
+
     public FishingBobber getActiveBobber(Player player) {
-        return bobberManager.getActiveBobber(player);
+        return player.getTag(FISHING_BOBBER);
     }
-    
+
     public void cleanup(Player player) {
-        if (bobberManager.hasActiveBobber(player)) {
-            bobberManager.removeActiveBobber(player);
+        if (hasActiveBobber(player)) {
+            removeActiveBobber(player);
         }
     }
-    
+
     public static FishingRodFeature getInstance() {
         return requireInstance(instance, "FishingRodFeature");
     }
-    
+
     // ===========================
     // CONFIGURATION
     // ===========================
-    
-    public FishingRodConfig getConfig() {
+
+    public ProjectileVelocityConfig getConfig() {
         return config;
     }
-    
-    public void setConfig(FishingRodConfig config) {
+
+    public void setConfig(ProjectileVelocityConfig config) {
         this.config = config;
-        // Update velocity calculator with new config
-        this.velocityCalculator = new FishingVelocityCalculator(config);
-        log.debug("FishingRodConfig updated: h={}, v={}, s={}, p={}", 
+        log.debug("FishingRodVelocityConfig updated: h={}, v={}, s={}, g={}",
                 config.horizontalMultiplier(), config.verticalMultiplier(),
-                config.spreadMultiplier(), config.powerMultiplier());
-    }
-    
-    private FishingRodKnockbackConfig getFishingRodKnockbackConfig() {
-        // Get from ProjectileManager
-        try {
-            return com.minestom.mechanics.manager.ProjectileManager.getInstance().getFishingRodKnockbackConfig();
-        } catch (IllegalStateException e) {
-            // ProjectileManager not initialized, use default
-            return FishingRodKnockbackConfig.defaultConfig();
-        }
+                config.spreadMultiplier(), config.gravity());
     }
 }

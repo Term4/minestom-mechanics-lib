@@ -1,6 +1,8 @@
 package com.minestom.mechanics.projectile.components;
 
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
+import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
+import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.ServerFlag;
@@ -61,7 +63,7 @@ public class BowArrowCreator {
      * @param arrow The arrow to spawn
      * @param player The shooting player
      * @param bowStack The bow that shot this arrow
-     * @param power The bow power
+     * @param power The bow power (0.0 to 1.0)
      */
     public void spawnArrow(AbstractArrow arrow, Player player, ItemStack bowStack, double power) {
         // Calculate spawn position using configured eye height
@@ -69,8 +71,17 @@ public class BowArrowCreator {
         Pos eyePos = com.minestom.mechanics.features.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
         Pos spawnPos = eyePos.add(0D, -com.minestom.mechanics.projectile.ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
 
+        // Get arrow velocity config
+        var velocityConfig = getArrowVelocityConfig();
+
+        // Calculate base power with multiplier from config
+        double effectivePower = power * velocityConfig.horizontalMultiplier();
+
         // Set velocity BEFORE spawning - this calculates the correct view direction
-        arrow.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f, power * 3, 1.0);
+        arrow.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f, effectivePower, velocityConfig.spreadMultiplier());
+
+        // Set custom gravity from config
+        arrow.setAerodynamics(arrow.getAerodynamics().withGravity(velocityConfig.gravity()));
 
         // Add player momentum if configured (modern feature, disabled by default for legacy 1.8)
         if (shouldInheritPlayerMomentum()) {
@@ -86,7 +97,16 @@ public class BowArrowCreator {
         arrow.setInstance(Objects.requireNonNull(player.getInstance()),
                 spawnPos.withView(arrow.getPosition()));
 
-        log.debug("Spawned arrow for {} at {}", player.getUsername(), spawnPos);
+        log.debug("Spawned arrow for {} at {} with velocity config", player.getUsername(), spawnPos);
+    }
+
+    private ProjectileVelocityConfig getArrowVelocityConfig() {
+        try {
+            return com.minestom.mechanics.manager.ProjectileManager.getInstance()
+                    .getProjectileConfig().getArrowVelocityConfig();
+        } catch (IllegalStateException e) {
+            return ProjectileVelocityPresets.ARROW;
+        }
     }
     
     /**
@@ -136,12 +156,12 @@ public class BowArrowCreator {
     // ===========================
     // CONFIGURATION HELPERS
     // ===========================
-    
+
     private ProjectileKnockbackConfig getArrowKnockbackConfig() {
         try {
             return com.minestom.mechanics.manager.ProjectileManager.getInstance().getArrowKnockbackConfig();
         } catch (IllegalStateException e) {
-            return ProjectileKnockbackConfig.defaultArrowKnockback();
+            return com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets.ARROW;
         }
     }
     

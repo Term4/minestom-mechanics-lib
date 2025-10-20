@@ -59,8 +59,8 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		pickupDelay = 20; // 1 second delay before arrow can be picked up
 
 		// Initialize with default arrow knockback config
-		this.knockbackConfig = ProjectileKnockbackConfig.defaultArrowKnockback();
-	}
+        this.knockbackConfig = com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets.ARROW;
+    }
 
 	@Override
 	public void tick(long time) {

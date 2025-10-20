@@ -9,10 +9,7 @@ import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
-import net.minestom.server.entity.Entity;
-import net.minestom.server.entity.EquipmentSlot;
-import net.minestom.server.entity.Player;
-import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.*;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
@@ -461,6 +458,89 @@ public class KnockbackHandler extends ConfigurableSystem<KnockbackConfig> {
                 components[4], // airMultH
                 components[5], // airMultV
                 config
+        );
+    }
+
+    /**
+     * Override base config resolution to support projectile-specific configs.
+     * Projectiles use their type-specific config, melee uses serverDefaultConfig.
+     */
+    @Override
+    protected KnockbackConfig resolveBaseConfig(Entity attacker, LivingEntity victim, EquipmentSlot handUsed) {
+        // If attacker is a projectile, use projectile-specific base config
+        if (isProjectileAttacker(attacker)) {
+            return getProjectileBaseConfig(attacker);
+        }
+
+        // Otherwise use the normal resolution (which checks tags then falls back to serverDefaultConfig)
+        return super.resolveBaseConfig(attacker, victim, handUsed);
+    }
+
+    /**
+     * Get the base knockback config for a specific projectile type.
+     * This is the "preset" that tags modify on top of.
+     */
+    private KnockbackConfig getProjectileBaseConfig(Entity projectile) {
+        try {
+            var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+            var projectileConfig = projectileManager.getProjectileConfig();
+
+            EntityType type = projectile.getEntityType();
+            com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig pkbConfig;
+
+            if (type == EntityType.ARROW || type == EntityType.SPECTRAL_ARROW || type == EntityType.TRIDENT) {
+                pkbConfig = projectileConfig.getArrowKnockbackConfig();
+            } else if (type == EntityType.SNOWBALL) {
+                pkbConfig = projectileConfig.getSnowballKnockbackConfig();
+            } else if (type == EntityType.EGG) {
+                pkbConfig = projectileConfig.getEggKnockbackConfig();
+            } else if (type == EntityType.ENDER_PEARL) {
+                pkbConfig = projectileConfig.getEnderPearlKnockbackConfig();
+            } else if (type == EntityType.FISHING_BOBBER) {
+                pkbConfig = projectileConfig.getFishingRodKnockbackConfig();
+            } else {
+                log.warn("Unknown projectile type: {}, using melee config", type);
+                pkbConfig = null;
+            }
+
+            if (pkbConfig == null) {
+                return serverDefaultConfig;
+            }
+
+            return convertProjectileConfig(pkbConfig);
+
+        } catch (IllegalStateException e) {
+            log.warn("ProjectileManager not initialized, using melee config for projectile");
+            return serverDefaultConfig;
+        }
+    }
+
+    /**
+     * Convert ProjectileKnockbackConfig to KnockbackConfig format.
+     * This allows projectile configs to participate in the tag resolution system.
+     */
+    private KnockbackConfig convertProjectileConfig(com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig pkbConfig) {
+        if (!pkbConfig.enabled()) {
+            // Return a "no knockback" config
+            return new KnockbackConfig(
+                    0.0, 0.0, 0.0,  // horizontal, vertical, verticalLimit
+                    0.0, 0.0,        // sprint bonus (not used for projectiles)
+                    1.0, 1.0,        // air multipliers (can be overridden by tags)
+                    0.0,             // look weight (not used for projectiles)
+                    false,           // legacy mode
+                    false            // no sync for projectiles
+            );
+        }
+
+        return new KnockbackConfig(
+                pkbConfig.horizontalKnockback(),
+                pkbConfig.verticalKnockback(),
+                pkbConfig.verticalLimit(),
+                0.0, 0.0,  // No sprint bonus for projectiles
+                1.0, 1.0,  // Default air multipliers (tags can override)
+                0.0,       // No look weight for projectiles
+                false,     // Legacy mode
+                false      // No sync for projectiles
         );
     }
 

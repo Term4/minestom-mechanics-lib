@@ -1,6 +1,8 @@
 package com.minestom.mechanics.projectile.components;
 
 import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
+import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
+import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.coordinate.Pos;
@@ -29,7 +31,7 @@ import java.util.Objects;
  */
 public class MiscProjectileCreator {
     private static final LogUtil.SystemLogger log = LogUtil.system("MiscProjectileCreator");
-    
+
     /**
      * Create and spawn a miscellaneous projectile
      * @param player The throwing player
@@ -38,41 +40,75 @@ public class MiscProjectileCreator {
      */
     public void createAndSpawnProjectile(Player player, ItemStack stack, PlayerHand hand) {
         Material material = stack.material();
-        
+
         // Create projectile
         CustomEntityProjectile projectile = createProjectile(material, player);
 
         // Set item appearance
         ((ItemHoldingProjectile) projectile).setItem(stack);
-        
+
         // Calculate spawn position using configured eye height
         Pos playerPos = player.getPosition();
         Pos eyePos = com.minestom.mechanics.features.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
         Pos spawnPos = eyePos;
-        
-        // Set velocity - this calculates the correct view direction
-        projectile.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f, 
-            com.minestom.mechanics.projectile.ProjectileConstants.MISC_PROJECTILE_POWER, 1.0);
-        
+
+        // Get velocity config for this projectile type
+        var velocityConfig = getVelocityConfigForMaterial(material);
+
+        // Set velocity with config values
+        projectile.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f,
+                velocityConfig.horizontalMultiplier(), velocityConfig.spreadMultiplier());
+
+        // Set custom gravity from config
+        projectile.setAerodynamics(projectile.getAerodynamics().withGravity(velocityConfig.gravity()));
+
         // Add player momentum if configured (modern feature, disabled by default for legacy 1.8)
         if (shouldInheritPlayerMomentum()) {
             Vec playerVel = player.getVelocity();
             projectile.setVelocity(projectile.getVelocity().add(playerVel.x(),
-                player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
+                    player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
         }
 
         ProjectileTagRegistry.copyAllProjectileTags(stack, projectile);
-        
+
         // Spawn projectile with view direction copied from projectile entity (fixes wrong direction)
-        projectile.setInstance(Objects.requireNonNull(player.getInstance()), 
-            spawnPos.withView(projectile.getPosition()));
-        
+        projectile.setInstance(Objects.requireNonNull(player.getInstance()),
+                spawnPos.withView(projectile.getPosition()));
+
         // Consume item
         if (player.getGameMode() != GameMode.CREATIVE) {
             player.setItemInHand(hand, stack.withAmount(stack.amount() - 1));
         }
-        
-        log.debug("Created and spawned {} projectile for {}", material, player.getUsername());
+
+        log.debug("Created and spawned {} projectile for {} with velocity config", material, player.getUsername());
+    }
+
+    private ProjectileVelocityConfig getVelocityConfigForMaterial(Material material) {
+        try {
+            var manager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+            var config = manager.getProjectileConfig();
+
+            if (material == Material.SNOWBALL) {
+                return config.getSnowballVelocityConfig();
+            } else if (material == Material.EGG) {
+                return config.getEggVelocityConfig();
+            } else if (material == Material.ENDER_PEARL) {
+                return config.getEnderPearlVelocityConfig();
+            } else {
+                return ProjectileVelocityPresets.SNOWBALL;
+            }
+        } catch (IllegalStateException e) {
+            // ProjectileManager not initialized, return default based on material
+            if (material == Material.SNOWBALL) {
+                return ProjectileVelocityPresets.SNOWBALL;
+            } else if (material == Material.EGG) {
+                return ProjectileVelocityPresets.EGG;
+            } else if (material == Material.ENDER_PEARL) {
+                return ProjectileVelocityPresets.ENDER_PEARL;
+            } else {
+                return ProjectileVelocityPresets.SNOWBALL;
+            }
+        }
     }
     
     /**
@@ -83,45 +119,21 @@ public class MiscProjectileCreator {
      */
     private CustomEntityProjectile createProjectile(Material material, Player player) {
         CustomEntityProjectile projectile;
-        
+
         if (material == Material.SNOWBALL) {
             projectile = new Snowball(player);
-            // Configure snowball knockback
-            ((Snowball) projectile).setUseKnockbackHandler(true);
-            ((Snowball) projectile).setKnockbackConfig(getSnowballKnockbackConfig());
+            projectile.setUseKnockbackHandler(true);
         } else if (material == Material.ENDER_PEARL) {
             projectile = new ThrownEnderpearl(player);
-            // Ender pearl has knockback disabled by default (useKnockbackHandler = false)
+            // Ender pearl has knockback disabled by default
         } else if (material == Material.EGG) {
             projectile = new ThrownEgg(player);
-            // Configure egg knockback
-            ((ThrownEgg) projectile).setUseKnockbackHandler(true);
-            ((ThrownEgg) projectile).setKnockbackConfig(getEggKnockbackConfig());
+            projectile.setUseKnockbackHandler(true);
         } else {
             throw new IllegalArgumentException("Unsupported projectile material: " + material);
         }
         
         return projectile;
-    }
-    
-    // ===========================
-    // CONFIGURATION HELPERS
-    // ===========================
-    
-    private ProjectileKnockbackConfig getSnowballKnockbackConfig() {
-        try {
-            return com.minestom.mechanics.manager.ProjectileManager.getInstance().getSnowballKnockbackConfig();
-        } catch (IllegalStateException e) {
-            return ProjectileKnockbackConfig.defaultSnowballKnockback();
-        }
-    }
-    
-    private ProjectileKnockbackConfig getEggKnockbackConfig() {
-        try {
-            return com.minestom.mechanics.manager.ProjectileManager.getInstance().getEggKnockbackConfig();
-        } catch (IllegalStateException e) {
-            return ProjectileKnockbackConfig.defaultEggKnockback();
-        }
     }
 
     // TODO: Duplicate method, is in projectile config

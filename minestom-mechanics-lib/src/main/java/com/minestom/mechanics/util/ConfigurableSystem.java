@@ -73,9 +73,6 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     protected boolean isProjectileAttacker(Entity attacker) {
         EntityType type = attacker.getEntityType();
 
-        // ✅ ADD DEBUG
-        System.out.println("Checking if projectile: " + type + " (" + attacker.getClass().getSimpleName() + ")");
-
         return type == EntityType.ARROW
                 || type == EntityType.SPECTRAL_ARROW
                 || type == EntityType.TRIDENT
@@ -122,12 +119,6 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     protected TConfig resolveBaseConfig(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
         Tag<TConfig> customTag = getEffectiveCustomTag(attacker);
         TConfig custom;
-
-        // ✅ ADD DEBUG
-        System.out.println("=== RESOLVE DEBUG ===");
-        System.out.println("Attacker: " + attacker.getEntityType());
-        System.out.println("Is projectile? " + isProjectileAttacker(attacker));
-        System.out.println("Using tag: " + (isProjectileAttacker(attacker) ? "PROJECTILE" : "NORMAL"));
 
         // Check attacker entity CUSTOM (highest priority - works for projectiles!)
         custom = attacker.getTag(customTag);
@@ -179,10 +170,10 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
         Tag<List<Double>> modifyTag = getEffectiveModifyTag(attacker);
         double total = 0.0;
-        List<Double> modify; // ✅ Declare once
+        List<Double> modify;
 
         // Check attacker entity MODIFY first (works for projectiles!)
-        modify = attacker.getTag(modifyTag); // ✅ Reuse
+        modify = attacker.getTag(modifyTag);
         if (modify != null && modify.size() > index) {
             total += modify.get(index);
         }
@@ -194,7 +185,7 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
                     : p.getItemInOffHand();
 
             if (!item.isAir()) {
-                modify = item.getTag(modifyTag); // ✅ Reuse
+                modify = item.getTag(modifyTag);
                 if (modify != null && modify.size() > index) {
                     total += modify.get(index);
                 }
@@ -203,14 +194,14 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
         // Player MODIFY
         if (attacker instanceof Player p) {
-            modify = p.getTag(modifyTag); // ✅ Reuse
+            modify = p.getTag(modifyTag);
             if (modify != null && modify.size() > index) {
                 total += modify.get(index);
             }
         }
 
         // World MODIFY
-        modify = victim.getInstance().getTag(modifyTag); // ✅ Reuse
+        modify = victim.getInstance().getTag(modifyTag);
         if (modify != null && modify.size() > index) {
             total += modify.get(index);
         }
