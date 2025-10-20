@@ -1,8 +1,7 @@
 package com.minestom.mechanics.projectile.components;
 
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.coordinate.Pos;
@@ -49,7 +48,7 @@ public class MiscProjectileCreator {
 
         // Calculate spawn position using configured eye height
         Pos playerPos = player.getPosition();
-        Pos eyePos = com.minestom.mechanics.features.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
+        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
         Pos spawnPos = eyePos;
 
         // Get velocity config for this projectile type

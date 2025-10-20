@@ -1,10 +1,5 @@
 package com.minestom.mechanics.config.projectiles;
 
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
-
 // TODO: Add an option for modern vs legacy projectiles (already exists, kinda, player momentum, just less explicit)
 //  ALSO could add general configurable option in projectileconfig for
 //  allowing / disallowing players from hitting themselves with a specified
@@ -12,6 +7,11 @@ import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
 //  ALSO could add same option for being able to hit team members.
 
 // TODO: Add fireballs as a projectile
+
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 
 /**
  * Immutable configuration for all projectile-related settings.

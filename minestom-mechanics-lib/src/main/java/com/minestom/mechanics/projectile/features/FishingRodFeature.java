@@ -1,9 +1,10 @@
 package com.minestom.mechanics.projectile.features;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.projectile.components.ProjectileSoundHandler;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 import com.minestom.mechanics.projectile.entities.FishingBobber;
 import com.minestom.mechanics.projectile.utils.VelocityCalculator;
 import com.minestom.mechanics.util.InitializableSystem;
@@ -109,7 +110,7 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
             bobber.setKnockbackMode(projectileConfig.getFishingRodKnockbackMode());
         } catch (IllegalStateException e) {
             // ProjectileManager not initialized, use defaults
-            bobber.setKnockbackConfig(com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets.FISHING_ROD);
+            bobber.setKnockbackConfig(ProjectileKnockbackPresets.FISHING_ROD);
             bobber.setKnockbackMode(ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE);
         }
 

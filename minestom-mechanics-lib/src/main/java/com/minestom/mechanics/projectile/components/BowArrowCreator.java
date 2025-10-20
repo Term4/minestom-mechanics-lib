@@ -1,8 +1,10 @@
 package com.minestom.mechanics.projectile.components;
 
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityPresets;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
+import com.minestom.mechanics.constants.ProjectileConstants;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.ServerFlag;
@@ -68,8 +70,8 @@ public class BowArrowCreator {
     public void spawnArrow(AbstractArrow arrow, Player player, ItemStack bowStack, double power) {
         // Calculate spawn position using configured eye height
         Pos playerPos = player.getPosition();
-        Pos eyePos = com.minestom.mechanics.features.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
-        Pos spawnPos = eyePos.add(0D, -com.minestom.mechanics.projectile.ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
+        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
+        Pos spawnPos = eyePos.add(0D, -ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
 
         // Get arrow velocity config
         var velocityConfig = getArrowVelocityConfig();
@@ -161,7 +163,7 @@ public class BowArrowCreator {
         try {
             return com.minestom.mechanics.manager.ProjectileManager.getInstance().getArrowKnockbackConfig();
         } catch (IllegalStateException e) {
-            return com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets.ARROW;
+            return ProjectileKnockbackPresets.ARROW;
         }
     }
     

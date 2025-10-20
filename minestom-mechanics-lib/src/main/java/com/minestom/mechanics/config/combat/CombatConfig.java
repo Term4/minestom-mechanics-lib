@@ -1,7 +1,7 @@
 package com.minestom.mechanics.config.combat;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import static com.minestom.mechanics.config.combat.CombatConstants.*;
+import static com.minestom.mechanics.constants.CombatConstants.*;
 
 /**
  * Pure combat configuration - attack mechanics, knockback, and blocking.

@@ -1,6 +1,6 @@
 package com.minestom.mechanics.config.world;
 
-import static com.minestom.mechanics.config.combat.CombatConstants.*;
+import static com.minestom.mechanics.constants.CombatConstants.*;
 
 
 // TODO: Is this necessary? I feel like we could move functionality

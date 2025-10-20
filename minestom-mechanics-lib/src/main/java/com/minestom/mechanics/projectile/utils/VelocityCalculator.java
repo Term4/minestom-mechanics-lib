@@ -124,7 +124,7 @@ public class VelocityCalculator {
         float yaw = playerPos.yaw();
         
         // Use configured eye height instead of hard-coded 1.6
-        Pos eyePos = com.minestom.mechanics.features.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
+        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
         double eyeHeight = eyePos.y() - playerPos.y();
         
         return calculateSpawnOffset(playerPos, yaw, 0.3, eyeHeight);

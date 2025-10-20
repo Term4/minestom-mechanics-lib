@@ -1,6 +1,6 @@
 package com.minestom.mechanics.projectile.utils;
 
-import com.minestom.mechanics.features.gameplay.EyeHeightSystem;
+import com.minestom.mechanics.systems.gameplay.EyeHeightSystem;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
 

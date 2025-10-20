@@ -7,7 +7,7 @@ import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.manager.GameplayManager;
 import com.minestom.mechanics.manager.HitboxManager;

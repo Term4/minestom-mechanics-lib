@@ -1,6 +1,6 @@
 package com.minestom.mechanics.manager;
 
-import com.minestom.mechanics.systems.ArmorSystem;
+import com.minestom.mechanics.systems.armor.ArmorSystem;
 import net.minestom.server.entity.Player;
 
 /**

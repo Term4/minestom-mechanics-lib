@@ -1,7 +1,7 @@
 package com.minestom.mechanics.config.combat;
 
 import com.minestom.mechanics.config.knockback.KnockbackPresets;
-import static com.minestom.mechanics.config.combat.CombatConstants.*;
+import static com.minestom.mechanics.constants.CombatConstants.*;
 
 /**
  * Preset combat configurations for common PvP modes.

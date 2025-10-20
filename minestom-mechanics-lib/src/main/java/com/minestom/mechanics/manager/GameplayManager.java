@@ -1,10 +1,10 @@
 package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
-import com.minestom.mechanics.features.gameplay.EyeHeightSystem;
-import com.minestom.mechanics.features.gameplay.MovementRestrictionSystem;
-import com.minestom.mechanics.features.gameplay.HitboxSystem;
-import com.minestom.mechanics.features.gameplay.PlayerCollisionSystem;
+import com.minestom.mechanics.systems.gameplay.EyeHeightSystem;
+import com.minestom.mechanics.systems.gameplay.MovementRestrictionSystem;
+import com.minestom.mechanics.systems.gameplay.HitboxSystem;
+import com.minestom.mechanics.systems.gameplay.PlayerCollisionSystem;
 
 /**
  * GameplayManager - Manages general gameplay mechanics

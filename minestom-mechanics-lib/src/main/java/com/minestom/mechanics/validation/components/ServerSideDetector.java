@@ -3,7 +3,7 @@ package com.minestom.mechanics.validation.components;
 import com.minestom.mechanics.hitbox.HitboxExpansion;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.geometry.RaycastUtils;
-import com.minestom.mechanics.features.gameplay.EyeHeightSystem;
+import com.minestom.mechanics.systems.gameplay.EyeHeightSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.geometry.RaycastUtils.RayHitResult;
 import net.minestom.server.coordinate.Pos;
@@ -12,7 +12,7 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
-import static com.minestom.mechanics.config.combat.CombatConstants.PLAYER_HEIGHT;
+import static com.minestom.mechanics.constants.CombatConstants.PLAYER_HEIGHT;
 
 // TODO: This is pretty solid. Again,
 //  could change with the eye height thing mentioned

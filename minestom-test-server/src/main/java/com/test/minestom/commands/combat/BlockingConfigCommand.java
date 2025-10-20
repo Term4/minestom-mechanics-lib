@@ -1,7 +1,7 @@
 package com.test.minestom.commands.combat;
 
 import com.minestom.mechanics.manager.CombatManager;
-import com.minestom.mechanics.features.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.util.CommandHelpBuilder;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.arguments.ArgumentType;

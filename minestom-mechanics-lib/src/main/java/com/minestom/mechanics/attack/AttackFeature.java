@@ -1,15 +1,14 @@
 package com.minestom.mechanics.attack;
 
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
-import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
-import com.minestom.mechanics.features.knockback.components.KnockbackType;
-import com.minestom.mechanics.validation.HitDetectionFeature;
+import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
+import com.minestom.mechanics.systems.knockback.components.KnockbackType;
+import com.minestom.mechanics.validation.HitDetection;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.GameplayUtils;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.util.MechanicsConstants;
+import com.minestom.mechanics.constants.MechanicsConstants;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
@@ -116,7 +115,7 @@ public class AttackFeature extends InitializableSystem {
         UUID attackerId = attacker.getUuid();
         
         // Validate reach
-        HitDetectionFeature hitDetection = HitDetectionFeature.getInstance();
+        HitDetection hitDetection = HitDetection.getInstance();
         if (!hitDetection.isReachValid(attacker, victim)) return;
         
         // Mark this attack to prevent duplicate from swing
@@ -148,7 +147,7 @@ public class AttackFeature extends InitializableSystem {
         }
         
         // Do server-side raycasting (returns null if aiming at blocks)
-        HitDetectionFeature hitDetection = HitDetectionFeature.getInstance();
+        HitDetection hitDetection = HitDetection.getInstance();
         LivingEntity target = hitDetection.findTargetFromSwing(attacker);
         if (target == null) return;
         
@@ -226,7 +225,7 @@ public class AttackFeature extends InitializableSystem {
         
         return AttackResult.of(finalDamage, isCritical, hadSprintBonus);
     }
-    
+
     private boolean shouldApplyKnockback(LivingEntity victim) {
         DamageFeature damageFeature = DamageFeature.getInstance();
         return damageFeature.shouldApplyKnockback(victim);
@@ -236,7 +235,7 @@ public class AttackFeature extends InitializableSystem {
      * Log attack details with precise ray distance from snapshot.
      */
     private void logAttack(Player attacker, LivingEntity victim, AttackResult result) {
-        HitDetectionFeature hitDetection = HitDetectionFeature.getInstance();
+        HitDetection hitDetection = HitDetection.getInstance();
         
         // Get the snapshot captured at moment of attack
         var snapshot = hitDetection.getLastHitSnapshot(victim);

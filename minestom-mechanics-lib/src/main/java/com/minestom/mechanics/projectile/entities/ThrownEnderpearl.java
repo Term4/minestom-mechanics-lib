@@ -1,10 +1,9 @@
 package com.minestom.mechanics.projectile.entities;
 
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
-import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
+import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;

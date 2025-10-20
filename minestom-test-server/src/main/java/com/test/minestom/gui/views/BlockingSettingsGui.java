@@ -1,8 +1,8 @@
 package com.test.minestom.gui.views;
 
-import com.minestom.mechanics.features.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.test.minestom.gui.GuiBuilder;
-import com.minestom.mechanics.features.blocking.BlockingStateManager;
+import com.minestom.mechanics.systems.blocking.BlockingStateManager;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.key.Key;

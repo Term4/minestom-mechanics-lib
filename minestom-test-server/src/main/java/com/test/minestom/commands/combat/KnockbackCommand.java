@@ -2,7 +2,7 @@ package com.test.minestom.commands.combat;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.config.knockback.KnockbackPresets;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.CommandHelpBuilder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;

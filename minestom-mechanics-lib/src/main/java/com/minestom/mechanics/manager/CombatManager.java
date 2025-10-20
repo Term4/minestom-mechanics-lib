@@ -2,8 +2,7 @@ package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.attack.AttackFeature;
 import com.minestom.mechanics.config.combat.*;
-import com.minestom.mechanics.features.blocking.BlockingSystem;
-import com.minestom.mechanics.config.blocking.BlockingConfig;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
 
 /**
  * Combat Manager - Manages player vs player combat mechanics

@@ -1,6 +1,7 @@
 package com.minestom.mechanics.projectile.entities;
 
-import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
+import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -11,8 +12,7 @@ import net.minestom.server.entity.metadata.projectile.AbstractArrowMeta;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.packet.server.play.CollectItemPacket;
 import net.minestom.server.utils.MathUtils;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,7 +60,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		pickupDelay = 20; // 1 second delay before arrow can be picked up
 
 		// Initialize with default arrow knockback config
-        this.knockbackConfig = com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets.ARROW;
+        this.knockbackConfig = ProjectileKnockbackPresets.ARROW;
     }
 
 	@Override

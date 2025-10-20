@@ -1,7 +1,5 @@
 package com.minestom.mechanics.config.gameplay;
 
-import static com.minestom.mechanics.config.combat.CombatConstants.*;
-
 /**
  * Damage system configuration record.
  * Replaces the old builder-based DamageConfig class.

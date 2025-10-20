@@ -1,11 +1,9 @@
 package com.minestom.mechanics.manager;
 
-import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
-import com.minestom.mechanics.projectile.config.ProjectileVelocityConfig;
+import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.projectile.features.BowFeature;
 import com.minestom.mechanics.projectile.features.FishingRodFeature;
 import com.minestom.mechanics.projectile.features.MiscProjectileFeature;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
 import com.minestom.mechanics.events.ProjectileCleanupHandler;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 

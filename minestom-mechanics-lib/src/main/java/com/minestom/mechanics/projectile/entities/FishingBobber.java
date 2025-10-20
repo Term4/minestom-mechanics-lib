@@ -1,11 +1,11 @@
 package com.minestom.mechanics.projectile.entities;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
-import com.minestom.mechanics.features.knockback.components.KnockbackApplicator;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackConfig;
-import com.minestom.mechanics.projectile.config.ProjectileKnockbackPresets;
+import com.minestom.mechanics.constants.ProjectileConstants;
+import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.projectile.ProjectileBehavior;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
@@ -57,8 +57,8 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
 
         // Custom gravity logic: gravity is applied before movement
         this.customGravity = legacy ?
-                com.minestom.mechanics.projectile.ProjectileConstants.FISHING_BOBBER_LEGACY_GRAVITY :
-                com.minestom.mechanics.projectile.ProjectileConstants.FISHING_BOBBER_MODERN_GRAVITY;
+                ProjectileConstants.FISHING_BOBBER_LEGACY_GRAVITY :
+                ProjectileConstants.FISHING_BOBBER_MODERN_GRAVITY;
 
         // Initialize with default knockback config and mode
         this.knockbackConfig = ProjectileKnockbackPresets.FISHING_ROD;

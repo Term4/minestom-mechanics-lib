@@ -9,7 +9,7 @@ import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.tag.Tag;
 
-import static com.minestom.mechanics.config.combat.CombatConstants.SAFE_FALL_DISTANCE;
+import static com.minestom.mechanics.constants.CombatConstants.SAFE_FALL_DISTANCE;
 
 // TODO: As I said, introduce an AbstractDamageTracker class, and extend for different damage types.
 //  ALSO could be cool to add a way for library users to add their own damage types without modifying the

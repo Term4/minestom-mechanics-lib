@@ -1,5 +1,6 @@
 package com.minestom.mechanics.util;
 
+import com.minestom.mechanics.constants.MechanicsConstants;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;

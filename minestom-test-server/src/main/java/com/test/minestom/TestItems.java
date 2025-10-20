@@ -1,6 +1,6 @@
 package com.test.minestom;
 
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.component.DataComponents;

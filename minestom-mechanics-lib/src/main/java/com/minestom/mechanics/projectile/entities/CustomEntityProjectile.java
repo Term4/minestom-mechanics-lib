@@ -1,5 +1,6 @@
 package com.minestom.mechanics.projectile.entities;
 
+import com.minestom.mechanics.constants.ProjectileConstants;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.collision.*;
 import net.minestom.server.coordinate.BlockVec;
@@ -86,7 +87,7 @@ public abstract class CustomEntityProjectile extends Entity {
             ((ProjectileMeta) getEntityMeta()).setShooter(shooter);
         }
         setSynchronizationTicks(getUpdateInterval());
-        double hitboxSize = com.minestom.mechanics.projectile.ProjectileConstants.PROJECTILE_HITBOX_SIZE;
+        double hitboxSize = ProjectileConstants.PROJECTILE_HITBOX_SIZE;
         setBoundingBox(hitboxSize, hitboxSize, hitboxSize);
     }
     
@@ -137,7 +138,7 @@ public abstract class CustomEntityProjectile extends Entity {
         // Apply spread
         if (spread > 0) {
             java.util.Random random = java.util.concurrent.ThreadLocalRandom.current();
-            spread *= com.minestom.mechanics.projectile.ProjectileConstants.SPREAD_MULTIPLIER;
+            spread *= ProjectileConstants.SPREAD_MULTIPLIER;
             dx += random.nextGaussian() * spread;
             dy += random.nextGaussian() * spread;
             dz += random.nextGaussian() * spread;
@@ -323,7 +324,7 @@ public abstract class CustomEntityProjectile extends Entity {
             
             if (!noClip) {
                 // We won't check collisions with self for first ticks of projectile's life
-                boolean noCollideShooter = getAliveTicks() < com.minestom.mechanics.projectile.ProjectileConstants.SHOOTER_COLLISION_DELAY_TICKS;
+                boolean noCollideShooter = getAliveTicks() < ProjectileConstants.SHOOTER_COLLISION_DELAY_TICKS;
                 Collection<EntityCollisionResult> entityResult = CollisionUtils.checkEntityCollisions(
                     instance, boundingBox.expand(0.1, 0.3, 0.1),
                     position.add(0, -0.3, 0), diff, 3, e -> {
@@ -418,7 +419,7 @@ public abstract class CustomEntityProjectile extends Entity {
     }
     
     private static float lerp(float first, float second) {
-        return first + (second - first) * com.minestom.mechanics.projectile.ProjectileConstants.ROTATION_LERP_FACTOR;
+        return first + (second - first) * ProjectileConstants.ROTATION_LERP_FACTOR;
     }
     
     @Override
@@ -461,7 +462,7 @@ public abstract class CustomEntityProjectile extends Entity {
     }
     
     protected int getUpdateInterval() {
-        return com.minestom.mechanics.projectile.ProjectileConstants.POSITION_UPDATE_INTERVAL;
+        return ProjectileConstants.POSITION_UPDATE_INTERVAL;
     }
     
     /**

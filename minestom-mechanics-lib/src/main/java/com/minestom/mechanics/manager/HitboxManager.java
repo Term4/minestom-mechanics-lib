@@ -1,7 +1,7 @@
 package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
-import com.minestom.mechanics.validation.HitDetectionFeature;
+import com.minestom.mechanics.validation.HitDetection;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
@@ -21,7 +21,7 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
     private static HitboxManager instance;
     
     // System references
-    private HitDetectionFeature hitDetectionFeature;
+    private HitDetection hitDetection;
     
     // Current configuration
     private HitDetectionConfig hitDetectionConfig;
@@ -52,7 +52,7 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
 
         return initializeWithWrapper(() -> {
             log.debug("Initializing HitDetectionFeature...");
-            hitDetectionFeature = HitDetectionFeature.initialize(hitDetectionConfig);
+            hitDetection = HitDetection.initialize(hitDetectionConfig);
         });
     }
 
@@ -88,7 +88,7 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
 
     @Override
     protected void cleanup() {
-        hitDetectionFeature = null;
+        hitDetection = null;
     }
 
     @Override
@@ -100,8 +100,8 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
     public void cleanupPlayer(Player player) {
         if (!initialized) return;
         
-        if (hitDetectionFeature != null) {
-            hitDetectionFeature.cleanup(player);
+        if (hitDetection != null) {
+            hitDetection.cleanup(player);
         }
         // HitboxSystem handles its own cleanup automatically
     }
@@ -128,7 +128,7 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
     public void updateConfig(HitDetectionConfig newConfig) {
         requireInitialized();
         this.hitDetectionConfig = newConfig;
-        hitDetectionFeature.updateConfig(newConfig);
+        hitDetection.updateConfig(newConfig);
         log.info("Hit detection config updated");
     }
     
@@ -142,16 +142,16 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
                     .forEach(this::cleanupPlayer);
             
             // Shutdown each system
-            if (hitDetectionFeature != null) {
+            if (hitDetection != null) {
                 try {
-                    hitDetectionFeature.shutdown();
+                    hitDetection.shutdown();
                 } catch (Exception e) {
                     log.error("HitDetectionFeature shutdown failed", e);
                 }
             }
             
             // Reset references
-            hitDetectionFeature = null;
+            hitDetection = null;
         });
     }
     
@@ -168,8 +168,8 @@ public class HitboxManager extends AbstractManager<HitboxManager> {
      *
      * @return the hit detection feature
      */
-    public HitDetectionFeature getHitDetectionFeature() {
+    public HitDetection getHitDetectionFeature() {
         requireInitialized();
-        return hitDetectionFeature;
+        return hitDetection;
     }
 }

@@ -1,8 +1,8 @@
 package com.test.minestom.commands.debug;
 
 import com.minestom.mechanics.damage.DamageFeature;
-import com.minestom.mechanics.features.blocking.BlockingSystem;
-import com.minestom.mechanics.features.knockback.KnockbackSystem;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.test.minestom.gui.GuiManager;
 import com.minestom.mechanics.util.PlayerCleanupManager;
 import net.kyori.adventure.text.Component;
