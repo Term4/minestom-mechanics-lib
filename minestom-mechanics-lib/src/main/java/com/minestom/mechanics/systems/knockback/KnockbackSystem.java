@@ -108,7 +108,8 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 components[5], // airMultV
                 baseConfig.lookWeight(),
                 baseConfig.modern(),
-                false // sync disabled
+                false, // sync disabled
+                true
         );
     }
 
@@ -162,7 +163,7 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                         pkbConfig.horizontalKnockback(),
                         pkbConfig.verticalKnockback(),
                         pkbConfig.verticalLimit(),
-                        0.0, 0.0, 1.0, 1.0, 0.0, false, false
+                        0.0, 0.0, 1.0, 1.0, 0.0, false, false, false
                 );
             }
         } catch (Exception e) {

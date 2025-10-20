@@ -1,7 +1,6 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.config.projectiles.knockback.components.*;
 import com.minestom.mechanics.systems.knockback.components.KnockbackStrength;
 import com.minestom.mechanics.systems.knockback.components.KnockbackType;
 import com.minestom.mechanics.util.LogUtil;

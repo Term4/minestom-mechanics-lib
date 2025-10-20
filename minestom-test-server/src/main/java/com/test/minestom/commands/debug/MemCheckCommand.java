@@ -2,7 +2,6 @@ package com.test.minestom.commands.debug;
 
 import com.minestom.mechanics.damage.DamageFeature;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
-import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.test.minestom.gui.GuiManager;
 import com.minestom.mechanics.util.PlayerCleanupManager;
 import net.kyori.adventure.text.Component;
@@ -40,8 +39,6 @@ public class MemCheckCommand extends Command {
             // Check each system
             checkSystem(player, "DamageFeature",
                     DamageFeature.getInstance().getTrackedEntities(), onlinePlayers);
-            checkSystem(player, "KnockbackHandler",
-                    KnockbackSystem.getInstance().getTrackedPlayers(), onlinePlayers);
             checkSystem(player, "BlockingSystem",
                     BlockingSystem.getInstance().getActiveCount(), 0); // Blocking can be 0
             checkSystem(player, "GuiManager",

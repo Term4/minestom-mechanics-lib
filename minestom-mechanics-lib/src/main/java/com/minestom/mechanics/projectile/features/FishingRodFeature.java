@@ -23,6 +23,10 @@ import net.minestom.server.timer.TaskSchedule;
 import java.util.Objects;
 
 // TODO: Fix players not being able to hit themselves with fishing rod
+//  COULD actually generalize the "pull" feature of the rod, could be cool to
+//  have snowballs or something you could use to bring players towards you
+//  (obviously we already CAN by setting negative knockback values, it just
+//  isn't as intuitive)
 
 /**
  * Manages fishing rod functionality - casting, retrieving, and bobber lifecycle.

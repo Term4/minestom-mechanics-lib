@@ -161,7 +161,9 @@ public class BowArrowCreator {
 
     private ProjectileKnockbackConfig getArrowKnockbackConfig() {
         try {
-            return com.minestom.mechanics.manager.ProjectileManager.getInstance().getArrowKnockbackConfig();
+            return com.minestom.mechanics.manager.ProjectileManager.getInstance()
+                    .getProjectileConfig()
+                    .getArrowKnockbackConfig();
         } catch (IllegalStateException e) {
             return ProjectileKnockbackPresets.ARROW;
         }

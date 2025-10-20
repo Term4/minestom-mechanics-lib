@@ -142,9 +142,10 @@ public class MechanicsManager {
         if (armorEnabled && armorManager != null) {
             armorManager.cleanupPlayer(player);
         }
-        if (knockbackEnabled && knockbackSystem != null) {
-            knockbackSystem.cleanup(player);
-        }
+        // KnockbackSystem doesn't track player data (for now) so doesn't need cleanup
+        //  if (knockbackEnabled && knockbackSystem != null) {
+        //    knockbackSystem.cleanup(player);
+        //  }
     }
     
     /**
@@ -471,12 +472,12 @@ public class MechanicsManager {
                 manager.armorEnabled = true;
                 systemCount++;
             }
-            
+
             // Initialize knockback if configured
             if (knockbackConfig != null) {
                 log.info("Initializing Knockback System...");
                 manager.knockbackSystem = KnockbackSystem.initialize(knockbackConfig);
-                manager.knockbackSystem.setKnockbackSyncEnabled(knockbackSyncEnabled);
+                // Removed: setKnockbackSyncEnabled() - sync is disabled
                 manager.knockbackEnabled = true;
                 systemCount++;
             }
