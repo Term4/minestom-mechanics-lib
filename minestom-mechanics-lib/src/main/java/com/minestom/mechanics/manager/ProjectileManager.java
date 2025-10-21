@@ -1,6 +1,7 @@
 package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.projectile.ProjectileRegistry;
+import com.minestom.mechanics.projectile.ProjectileVelocitySystem;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.projectile.features.BowFeature;
 import com.minestom.mechanics.projectile.features.FishingRodFeature;
@@ -49,6 +50,9 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
             log.debug("Initializing ProjectileRegistry...");
             this.projectileRegistry = new ProjectileRegistry();
             this.projectileRegistry.initialize(config);
+
+            log.debug("Initializing ProjectileVelocitySystem...");
+            ProjectileVelocitySystem.initialize(config.snowballVelocity());
 
             // Initialize bow feature
             log.debug("Initializing BowFeature...");

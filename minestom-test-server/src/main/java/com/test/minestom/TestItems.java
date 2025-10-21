@@ -11,8 +11,8 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 import java.util.List;
 
-import static com.minestom.mechanics.config.knockback.KnockbackTagValue.*;
-import static com.minestom.mechanics.projectile.utils.VelocityTagValue.*;
+import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.*;
+import static com.minestom.mechanics.projectile.tags.VelocityTagValue.*;
 
 
 /**
@@ -30,7 +30,7 @@ public class TestItems {
                         Component.text("5x Horizontal Knockback", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.CUSTOM, kbMult(5.0, 1.0));
+                .withTag(KnockbackSystem.CUSTOM, kbMult(5.0, 2.0));
     }
 
     /**
@@ -43,7 +43,7 @@ public class TestItems {
                         Component.text("+100 Horizontal, +1 Vertical", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbAdd(100.0, 1.0));
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbAdd(4.0, 3.0));
     }
 
     /**
@@ -96,8 +96,7 @@ public class TestItems {
                 ))
                 .build()
                 .withTag(ProjectileVelocitySystem.CUSTOM,
-                        velMult(0.5, 0.5)
-                                .thenAdd(0, 0, 0, 0.01, 0, 0)); // Low gravity
+                        velMult(1.0, 1.0, 0.0, 0.9, 0.0, 0.0)); // Low gravity
     }
 
     /**

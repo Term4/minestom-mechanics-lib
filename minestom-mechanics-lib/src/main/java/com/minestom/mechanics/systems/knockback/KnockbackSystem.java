@@ -1,13 +1,13 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.config.knockback.KnockbackTagValue;
+import com.minestom.mechanics.systems.knockback.tags.KnockbackTagSerializer;
+import com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue;
 import com.minestom.mechanics.util.ConfigTagWrapper;
 import com.minestom.mechanics.util.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.entity.*;
-import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,13 +20,13 @@ import org.jetbrains.annotations.Nullable;
  * import static KnockbackTagValue.*;
  *
  * // Simple
- * item.withTag(KnockbackSystem.CUSTOM, mult(2.0, 1.5))
+ * item.withTag(KnockbackSystem.CUSTOM, kbMult(2.0, 1.5))
  *
  * // Combined
- * item.withTag(KnockbackSystem.CUSTOM, mult(2.0).thenAdd(0.5))
+ * item.withTag(KnockbackSystem.CUSTOM, kbMult(2.0).thenAdd(0.5))
  *
  * // Presets
- * item.withTag(KnockbackSystem.CUSTOM, HEAVY)
+ * item.withTag(KnockbackSystem.CUSTOM, KB_HEAVY)
  * </pre>
  */
 public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
@@ -67,43 +67,24 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     // UNIFIED TAG SYSTEM
     // ===========================
 
-    /** Unified knockback tag for melee/direct damage - USING STRUCTURE */
+    /** Unified knockback tag for melee/direct damage - USING CUSTOM SERIALIZER */
     public static final Tag<KnockbackTagValue> CUSTOM =
-            Tag.Structure("knockback_custom", KnockbackTagValue.class);
+            Tag.Structure("knockback_custom", new KnockbackTagSerializer());
 
-    /** Unified knockback tag for projectile damage - USING STRUCTURE */
+    /** Unified knockback tag for projectile damage - USING CUSTOM SERIALIZER */
     public static final Tag<KnockbackTagValue> PROJECTILE_CUSTOM =
-            Tag.Structure("knockback_projectile_custom", KnockbackTagValue.class);
+            Tag.Structure("knockback_projectile_custom", new KnockbackTagSerializer());
 
     @Override
+    @SuppressWarnings("unchecked")
     protected Tag<ConfigTagWrapper<KnockbackConfig>> getWrapperTag(Entity attacker) {
-        return isProjectileAttacker(attacker) ? PROJECTILE_CUSTOM : CUSTOM;
+        return (Tag<ConfigTagWrapper<KnockbackConfig>>) (Tag<?>)
+                (isProjectileAttacker(attacker) ? PROJECTILE_CUSTOM : CUSTOM);
     }
 
     @Override
     protected int getComponentCount() {
         return 6; // [horizontal, vertical, sprintH, sprintV, airH, airV]
-    }
-
-    // ===========================
-    // OVERRIDE: Use registry for projectile base config
-    // ===========================
-
-    @Override
-    protected KnockbackConfig resolveBaseConfig(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
-        Tag<ConfigTagWrapper<KnockbackConfig>> wrapperTag = getWrapperTag(attacker);
-
-        // DEBUG: Check item tag
-        if (attacker instanceof Player p && handUsed != null) {
-            ItemStack item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
-            ConfigTagWrapper<KnockbackConfig> wrapper = item.getTag(wrapperTag);
-
-            System.out.println("DEBUG - Item: " + item.material());
-            System.out.println("DEBUG - Wrapper: " + wrapper);
-            System.out.println("DEBUG - Wrapper mult: " + (wrapper != null ? wrapper.getMultiplier() : "null"));
-        }
-
-        return super.resolveBaseConfig(attacker, victim, handUsed);
     }
 
     // ===========================

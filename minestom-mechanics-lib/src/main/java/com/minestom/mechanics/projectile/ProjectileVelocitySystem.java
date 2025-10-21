@@ -1,6 +1,8 @@
 package com.minestom.mechanics.projectile;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.projectile.tags.VelocityTagSerializer;
+import com.minestom.mechanics.projectile.tags.VelocityTagValue;
 import com.minestom.mechanics.util.ConfigTagWrapper;
 import com.minestom.mechanics.util.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
@@ -18,13 +20,13 @@ import org.jetbrains.annotations.Nullable;
  * import static VelocityTagValue.*;
  *
  * // Simple
- * item.withTag(ProjectileVelocitySystem.CUSTOM, mult(2.0))
+ * item.withTag(ProjectileVelocitySystem.CUSTOM, velMult(2.0))
  *
  * // Combined
- * item.withTag(ProjectileVelocitySystem.CUSTOM, mult(0.5).thenModify(0, 0, 0, 0.01, 0, 0))
+ * item.withTag(ProjectileVelocitySystem.CUSTOM, velMult(0.5).thenAdd(0, 0, 0, 0.01, 0, 0))
  *
  * // Presets
- * item.withTag(ProjectileVelocitySystem.CUSTOM, LASER)
+ * item.withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER)
  * </pre>
  */
 public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVelocityConfig> {
@@ -65,12 +67,14 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
     // UNIFIED TAG SYSTEM
     // ===========================
 
-    /** Unified velocity tag (projectiles only) */
-    public static final Tag<ConfigTagWrapper<ProjectileVelocityConfig>> CUSTOM = Tag.Transient("projectile_velocity_custom");
+    /** Unified velocity tag (projectiles only) - USING CUSTOM SERIALIZER */
+    public static final Tag<VelocityTagValue> CUSTOM =
+            Tag.Structure("projectile_velocity_custom", new VelocityTagSerializer());
 
     @Override
+    @SuppressWarnings("unchecked")
     protected Tag<ConfigTagWrapper<ProjectileVelocityConfig>> getWrapperTag(Entity attacker) {
-        return CUSTOM; // Velocity only applies to projectiles
+        return (Tag<ConfigTagWrapper<ProjectileVelocityConfig>>) (Tag<?>) CUSTOM;
     }
 
     @Override

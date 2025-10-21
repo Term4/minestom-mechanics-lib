@@ -77,8 +77,12 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     /**
      * Resolve base config from wrapper's CUSTOM field with priority chain.
      * <p>Priority: Item (specified hand) > Player > World > Server Default</p>
+     *
+     * @param attacker The attacking entity
+     * @param victim The victim entity (null during projectile spawn/velocity calculation)
+     * @param handUsed The hand used for the attack (null for projectiles)
      */
-    protected TConfig resolveBaseConfig(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+    protected TConfig resolveBaseConfig(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed) {
         Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
         ConfigTagWrapper<TConfig> wrapper;
 
@@ -101,9 +105,11 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
         }
 
-        // 4. Check world
-        wrapper = victim.getInstance().getTag(wrapperTag);
-        if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
+        // 4. Check world (only if victim exists)
+        if (victim != null && victim.getInstance() != null) {
+            wrapper = victim.getInstance().getTag(wrapperTag);
+            if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
+        }
 
         // 5. Server default
         return serverDefaultConfig;
@@ -112,8 +118,13 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     /**
      * Get MODIFY value for a specific component index from all sources.
      * Values stack additively: attacker + item + player + world
+     *
+     * @param attacker The attacking entity
+     * @param victim The victim entity (null during projectile spawn/velocity calculation)
+     * @param handUsed The hand used for the attack (null for projectiles)
+     * @param index Component index to retrieve
      */
-    protected double getModifyValue(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed, int index) {
+    protected double getModifyValue(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed, int index) {
         if (index >= getComponentCount()) {
             throw new IllegalArgumentException("Invalid component index " + index + " (max: " + (getComponentCount() - 1) + ")");
         }
@@ -148,10 +159,12 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             }
         }
 
-        // 4. World
-        wrapper = victim.getInstance().getTag(wrapperTag);
-        if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
-            total += modify.get(index);
+        // 4. World (only if victim exists)
+        if (victim != null && victim.getInstance() != null) {
+            wrapper = victim.getInstance().getTag(wrapperTag);
+            if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
+                total += modify.get(index);
+            }
         }
 
         return total;
@@ -160,8 +173,12 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     /**
      * Get combined MULTIPLIER from all sources.
      * Multipliers stack multiplicatively: attacker × item × player × world
+     *
+     * @param attacker The attacking entity
+     * @param victim The victim entity (null during projectile spawn/velocity calculation)
+     * @param handUsed The hand used for the attack (null for projectiles)
      */
-    protected double[] getMultipliers(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+    protected double[] getMultipliers(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed) {
         Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
         int componentCount = getComponentCount();
         double[] multipliers = new double[componentCount];
@@ -201,11 +218,13 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             }
         }
 
-        // 4. World
-        wrapper = victim.getInstance().getTag(wrapperTag);
-        if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
-            for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
-                multipliers[i] *= mults.get(i);
+        // 4. World (only if victim exists)
+        if (victim != null && victim.getInstance() != null) {
+            wrapper = victim.getInstance().getTag(wrapperTag);
+            if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
+                for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
+                    multipliers[i] *= mults.get(i);
+                }
             }
         }
 
@@ -219,7 +238,7 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     /**
      * Apply MODIFY values to a component array (in-place).
      */
-    protected void applyModifyToComponents(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed, double[] components) {
+    protected void applyModifyToComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed, double[] components) {
         for (int i = 0; i < components.length && i < getComponentCount(); i++) {
             components[i] += getModifyValue(attacker, victim, handUsed, i);
         }
@@ -228,7 +247,7 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     /**
      * Apply MULTIPLIER to a component array (in-place).
      */
-    protected void applyMultiplierToComponents(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed, double[] components) {
+    protected void applyMultiplierToComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed, double[] components) {
         double[] multipliers = getMultipliers(attacker, victim, handUsed);
         for (int i = 0; i < components.length; i++) {
             components[i] *= multipliers[i];
@@ -244,8 +263,13 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
      *   <li>Apply MODIFY values</li>
      *   <li>Apply MULTIPLIER</li>
      * </ol>
+     *
+     * @param attacker The attacking entity
+     * @param victim The victim entity (null during projectile spawn/velocity calculation)
+     * @param handUsed The hand used for the attack (null for projectiles)
+     * @param componentExtractor Function to extract component array from config
      */
-    protected double[] resolveComponents(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed,
+    protected double[] resolveComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed,
                                          ComponentExtractor<TConfig> componentExtractor) {
         // 1. Resolve base config
         TConfig config = resolveBaseConfig(attacker, victim, handUsed);

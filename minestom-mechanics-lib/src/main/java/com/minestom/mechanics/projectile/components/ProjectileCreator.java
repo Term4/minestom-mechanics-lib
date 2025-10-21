@@ -44,6 +44,7 @@ public class ProjectileCreator {
      * @param velocityConfig The velocity configuration
      * @param spawnPos The spawn position
      */
+    // TODO: Fix arrow direction to match players yaw/pitch
     public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
                       ProjectileVelocityConfig velocityConfig, Pos spawnPos) {
         // 1. Calculate velocity

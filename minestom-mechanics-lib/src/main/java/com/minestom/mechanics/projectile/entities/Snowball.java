@@ -1,8 +1,6 @@
 package com.minestom.mechanics.projectile.entities;
 
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
-import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
-import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.LivingEntity;
@@ -13,16 +11,14 @@ import net.minestom.server.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-// TODO: Probably update to extend an abstract projectile
-
+/**
+ * Snowball projectile using unified tag system.
+ * Knockback is resolved automatically from tags by KnockbackSystem!
+ */
 public class Snowball extends CustomEntityProjectile implements ItemHoldingProjectile {
-
-    private ProjectileKnockbackConfig knockbackConfig;
 
     public Snowball(@Nullable Entity shooter) {
         super(shooter, EntityType.SNOWBALL);
-        // Initialize with default snowball knockback config
-        this.knockbackConfig = ProjectileKnockbackPresets.SNOWBALL;
     }
 
     @Override
@@ -38,7 +34,14 @@ public class Snowball extends CustomEntityProjectile implements ItemHoldingProje
                     var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
                     KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
 
-                    applicator.applyProjectileKnockback((LivingEntity) entity, this, shooterOriginPos, 0);
+                    // ✅ Applicator resolves config from tags automatically!
+                    // Just pass 0 for enchantment level (projectiles don't have knockback enchants)
+                    applicator.applyProjectileKnockback(
+                            (LivingEntity) entity,
+                            this,
+                            shooterOriginPos,
+                            0  // No knockback enchantment for projectiles
+                    );
                 } catch (Exception e) {
                     // Fallback: no knockback if applicator fails
                 }
@@ -56,13 +59,5 @@ public class Snowball extends CustomEntityProjectile implements ItemHoldingProje
     @Override
     public void setItem(@NotNull ItemStack item) {
         ((SnowballMeta) getEntityMeta()).setItem(item);
-    }
-
-    public void setKnockbackConfig(ProjectileKnockbackConfig config) {
-        this.knockbackConfig = config;
-    }
-
-    public ProjectileKnockbackConfig getKnockbackConfig() {
-        return knockbackConfig;
     }
 }

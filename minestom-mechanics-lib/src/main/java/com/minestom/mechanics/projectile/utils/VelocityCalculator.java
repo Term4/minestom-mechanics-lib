@@ -2,6 +2,7 @@ package com.minestom.mechanics.projectile.utils;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.projectile.ProjectileVelocitySystem;
+import com.minestom.mechanics.projectile.entities.CustomEntityProjectile;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
@@ -58,6 +59,16 @@ public class VelocityCalculator {
             config = baseConfig;
         }
 
+        // Apply resolved config to projectile aerodynamics
+        if (projectile instanceof CustomEntityProjectile customProjectile) {
+            customProjectile.setAerodynamics(
+                    customProjectile.getAerodynamics()
+                            .withGravity(config.gravity())
+                            .withHorizontalAirResistance(config.horizontalAirResistance())
+                            .withVerticalAirResistance(config.verticalAirResistance())
+            );
+        }
+
         // Calculate direction from aim
         Vec velocity = calculateDirectionalVelocity(
                 shooter.getPosition().pitch(),
@@ -70,7 +81,7 @@ public class VelocityCalculator {
 
         // Apply spread if configured
         if (config.spreadMultiplier() > 0) {
-            double spread = 0.0075 * config.spreadMultiplier(); // Base spread constant
+            double spread = 0.0075 * config.spreadMultiplier();
             velocity = applySpread(velocity, spread);
         }
 

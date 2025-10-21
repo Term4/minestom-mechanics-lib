@@ -1,4 +1,4 @@
-package com.minestom.mechanics.projectile.utils;
+package com.minestom.mechanics.projectile.tags;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.util.ConfigTagWrapper;
@@ -100,7 +100,7 @@ public record VelocityTagValue(
     public static final VelocityTagValue VEL_FLOATY = velMult(0.5, 0.5, 1.0, 0.01, 1.0, 1.0);
 
     /** Heavy: Slow, high gravity */
-    public static final VelocityTagValue VEL_HEAVY = velMult(0.7, 0.7, 1.0, 0.1, 0.9, 0.9);
+    public static final VelocityTagValue VEL_HEAVY = velMult(0.5, 0.5, 1.0, 1.2, 0.9, 0.9);
 
     /** Fast: 2x speed, normal everything else */
     public static final VelocityTagValue VEL_FAST = velMult(2.0);

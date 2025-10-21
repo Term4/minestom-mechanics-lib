@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.config.gameplay.GameplayPresets;
-import com.minestom.mechanics.config.knockback.KnockbackTagValue;
+import com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue;
 import com.minestom.mechanics.systems.blocking.BlockingStateManager;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
@@ -39,7 +39,7 @@ import net.minestom.server.tag.Tag;
 
 import java.util.List;
 
-import static com.minestom.mechanics.config.knockback.KnockbackTagValue.kbMult;
+import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.kbMult;
 
 /**
  * 1.8 PvP Test Server - WITH PROJECTILES
@@ -94,27 +94,6 @@ public class Main {
 
         // Start server
         server.start(SERVER_CONFIG.getServerIp(), SERVER_CONFIG.getServerPort());
-
-        record TestRecord(String value) {}
-        Tag<TestRecord> TEST_TAG = Tag.Transient("test_record");
-
-        ItemStack testItem = ItemStack.of(Material.STICK)
-                .withTag(TEST_TAG, new TestRecord("hello"));
-
-        System.out.println("Test Record Tag: " + testItem.getTag(TEST_TAG));
-
-        // Test 2: Can we store KnockbackTagValue?
-        ItemStack kbItem = TestItems.knockbackStick();
-        System.out.println("KB Tag: " + kbItem.getTag(KnockbackSystem.CUSTOM));
-
-        // Test 3: What's in the tag?
-        KnockbackTagValue testValue = kbMult(5.0, 1.0);
-        System.out.println("Created value: " + testValue);
-        System.out.println("  - multiplier: " + testValue.getMultiplier());
-
-        ItemStack testStick = ItemStack.of(Material.STICK)
-                .withTag(KnockbackSystem.CUSTOM, testValue);
-        System.out.println("After setting: " + testStick.getTag(KnockbackSystem.CUSTOM));
     }
 
     // ===========================
