@@ -183,8 +183,8 @@ public class BlockingSettingsGui {
 
     private static net.minestom.server.item.ItemStack createInfoItem() {
         double damageReduction = blockingSystem != null ? blockingSystem.getDamageReduction() : 0.5;
-        double hKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackHorizontalReduction() : 0.6;
-        double vKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackVerticalReduction() : 0.6;
+        double hKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackHorizontalReduction() : 0.95;
+        double vKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackVerticalReduction() : 0.95;
 
         return GuiBuilder.infoItem(
                 Material.BOOK,

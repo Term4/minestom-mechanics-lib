@@ -12,7 +12,7 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
-import static com.minestom.mechanics.constants.CombatConstants.PLAYER_HEIGHT;
+import static com.minestom.mechanics.config.constants.CombatConstants.PLAYER_HEIGHT;
 
 // TODO: This is pretty solid. Again,
 //  could change with the eye height thing mentioned

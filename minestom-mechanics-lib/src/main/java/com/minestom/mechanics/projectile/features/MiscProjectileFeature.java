@@ -58,15 +58,15 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
             handleThrowProjectile(event.getPlayer(), event.getItemStack(), event.getHand());
         });
     }
-    
+
     private void handleThrowProjectile(Player player, ItemStack stack, PlayerHand hand) {
         Material material = stack.material();
-        
+
         // Play sound
         soundHandler.playThrowSound(player, material);
-        
-        // Create and spawn projectile
-        projectileCreator.createAndSpawnProjectile(player, stack, hand);
+
+        // Create and spawn projectile (method was renamed to just "createProjectile")
+        projectileCreator.createProjectile(player, stack, hand);
     }
     
     // ===========================

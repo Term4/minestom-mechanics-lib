@@ -16,6 +16,8 @@ import java.util.function.Predicate;
 //  Also make sure it's being used properly, and potentially move this to a different package?
 //  It IS a utility package though, so it might be fine here
 
+// TODO: Also move this to player package
+
 /**
  * Version-based animation handler.
  *

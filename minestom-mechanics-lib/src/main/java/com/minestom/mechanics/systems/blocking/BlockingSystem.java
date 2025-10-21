@@ -178,12 +178,12 @@ public class BlockingSystem extends InitializableSystem {
     }
 
     public double getKnockbackHorizontalReduction() {
-        double multiplier = knockbackHMultiplierOverride != null ? knockbackHMultiplierOverride : config.blockKnockbackHMultiplier();
+        double multiplier = knockbackHMultiplierOverride != null ? knockbackHMultiplierOverride : config.blockKnockbackHReduction();
         return 1.0 - multiplier;
     }
 
     public double getKnockbackVerticalReduction() {
-        double multiplier = knockbackVMultiplierOverride != null ? knockbackVMultiplierOverride : config.blockKnockbackVMultiplier();
+        double multiplier = knockbackVMultiplierOverride != null ? knockbackVMultiplierOverride : config.blockKnockbackVReduction();
         return 1.0 - multiplier;
     }
 

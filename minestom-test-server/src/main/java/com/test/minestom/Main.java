@@ -196,7 +196,7 @@ public class Main {
                 giveStarterKit(player);
 
                 // ✅ Force inventory sync for all clients (fixes 1.8 invisibility bug)
-                com.minestom.mechanics.util.InventoryUtil.forceInventorySyncDelayed(player, 5);
+                LegacyInventoryUtil.forceInventorySyncDelayed(player, 5);
                 // TODO: make this scheduler based on ping?
 
                 sendWelcomeMessage(player);
@@ -260,7 +260,8 @@ public class Main {
         // Test Items
         player.getInventory().addItemStack(TestItems.knockbackStick());
         player.getInventory().addItemStack(TestItems.knockbackEgg().withAmount(64));
-        player.getInventory().addItemStack(TestItems.noKnockbackSnowball().withAmount(64));
+        player.getInventory().addItemStack(TestItems.noHKnockbackSnowball().withAmount(64));
+        player.getInventory().addItemStack(TestItems.GrappleKnockbackSnowball().withAmount(64));
         player.getInventory().addItemStack(TestItems.cannonBow());
 
         // Food

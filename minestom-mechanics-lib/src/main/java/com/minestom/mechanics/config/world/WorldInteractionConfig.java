@@ -1,10 +1,10 @@
 package com.minestom.mechanics.config.world;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
-
 
 // TODO: Is this necessary? I feel like we could move functionality
 //  over to other classes and clean up the codebase significantly.
+
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * Configuration for world/environment interaction settings.

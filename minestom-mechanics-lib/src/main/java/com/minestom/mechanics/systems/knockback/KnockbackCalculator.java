@@ -12,7 +12,8 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.MIN_KNOCKBACK_DISTANCE;
+import static com.minestom.mechanics.config.constants.MechanicsConstants.MIN_FALLING_KNOCKBACK;
 
 // TODO: Potentially add another knockback calculator for modern knockback
 //  (the formula is entirely different) would lead to this being called "LegacyKnockbackCalculator"

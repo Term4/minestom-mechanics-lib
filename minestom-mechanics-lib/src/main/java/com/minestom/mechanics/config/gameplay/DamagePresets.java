@@ -1,6 +1,6 @@
 package com.minestom.mechanics.config.gameplay;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * Preset damage configurations for common server modes.

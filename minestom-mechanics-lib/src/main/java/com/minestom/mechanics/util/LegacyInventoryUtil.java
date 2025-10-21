@@ -3,14 +3,13 @@ package com.minestom.mechanics.util;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
-// TODO: I like this a lot, we should make it more obvious why this is necessary though,
-//  Commonly used to fix client desync for legacy (1.8) clients (update javadocs)
+// TODO: COULD be necessary to run this whenever a 1.8 client picks something up?
 
 /**
  * Utility class for inventory operations.
  * Provides common inventory management functions for the combat system.
  */
-public class InventoryUtil {
+public class LegacyInventoryUtil {
     
     /**
      * Force a complete inventory sync for a player.

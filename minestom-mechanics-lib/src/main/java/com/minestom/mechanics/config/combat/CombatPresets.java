@@ -1,7 +1,8 @@
 package com.minestom.mechanics.config.combat;
 
 import com.minestom.mechanics.config.knockback.KnockbackPresets;
-import static com.minestom.mechanics.constants.CombatConstants.*;
+
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * Preset combat configurations for common PvP modes.
@@ -26,7 +27,7 @@ public final class CombatPresets {
             // Sprint window
             true, false, 5,
             // Blocking
-            true, 0.5, 0.05, 0.05, true, true
+            true, 0.5, 0.95, 0.95, true, true
     );
 
     /**
@@ -60,7 +61,7 @@ public final class CombatPresets {
             // Sprint window
             true, false, 5,
             // Blocking
-            true,0.5, 0.05, 0.05, true, true
+            true,0.5, 0.95, 0.95, true, true
     );
 
     /**

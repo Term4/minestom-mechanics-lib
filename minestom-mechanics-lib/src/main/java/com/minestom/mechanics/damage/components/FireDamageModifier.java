@@ -6,7 +6,7 @@ import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.registry.RegistryKey;
 
-import static com.minestom.mechanics.constants.CombatConstants.DEFAULT_FIRE_DAMAGE_MULTIPLIER;
+import static com.minestom.mechanics.config.constants.CombatConstants.DEFAULT_FIRE_DAMAGE_MULTIPLIER;
 
 // TODO: Probably introduce a GENERAL damage modifier (abstract class), and extend.
 //  OR better yet, just add the damage modification method to the original

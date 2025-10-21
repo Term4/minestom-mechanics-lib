@@ -43,16 +43,16 @@ public class TestItems {
                 ))
                 .build()
                 .withTag(KnockbackSystem.PROJECTILE_MODIFY, List.of(
-                        5.0,  // horizontal × 2
+                        100.0,  // horizontal × 2
                         1.0,  // vertical × 1 (no change)
-                        1.0, 1.0, 1.0, 1.0 // others no change
+                        0.0, 0.0, 0.0, 0.0 // others no change
                 ));
     }
 
     /**
-     * Feather Snowball - NO knockback
+     * Grapple Snowball
      */
-    public static ItemStack noKnockbackSnowball() {
+    public static ItemStack GrappleKnockbackSnowball() {
         return ItemStack.builder(Material.SNOWBALL)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Grapple Snowball", NamedTextColor.WHITE, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
@@ -60,7 +60,22 @@ public class TestItems {
                 ))
                 .build()
                 .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
-                        -1.0, 5.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
+                        -1.5, 1.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
+                ));
+    }
+
+    /**
+     * Sky Snowball
+     */
+    public static ItemStack noHKnockbackSnowball() {
+        return ItemStack.builder(Material.SNOWBALL)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Sky ball", NamedTextColor.YELLOW, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Shoot your enemies to the sky!", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
+                        0.0, 5.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
                 ));
     }
 

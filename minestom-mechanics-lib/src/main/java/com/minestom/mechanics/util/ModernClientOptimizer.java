@@ -12,6 +12,8 @@ import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 //  COULD have been an issue with the ViewerBasedAnimationHandler, or something else in the features themselves
 //  rather than actually with the server sending self metadata packets.
 
+// TODO: Also move this to player package
+
 /**
  * Prevents modern clients from receiving metadata packets about themselves.
  *

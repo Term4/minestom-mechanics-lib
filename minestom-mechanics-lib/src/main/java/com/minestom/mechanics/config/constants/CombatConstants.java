@@ -1,4 +1,4 @@
-package com.minestom.mechanics.constants;
+package com.minestom.mechanics.config.constants;
 
 // TODO: Move to (and create) constants package for all constants like these.
 //  Could make an abstract class for all constants, then use enums / record classes to define constants.

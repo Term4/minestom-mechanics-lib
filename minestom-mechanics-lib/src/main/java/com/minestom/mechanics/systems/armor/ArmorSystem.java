@@ -12,7 +12,7 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.registry.RegistryKey;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 // TODO: This is actually pretty good
 

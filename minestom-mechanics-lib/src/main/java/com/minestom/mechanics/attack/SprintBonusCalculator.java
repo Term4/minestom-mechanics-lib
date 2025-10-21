@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.SPRINTWINDOW_TRACKING_TICKS;
 
 // TODO: I like this, also how it's configurable as well.
 //  Make sure it's thread and memory safe, and not to

@@ -1,6 +1,6 @@
 package com.minestom.mechanics.projectile.entities;
 
-import com.minestom.mechanics.constants.ProjectileConstants;
+import com.minestom.mechanics.config.constants.ProjectileConstants;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.collision.*;
 import net.minestom.server.coordinate.BlockVec;

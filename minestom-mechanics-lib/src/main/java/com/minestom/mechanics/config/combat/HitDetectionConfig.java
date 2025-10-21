@@ -1,6 +1,6 @@
 package com.minestom.mechanics.config.combat;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * Configuration for hit detection and validation.

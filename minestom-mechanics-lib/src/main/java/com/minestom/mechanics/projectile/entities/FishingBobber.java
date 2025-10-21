@@ -1,7 +1,7 @@
 package com.minestom.mechanics.projectile.entities;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
-import com.minestom.mechanics.constants.ProjectileConstants;
+import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;

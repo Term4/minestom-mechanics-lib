@@ -25,7 +25,6 @@ public record ProjectileKnockbackConfig(
         if (verticalLimit < 0) throw new IllegalArgumentException("Vertical limit must be >= 0");
     }
 
-    // TODO: Add air multipliers?
     // ===== IMMUTABLE "WITH" METHODS =====
 
     public ProjectileKnockbackConfig withEnabled(boolean enabled) {

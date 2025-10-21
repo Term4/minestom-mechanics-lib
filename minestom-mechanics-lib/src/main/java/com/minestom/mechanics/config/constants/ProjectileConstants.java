@@ -1,4 +1,4 @@
-package com.minestom.mechanics.constants;
+package com.minestom.mechanics.config.constants;
 
 // TODO: Move this to a general constants package that contains all constants classes
 

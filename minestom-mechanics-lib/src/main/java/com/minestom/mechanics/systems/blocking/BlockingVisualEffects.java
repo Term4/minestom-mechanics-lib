@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 // TODO: Would be nice if we could play the shield blocking by sending a use item packet
 //  on a per viewer basis. Something to look into, but nothing to worry too much about

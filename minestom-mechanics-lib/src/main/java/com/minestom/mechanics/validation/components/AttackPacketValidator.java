@@ -7,7 +7,7 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
-import static com.minestom.mechanics.constants.CombatConstants.PLAYER_HEIGHT;
+import static com.minestom.mechanics.config.constants.CombatConstants.PLAYER_HEIGHT;
 
 // TODO: This is pretty solid actually,
 //  may change with potential update to how we handle

@@ -1,6 +1,9 @@
 package com.minestom.mechanics.systems.knockback;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
+import com.minestom.mechanics.manager.CombatManager;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.knockback.components.KnockbackStrength;
 import com.minestom.mechanics.systems.knockback.components.KnockbackType;
 import com.minestom.mechanics.util.LogUtil;
@@ -88,6 +91,20 @@ public class KnockbackApplicator {
 
         // Create strength record
         KnockbackStrength strength = new KnockbackStrength(horizontal, vertical);
+
+        // Apply blocking reduction
+        if (victim instanceof Player player) {
+            try {
+                BlockingSystem blocking = BlockingSystem.getInstance();
+                if (blocking.isBlocking(player)) {
+                    horizontal *= (1.0 - blocking.getKnockbackHorizontalReduction());
+                    vertical *= (1.0 - blocking.getKnockbackVerticalReduction());
+                    strength = new KnockbackStrength(horizontal, vertical);
+                }
+            } catch (IllegalStateException e) {
+                // BlockingSystem not initialized - skip blocking reduction
+            }
+        }
 
         // Apply air multipliers
         if (!victim.isOnGround()) {

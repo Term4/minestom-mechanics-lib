@@ -8,7 +8,7 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.GameplayUtils;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.constants.MechanicsConstants;
+import com.minestom.mechanics.config.constants.MechanicsConstants;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
@@ -30,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 //  Right now due to the swing animation method of detecting hits, players can be hit through walls. This issue extends to projectiles
 //  Could be good to generalize this to be used for general checking if a bounding box / hitbox is obstructed.
 //  We already have the block raycast feature, but players can be
+
+// TODO: Rename to system, move to systems...
 
 /**
  * Main attack feature that orchestrates all attack-related components.

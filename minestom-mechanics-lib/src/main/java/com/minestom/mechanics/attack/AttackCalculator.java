@@ -7,7 +7,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * Consolidated attack calculator that handles both damage calculation and critical hit detection.

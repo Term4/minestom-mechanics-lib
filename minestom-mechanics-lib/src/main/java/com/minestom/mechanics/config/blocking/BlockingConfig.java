@@ -1,8 +1,8 @@
 package com.minestom.mechanics.config.blocking;
 
-import static com.minestom.mechanics.constants.CombatConstants.*;
-
 // TODO: Could need updated to work better with new building methods.
+
+import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * BlockingConfig - Configuration for the blocking system.

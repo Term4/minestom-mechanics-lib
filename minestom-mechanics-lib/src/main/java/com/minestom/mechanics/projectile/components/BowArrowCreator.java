@@ -1,10 +1,11 @@
 package com.minestom.mechanics.projectile.components;
 
+import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
-import com.minestom.mechanics.constants.ProjectileConstants;
+import com.minestom.mechanics.projectile.utils.VelocityCalculator;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.ServerFlag;
@@ -27,7 +28,7 @@ import java.util.Objects;
  */
 public class BowArrowCreator {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowArrowCreator");
-    
+
     /**
      * Create and configure an arrow for shooting
      * @param arrowStack The arrow item stack
@@ -39,27 +40,26 @@ public class BowArrowCreator {
     public AbstractArrow createArrow(ItemStack arrowStack, Player player, ItemStack bowStack, double power) {
         // Create arrow
         AbstractArrow arrow = new Arrow(player);
-        
+
         // Apply critical hit
         if (power >= 1.0) {
             arrow.setCritical(true);
         }
-        
+
         // Apply enchantments
         applyEnchantments(arrow, bowStack, player);
-        
+
         // Set pickup mode based on infinity
         setPickupMode(arrow, arrowStack, player, bowStack);
-        
+
         // Configure arrow knockback
         arrow.setUseKnockbackHandler(true);
         arrow.setKnockbackConfig(getArrowKnockbackConfig());
-        
+
         log.debug("Created arrow for {} with power {:.2f}", player.getUsername(), power);
         return arrow;
     }
 
-    // TODO: Could probably use one general spawn method for all projectiles?
     /**
      * Spawn the arrow in the world
      * @param arrow The arrow to spawn
@@ -68,38 +68,34 @@ public class BowArrowCreator {
      * @param power The bow power (0.0 to 1.0)
      */
     public void spawnArrow(AbstractArrow arrow, Player player, ItemStack bowStack, double power) {
-        // Calculate spawn position using configured eye height
-        Pos playerPos = player.getPosition();
-        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
+        // 1. Calculate spawn position (arrows spawn slightly below eye)
+        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance()
+                .getEyePosition(player);
         Pos spawnPos = eyePos.add(0D, -ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
 
-        // Get arrow velocity config
+        // 2. Get velocity config and adjust for power
         var velocityConfig = getArrowVelocityConfig();
+        ProjectileVelocityConfig adjustedConfig = new ProjectileVelocityConfig(
+                velocityConfig.horizontalMultiplier() * power,
+                velocityConfig.verticalMultiplier() * power,
+                velocityConfig.spreadMultiplier(),
+                velocityConfig.gravity(),
+                velocityConfig.horizontalAirResistance(),
+                velocityConfig.verticalAirResistance()
+        );
 
-        // Calculate base power with multiplier from config
-        double effectivePower = power * velocityConfig.horizontalMultiplier();
+        // 3. Calculate velocity
+        Vec velocity = VelocityCalculator.calculateThrowableVelocity(
+                player, bowStack, arrow, adjustedConfig, shouldInheritPlayerMomentum()
+        );
 
-        // Set velocity BEFORE spawning - this calculates the correct view direction
-        arrow.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f, effectivePower, velocityConfig.spreadMultiplier());
-
-        // Set custom gravity from config
-        arrow.setAerodynamics(arrow.getAerodynamics().withGravity(velocityConfig.gravity()));
-
-        // Add player momentum if configured (modern feature, disabled by default for legacy 1.8)
-        if (shouldInheritPlayerMomentum()) {
-            Vec playerVel = player.getVelocity();
-            arrow.setVelocity(arrow.getVelocity().add(playerVel.x(),
-                    player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
-        }
-
-        // ✅ Copy projectile tags from bow to arrow
+        // 4. Apply and spawn (no need for separate spawner class)
+        arrow.setVelocity(velocity);
         ProjectileTagRegistry.copyAllProjectileTags(bowStack, arrow);
-
-        // Spawn arrow with view direction copied from arrow entity (fixes wrong direction)
         arrow.setInstance(Objects.requireNonNull(player.getInstance()),
                 spawnPos.withView(arrow.getPosition()));
 
-        log.debug("Spawned arrow for {} at {} with velocity config", player.getUsername(), spawnPos);
+        log.debug("Spawned arrow for {} with power {:.2f}", player.getUsername(), power);
     }
 
     private ProjectileVelocityConfig getArrowVelocityConfig() {
@@ -110,51 +106,51 @@ public class BowArrowCreator {
             return ProjectileVelocityPresets.ARROW;
         }
     }
-    
+
     /**
      * Apply bow enchantments to the arrow
      */
     private void applyEnchantments(AbstractArrow arrow, ItemStack bowStack, Player player) {
         EnchantmentList enchantments = bowStack.get(DataComponents.ENCHANTMENTS);
         if (enchantments == null) enchantments = EnchantmentList.EMPTY;
-        
+
         // Power enchantment
         int powerLevel = enchantments.level(Enchantment.POWER);
         if (powerLevel > 0) {
             arrow.setBaseDamage(arrow.getBaseDamage() + (double) powerLevel * 0.5 + 0.5);
         }
-        
+
         // Punch enchantment
         int punchLevel = enchantments.level(Enchantment.PUNCH);
         if (punchLevel > 0) {
             arrow.setKnockback(punchLevel);
         }
-        
+
         // Flame enchantment
         if (enchantments.level(Enchantment.FLAME) > 0) {
             arrow.setFireTicksLeft(100 * ServerFlag.SERVER_TICKS_PER_SECOND);
         }
-        
+
         log.debug("Applied enchantments to arrow for {}", player.getUsername());
     }
-    
+
     /**
      * Set arrow pickup mode based on infinity enchantment
      */
     private void setPickupMode(AbstractArrow arrow, ItemStack arrowStack, Player player, ItemStack bowStack) {
         EnchantmentList enchantments = bowStack.get(DataComponents.ENCHANTMENTS);
         if (enchantments == null) enchantments = EnchantmentList.EMPTY;
-        
+
         boolean infinite = player.getGameMode() == GameMode.CREATIVE
                 || enchantments.level(Enchantment.INFINITY) > 0;
-        
+
         boolean reallyInfinite = infinite && arrowStack.material() == net.minestom.server.item.Material.ARROW;
-        
+
         if (reallyInfinite || player.getGameMode() == GameMode.CREATIVE) {
             arrow.setPickupMode(AbstractArrow.PickupMode.CREATIVE_ONLY);
         }
     }
-    
+
     // ===========================
     // CONFIGURATION HELPERS
     // ===========================
@@ -168,13 +164,13 @@ public class BowArrowCreator {
             return ProjectileKnockbackPresets.ARROW;
         }
     }
-    
+
     private boolean shouldInheritPlayerMomentum() {
         try {
             return com.minestom.mechanics.manager.ProjectileManager.getInstance()
-                .getProjectileConfig().shouldInheritPlayerMomentum();
+                    .getProjectileConfig().shouldInheritPlayerMomentum();
         } catch (IllegalStateException e) {
-            return false; // Default to false for legacy 1.8 compatibility
+            return false;
         }
     }
 }

@@ -3,7 +3,7 @@ package com.minestom.mechanics.config.blocking;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.item.Material;
 
-import static com.minestom.mechanics.constants.CombatConstants.DEFAULT_BLOCKING_PARTICLE_COUNT;
+import static com.minestom.mechanics.config.constants.CombatConstants.DEFAULT_BLOCKING_PARTICLE_COUNT;
 
 // TODO: Move this to player data package? Make player data manager? Or is that too much for this library?
 //  As of right now, this gets reset upon restarting the server, and players do NOT have persistent data.

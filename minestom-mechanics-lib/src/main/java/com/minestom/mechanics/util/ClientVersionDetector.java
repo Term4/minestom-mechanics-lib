@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 //  that can detect the actual protocol version, and use a plugin messager channel
 //  to send that here. Should be an optional feature though, not a requirement.
 
+// TODO: Also move this to player package
+
 /**
  * Detects client version through observable behavior patterns.
  *

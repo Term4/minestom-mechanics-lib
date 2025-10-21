@@ -8,6 +8,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 import java.util.List;
 
+// TODO: Move to systems package?
+
 /**
  * Abstract base for mechanics systems using the Universal Config pattern.
  * <p>

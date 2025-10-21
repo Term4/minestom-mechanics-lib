@@ -1,7 +1,12 @@
 package com.minestom.mechanics.projectile.components;
 
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
+import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
+import com.minestom.mechanics.projectile.entities.*;
+import com.minestom.mechanics.projectile.utils.ProjectileSpawnCalculator;
+import com.minestom.mechanics.projectile.utils.VelocityCalculator;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.coordinate.Pos;
@@ -11,138 +16,138 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import com.minestom.mechanics.projectile.entities.CustomEntityProjectile;
-import com.minestom.mechanics.projectile.entities.ItemHoldingProjectile;
-import com.minestom.mechanics.projectile.entities.Snowball;
-import com.minestom.mechanics.projectile.entities.ThrownEnderpearl;
-import com.minestom.mechanics.projectile.entities.ThrownEgg;
 
 import java.util.Objects;
 
-// TODO: See THIS should be what we use for all projectiles.
-//  Maybe we wanna change the spawn location and stuff on a per
-//  projectile basis, but we could just pass any offsets or such to this method
-//  when it's called
-
-/**
- * Creates miscellaneous projectiles (snowballs, eggs, ender pearls).
- * Handles projectile creation and spawning logic.
- */
 public class MiscProjectileCreator {
     private static final LogUtil.SystemLogger log = LogUtil.system("MiscProjectileCreator");
 
     /**
-     * Create and spawn a miscellaneous projectile
-     * @param player The throwing player
-     * @param stack The item stack being thrown
-     * @param hand The hand used to throw
+     * Creates and spawns a misc projectile (snowball, egg, ender pearl)
      */
-    public void createAndSpawnProjectile(Player player, ItemStack stack, PlayerHand hand) {
+    public void createProjectile(Player player, ItemStack stack, PlayerHand hand) {
         Material material = stack.material();
 
-        // Create projectile
-        CustomEntityProjectile projectile = createProjectile(material, player);
-
-        // Set item appearance
-        ((ItemHoldingProjectile) projectile).setItem(stack);
-
-        // Calculate spawn position using configured eye height
-        Pos playerPos = player.getPosition();
-        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance().getEyePosition(player);
-        Pos spawnPos = eyePos;
-
-        // Get velocity config for this projectile type
-        var velocityConfig = getVelocityConfigForMaterial(material);
-
-        // Set velocity with config values
-        projectile.shootFromRotation(playerPos.pitch(), playerPos.yaw(), 0f,
-                velocityConfig.horizontalMultiplier(), velocityConfig.spreadMultiplier());
-
-        // Set custom gravity from config
-        projectile.setAerodynamics(projectile.getAerodynamics().withGravity(velocityConfig.gravity()));
-
-        // Add player momentum if configured (modern feature, disabled by default for legacy 1.8)
-        if (shouldInheritPlayerMomentum()) {
-            Vec playerVel = player.getVelocity();
-            projectile.setVelocity(projectile.getVelocity().add(playerVel.x(),
-                    player.isOnGround() ? 0.0D : playerVel.y(), playerVel.z()));
+        // Validate material
+        if (!isValidProjectileMaterial(material)) {
+            throw new IllegalArgumentException("Unsupported projectile material: " + material);
         }
 
-        ProjectileTagRegistry.copyAllProjectileTags(stack, projectile);
+        // 1. Create projectile entity
+        CustomEntityProjectile projectile = createProjectileEntity(material, player);
 
-        // Spawn projectile with view direction copied from projectile entity (fixes wrong direction)
+        // 2. Configure projectile knockback
+        configureProjectile(projectile, material, stack);
+
+        // 3. Calculate spawn position
+        Pos spawnPos = ProjectileSpawnCalculator.calculateSpawnPosition(player);
+
+        // 4. Calculate velocity
+        Vec velocity = VelocityCalculator.calculateThrowableVelocity(
+                player, stack, projectile, getVelocityConfigForMaterial(material), shouldInheritPlayerMomentum()
+        );
+
+        // 5. Apply and spawn (no need for separate spawner class)
+        projectile.setVelocity(velocity);
+        ProjectileTagRegistry.copyAllProjectileTags(stack, projectile);
         projectile.setInstance(Objects.requireNonNull(player.getInstance()),
                 spawnPos.withView(projectile.getPosition()));
 
-        // Consume item
+        // 6. Consume item
         if (player.getGameMode() != GameMode.CREATIVE) {
             player.setItemInHand(hand, stack.withAmount(stack.amount() - 1));
         }
 
-        log.debug("Created and spawned {} projectile for {} with velocity config", material, player.getUsername());
+        log.debug("Created {} projectile for {}", material, player.getUsername());
     }
 
-    private ProjectileVelocityConfig getVelocityConfigForMaterial(Material material) {
-        try {
-            var manager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
-            var config = manager.getProjectileConfig();
-
-            if (material == Material.SNOWBALL) {
-                return config.getSnowballVelocityConfig();
-            } else if (material == Material.EGG) {
-                return config.getEggVelocityConfig();
-            } else if (material == Material.ENDER_PEARL) {
-                return config.getEnderPearlVelocityConfig();
-            } else {
-                return ProjectileVelocityPresets.SNOWBALL;
-            }
-        } catch (IllegalStateException e) {
-            // ProjectileManager not initialized, return default based on material
-            if (material == Material.SNOWBALL) {
-                return ProjectileVelocityPresets.SNOWBALL;
-            } else if (material == Material.EGG) {
-                return ProjectileVelocityPresets.EGG;
-            } else if (material == Material.ENDER_PEARL) {
-                return ProjectileVelocityPresets.ENDER_PEARL;
-            } else {
-                return ProjectileVelocityPresets.SNOWBALL;
-            }
-        }
-    }
-    
     /**
-     * Create a projectile based on material
-     * @param material The material being thrown
-     * @param player The throwing player
-     * @return The created projectile
+     * Validates if material is a supported projectile type
      */
-    private CustomEntityProjectile createProjectile(Material material, Player player) {
-        CustomEntityProjectile projectile;
+    private boolean isValidProjectileMaterial(Material material) {
+        return material == Material.SNOWBALL ||
+                material == Material.EGG ||
+                material == Material.ENDER_PEARL;
+    }
 
+    /**
+     * Creates the appropriate projectile entity based on material
+     */
+    private CustomEntityProjectile createProjectileEntity(Material material, Player player) {
         if (material == Material.SNOWBALL) {
-            projectile = new Snowball(player);
-            projectile.setUseKnockbackHandler(true);
-        } else if (material == Material.ENDER_PEARL) {
-            projectile = new ThrownEnderpearl(player);
-            // Ender pearl has knockback disabled by default
+            Snowball snowball = new Snowball(player);
+            snowball.setUseKnockbackHandler(true);
+            return snowball;
         } else if (material == Material.EGG) {
-            projectile = new ThrownEgg(player);
-            projectile.setUseKnockbackHandler(true);
+            ThrownEgg egg = new ThrownEgg(player);
+            egg.setUseKnockbackHandler(true);
+            return egg;
+        } else if (material == Material.ENDER_PEARL) {
+            return new ThrownEnderpearl(player);
         } else {
             throw new IllegalArgumentException("Unsupported projectile material: " + material);
         }
-        
-        return projectile;
     }
 
-    // TODO: Duplicate method, is in projectile config
+    /**
+     * Configures projectile with knockback settings
+     */
+    private void configureProjectile(CustomEntityProjectile projectile, Material material, ItemStack stack) {
+        // Get knockback config
+        ProjectileKnockbackConfig knockbackConfig = getKnockbackConfigForMaterial(material);
+
+        // Apply to projectile if it supports knockback configuration
+        if (projectile instanceof Snowball snowball) {
+            snowball.setKnockbackConfig(knockbackConfig);
+        } else if (projectile instanceof ThrownEgg egg) {
+            egg.setKnockbackConfig(knockbackConfig);
+        } else if (projectile instanceof ThrownEnderpearl pearl) {
+            pearl.setKnockbackConfig(knockbackConfig);
+        }
+    }
+
+    /**
+     * Gets velocity config for a specific material
+     */
+    private ProjectileVelocityConfig getVelocityConfigForMaterial(Material material) {
+        try {
+            var config = com.minestom.mechanics.manager.ProjectileManager.getInstance().getProjectileConfig();
+            if (material == Material.SNOWBALL) return config.getSnowballVelocityConfig();
+            if (material == Material.EGG) return config.getEggVelocityConfig();
+            if (material == Material.ENDER_PEARL) return config.getEnderPearlVelocityConfig();
+            return ProjectileVelocityPresets.SNOWBALL;
+        } catch (IllegalStateException e) {
+            if (material == Material.SNOWBALL) return ProjectileVelocityPresets.SNOWBALL;
+            if (material == Material.EGG) return ProjectileVelocityPresets.EGG;
+            if (material == Material.ENDER_PEARL) return ProjectileVelocityPresets.ENDER_PEARL;
+            return ProjectileVelocityPresets.SNOWBALL;
+        }
+    }
+
+    /**
+     * Gets knockback config for a specific material
+     */
+    private ProjectileKnockbackConfig getKnockbackConfigForMaterial(Material material) {
+        try {
+            var config = com.minestom.mechanics.manager.ProjectileManager.getInstance().getProjectileConfig();
+            if (material == Material.SNOWBALL) return config.getSnowballKnockbackConfig();
+            if (material == Material.EGG) return config.getEggKnockbackConfig();
+            if (material == Material.ENDER_PEARL) return config.getEnderPearlKnockbackConfig();
+            return ProjectileKnockbackPresets.SNOWBALL;
+        } catch (IllegalStateException e) {
+            if (material == Material.SNOWBALL) return ProjectileKnockbackPresets.SNOWBALL;
+            if (material == Material.EGG) return ProjectileKnockbackPresets.EGG;
+            if (material == Material.ENDER_PEARL) return ProjectileKnockbackPresets.ENDER_PEARL;
+            return ProjectileKnockbackPresets.SNOWBALL;
+        }
+    }
+
     private boolean shouldInheritPlayerMomentum() {
         try {
             return com.minestom.mechanics.manager.ProjectileManager.getInstance()
-                .getProjectileConfig().shouldInheritPlayerMomentum();
+                    .getProjectileConfig().shouldInheritPlayerMomentum();
         } catch (IllegalStateException e) {
-            // TODO: Should probably set default to modern ngl
-            return false; // Default to false for legacy 1.8 compatibility
+            return false;
         }
     }
 }

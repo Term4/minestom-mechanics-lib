@@ -6,6 +6,7 @@ import com.minestom.mechanics.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 import com.minestom.mechanics.projectile.entities.FishingBobber;
+import com.minestom.mechanics.projectile.utils.ProjectileSpawnCalculator;
 import com.minestom.mechanics.projectile.utils.VelocityCalculator;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
@@ -27,6 +28,13 @@ import java.util.Objects;
 //  have snowballs or something you could use to bring players towards you
 //  (obviously we already CAN by setting negative knockback values, it just
 //  isn't as intuitive)
+// TODO: Also feels like player "pick up" their fishing bobber?
+//  ACTUALLY I think it's the bobber colliding with the player as they run forward, causing it
+//  to fall down to the ground.
+//  PLUS the bobber can go through blocks very far, further than in default
+//  ALSO "auto-retract" when players get >30 blocks away from the thrown bobber
+//  doesn't work as of now
+
 
 /**
  * Manages fishing rod functionality - casting, retrieving, and bobber lifecycle.
@@ -123,7 +131,7 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
 
         // Calculate spawn position and velocity
         Pos playerPos = player.getPosition();
-        Pos spawnPos = VelocityCalculator.calculateSpawnOffset(player);
+        Pos spawnPos = ProjectileSpawnCalculator.calculateSpawnOffset(player);
         Vec velocity = calculateFishingVelocity(playerPos, playerPos.pitch(), playerPos.yaw());
 
         // Spawn bobber in world
