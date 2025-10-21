@@ -115,24 +115,25 @@ public class GravitySystem extends InitializableSystem {
                 return;
             }
 
-            // Enable no-gravity flag so CLIENT stops applying gravity
+            // Tell client to stop applying gravity
             if (!livingEntity.getTag(GRAVITY_CONTROLLED)) {
                 livingEntity.setNoGravity(true);
                 livingEntity.setTag(GRAVITY_CONTROLLED, true);
             }
 
-            // Apply custom gravity whenever in the air (not just when falling)
-            // Since client is not applying gravity, we must apply it on EVERY tick
-            if (!livingEntity.isOnGround()) {
+            Vec velocity = livingEntity.getVelocity();
+
+            // ONLY apply gravity when falling (Y <= 0), NOT when jumping (Y > 0)
+            // This prevents cutting off jumps!
+            if (!livingEntity.isOnGround() && velocity.y() <= 0) {
                 applyCustomGravity(livingEntity, customGravity);
             }
         });
     }
 
     /**
-     * Apply custom gravity server-side.
-     * Client has been told to stop applying gravity (setNoGravity(true)),
-     * so we apply ALL gravity ourselves every tick.
+     * Apply custom gravity ONLY to Y velocity.
+     * Should NOT touch X or Z at all.
      */
     private void applyCustomGravity(LivingEntity entity, double customGravity) {
         // Don't apply if flying
@@ -146,8 +147,19 @@ public class GravitySystem extends InitializableSystem {
 
         Vec velocity = entity.getVelocity();
 
-        // Apply custom gravity to Y only, preserve X/Z for movement
-        entity.setVelocity(velocity.withY(velocity.y() - customGravity));
+        // Explicitly preserve X and Z, only change Y
+        double newY = velocity.y() - customGravity;
+
+        // Use Vec constructor to be 100% explicit
+        Vec newVelocity = new Vec(velocity.x(), newY, velocity.z());
+        entity.setVelocity(newVelocity);
+
+        // Debug X/Z changes
+        if (entity.getAliveTicks() % 40 == 0) {
+            log.debug("Gravity applied - Before: X={} Y={} Z={}, After: X={} Y={} Z={}",
+                    velocity.x(), velocity.y(), velocity.z(),
+                    newVelocity.x(), newVelocity.y(), newVelocity.z());
+        }
     }
 
     // ===========================
