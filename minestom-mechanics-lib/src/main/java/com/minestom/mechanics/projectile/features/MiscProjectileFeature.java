@@ -1,11 +1,12 @@
 package com.minestom.mechanics.projectile.features;
 
-import com.minestom.mechanics.manager.ProjectileData;
+import com.minestom.mechanics.projectile.utils.ProjectileData;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.projectile.entities.*;
 import com.minestom.mechanics.projectile.utils.ProjectileMaterials;
+import com.minestom.mechanics.projectile.utils.ProjectileRegistry;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -123,7 +124,7 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
         }
     }
 
-    private com.minestom.mechanics.projectile.ProjectileRegistry getRegistry() {
+    private ProjectileRegistry getRegistry() {
         return com.minestom.mechanics.manager.ProjectileManager.getInstance()
                 .getProjectileRegistry();
     }

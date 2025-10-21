@@ -1,4 +1,4 @@
-package com.minestom.mechanics.projectile;
+package com.minestom.mechanics.projectile.components;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.projectile.tags.VelocityTagSerializer;

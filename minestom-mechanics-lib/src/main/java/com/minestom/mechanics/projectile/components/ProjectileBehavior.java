@@ -1,4 +1,4 @@
-package com.minestom.mechanics.projectile;
+package com.minestom.mechanics.projectile.components;
 
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;

@@ -1,7 +1,7 @@
 package com.minestom.mechanics.projectile.utils;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
-import com.minestom.mechanics.projectile.ProjectileVelocitySystem;
+import com.minestom.mechanics.projectile.components.ProjectileVelocitySystem;
 import com.minestom.mechanics.projectile.entities.CustomEntityProjectile;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;

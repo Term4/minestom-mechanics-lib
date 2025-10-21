@@ -39,15 +39,15 @@ import java.util.Collection;
  * Based on the MinestomPVP implementation with proper water physics.
  */
 public abstract class CustomEntityProjectile extends Entity {
-    // TODO: Ensure these are the correct values
+    // TODO: Ensure these are the correct values, maybe use constants class?
     private static final BoundingBox POINT_BOX = new BoundingBox(0, 0, 0);
     private static final BoundingBox UNSTUCK_BOX = new BoundingBox(0.12, 0.6, 0.12);
-    
+
     // Core projectile state
     protected Vec velocity = Vec.ZERO;
     protected Pos shooterOriginPos;
     protected boolean onGround = false;
-    
+
     // Shooter reference
     @Nullable
     protected Entity shooter;

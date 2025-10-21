@@ -4,10 +4,8 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.config.gameplay.GameplayPresets;
-import com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue;
 import com.minestom.mechanics.systems.blocking.BlockingStateManager;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
-import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.test.minestom.commands.CommandRegistry;
 import com.minestom.mechanics.manager.CombatManager;
 import com.test.minestom.commands.debug.EntityVisibilityTest;
@@ -22,6 +20,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
@@ -35,7 +34,6 @@ import net.minestom.server.item.Material;
 import net.minestom.server.item.component.BlocksAttacks;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
-import net.minestom.server.tag.Tag;
 
 import java.util.List;
 
@@ -153,6 +151,9 @@ public class Main {
         com.minestom.mechanics.manager.ProjectileManager.getInstance()
                 .initialize(ProjectilePresets.VANILLA18);
 
+        // Initialize once
+        GravitySystem.initialize();
+
         ClientVersionDetector.getInstance();
         ViewerBasedAnimationHandler.getInstance();
         EntityVisibilityTest.register();
@@ -224,6 +225,9 @@ public class Main {
                 // Default movement speed is 0.1, Speed II increases by 40% (0.1 * 1.4 = 0.14)
                 player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
+
+                GravitySystem.setGravity(player, 0.02);
+
             }
         });
 

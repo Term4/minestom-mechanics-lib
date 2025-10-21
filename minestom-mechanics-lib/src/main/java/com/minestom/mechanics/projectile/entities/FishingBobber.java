@@ -5,7 +5,7 @@ import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
-import com.minestom.mechanics.projectile.ProjectileBehavior;
+import com.minestom.mechanics.projectile.components.ProjectileBehavior;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;

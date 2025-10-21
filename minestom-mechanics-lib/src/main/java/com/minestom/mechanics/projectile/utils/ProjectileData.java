@@ -1,4 +1,4 @@
-package com.minestom.mechanics.manager;
+package com.minestom.mechanics.projectile.utils;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
