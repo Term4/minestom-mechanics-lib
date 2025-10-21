@@ -13,21 +13,21 @@ import java.util.List;
  * <p>
  * Systems provide a unified ConfigTagWrapper that can hold:
  * <ul>
- *   <li><b>MULTIPLIER</b> - Multiplicative scaling (item × player × world)</li>
- *   <li><b>MODIFY</b> - Additive component changes (item + player + world)</li>
- *   <li><b>CUSTOM</b> - Complete config override (item > player > world > server)</li>
+ *   <li><b>MULTIPLIER</b> - Multiplicative scaling (item × attacker × player × world)</li>
+ *   <li><b>MODIFY</b> - Additive component changes (item + attacker + player + world)</li>
+ *   <li><b>CUSTOM</b> - Complete config override (item > attacker > player > world > server)</li>
  * </ul>
  *
- * <p><b>Priority Chain:</b> Item > Player > World > Server Default</p>
+ * <p><b>Priority Chain:</b> Item > Attacker Entity > Player (if attacker is player) > World > Server Default</p>
  *
  * <p><b>Application Order:</b></p>
  * <ol>
- *   <li>Resolve base config (check CUSTOM from wrapper: item > player > world > server)</li>
+ *   <li>Resolve base config (check CUSTOM from wrapper: item > attacker > player > world > server)</li>
  *   <li>Apply MODIFY from wrapper (additive)</li>
  *   <li>Apply MULTIPLIER from wrapper (multiplicative)</li>
  * </ol>
  *
- * @param <TConfig> The configuration type for this system (e.g., KnockbackConfig)
+ * @param <TConfig> The configuration type for this system (e.g., KnockbackConfig, ProjectileVelocityConfig)
  */
 public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
@@ -76,30 +76,27 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
     /**
      * Resolve base config from wrapper's CUSTOM field with priority chain.
-     * <p>Priority: Item (specified hand) > Player > World > Server Default</p>
+     * <p>Priority: Item > Attacker Entity > Player (if attacker is player) > World > Server Default</p>
      *
-     * @param attacker The attacking entity
+     * @param attacker The attacking entity (player for melee, projectile for ranged)
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
-     * @param handUsed The hand used for the attack (null for projectiles)
+     * @param item The item being used (weapon for melee, bow/throwable for projectiles, null if none)
      */
-    protected TConfig resolveBaseConfig(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+    protected TConfig resolveBaseConfig(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item) {
         Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
         ConfigTagWrapper<TConfig> wrapper;
 
-        // 1. Check attacker entity
+        // 1. Check item FIRST (highest priority)
+        if (item != null && !item.isAir()) {
+            wrapper = item.getTag(wrapperTag);
+            if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
+        }
+
+        // 2. Check attacker entity
         wrapper = attacker.getTag(wrapperTag);
         if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
 
-        // 2. Check item (if player melee)
-        if (attacker instanceof Player p && handUsed != null) {
-            ItemStack item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
-            if (!item.isAir()) {
-                wrapper = item.getTag(wrapperTag);
-                if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
-            }
-        }
-
-        // 3. Check player
+        // 3. Check player (if attacker is player)
         if (attacker instanceof Player p) {
             wrapper = p.getTag(wrapperTag);
             if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
@@ -117,14 +114,14 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
     /**
      * Get MODIFY value for a specific component index from all sources.
-     * Values stack additively: attacker + item + player + world
+     * Values stack additively: item + attacker + player + world
      *
      * @param attacker The attacking entity
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
-     * @param handUsed The hand used for the attack (null for projectiles)
+     * @param item The item being used (null if none)
      * @param index Component index to retrieve
      */
-    protected double getModifyValue(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed, int index) {
+    protected double getModifyValue(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item, int index) {
         if (index >= getComponentCount()) {
             throw new IllegalArgumentException("Invalid component index " + index + " (max: " + (getComponentCount() - 1) + ")");
         }
@@ -134,21 +131,18 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
         ConfigTagWrapper<TConfig> wrapper;
         List<Double> modify;
 
-        // 1. Attacker entity
+        // 1. Item
+        if (item != null && !item.isAir()) {
+            wrapper = item.getTag(wrapperTag);
+            if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
+                total += modify.get(index);
+            }
+        }
+
+        // 2. Attacker entity
         wrapper = attacker.getTag(wrapperTag);
         if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
             total += modify.get(index);
-        }
-
-        // 2. Item (if player melee)
-        if (attacker instanceof Player p && handUsed != null) {
-            ItemStack item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
-            if (!item.isAir()) {
-                wrapper = item.getTag(wrapperTag);
-                if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
-                    total += modify.get(index);
-                }
-            }
         }
 
         // 3. Player
@@ -172,13 +166,13 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
     /**
      * Get combined MULTIPLIER from all sources.
-     * Multipliers stack multiplicatively: attacker × item × player × world
+     * Multipliers stack multiplicatively: item × attacker × player × world
      *
      * @param attacker The attacking entity
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
-     * @param handUsed The hand used for the attack (null for projectiles)
+     * @param item The item being used (null if none)
      */
-    protected double[] getMultipliers(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+    protected double[] getMultipliers(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item) {
         Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
         int componentCount = getComponentCount();
         double[] multipliers = new double[componentCount];
@@ -187,24 +181,21 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
         ConfigTagWrapper<TConfig> wrapper;
         List<Double> mults;
 
-        // 1. Attacker entity
+        // 1. Item
+        if (item != null && !item.isAir()) {
+            wrapper = item.getTag(wrapperTag);
+            if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
+                for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
+                    multipliers[i] *= mults.get(i);
+                }
+            }
+        }
+
+        // 2. Attacker entity
         wrapper = attacker.getTag(wrapperTag);
         if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
             for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
                 multipliers[i] *= mults.get(i);
-            }
-        }
-
-        // 2. Item (if player melee)
-        if (attacker instanceof Player p && handUsed != null) {
-            ItemStack item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
-            if (!item.isAir()) {
-                wrapper = item.getTag(wrapperTag);
-                if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
-                    for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
-                        multipliers[i] *= mults.get(i);
-                    }
-                }
             }
         }
 
@@ -238,17 +229,17 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
     /**
      * Apply MODIFY values to a component array (in-place).
      */
-    protected void applyModifyToComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed, double[] components) {
+    protected void applyModifyToComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item, double[] components) {
         for (int i = 0; i < components.length && i < getComponentCount(); i++) {
-            components[i] += getModifyValue(attacker, victim, handUsed, i);
+            components[i] += getModifyValue(attacker, victim, item, i);
         }
     }
 
     /**
      * Apply MULTIPLIER to a component array (in-place).
      */
-    protected void applyMultiplierToComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed, double[] components) {
-        double[] multipliers = getMultipliers(attacker, victim, handUsed);
+    protected void applyMultiplierToComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item, double[] components) {
+        double[] multipliers = getMultipliers(attacker, victim, item);
         for (int i = 0; i < components.length; i++) {
             components[i] *= multipliers[i];
         }
@@ -264,24 +255,24 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
      *   <li>Apply MULTIPLIER</li>
      * </ol>
      *
-     * @param attacker The attacking entity
+     * @param attacker The attacking entity (player for melee, projectile for ranged)
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
-     * @param handUsed The hand used for the attack (null for projectiles)
+     * @param item The item being used (weapon/bow/throwable, null if none)
      * @param componentExtractor Function to extract component array from config
      */
-    protected double[] resolveComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable EquipmentSlot handUsed,
+    protected double[] resolveComponents(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item,
                                          ComponentExtractor<TConfig> componentExtractor) {
         // 1. Resolve base config
-        TConfig config = resolveBaseConfig(attacker, victim, handUsed);
+        TConfig config = resolveBaseConfig(attacker, victim, item);
 
         // 2. Extract components
         double[] components = componentExtractor.extract(config);
 
         // 3. Apply MODIFY
-        applyModifyToComponents(attacker, victim, handUsed, components);
+        applyModifyToComponents(attacker, victim, item, components);
 
         // 4. Apply MULTIPLIER
-        applyMultiplierToComponents(attacker, victim, handUsed, components);
+        applyMultiplierToComponents(attacker, victim, item, components);
 
         return components;
     }

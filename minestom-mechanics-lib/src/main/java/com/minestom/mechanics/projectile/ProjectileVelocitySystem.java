@@ -15,17 +15,18 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Projectile velocity configuration system using unified tag approach.
  *
+ * Tag Priority for Projectiles:
+ * 1. Item tags (bow, snowball item, etc.) [HIGHEST]
+ * 2. Projectile entity tags
+ * 3. Shooter (player) tags
+ * 4. World tags
+ * 5. Registry/server default [LOWEST]
+ *
  * Usage:
  * <pre>
  * import static VelocityTagValue.*;
  *
- * // Simple
  * item.withTag(ProjectileVelocitySystem.CUSTOM, velMult(2.0))
- *
- * // Combined
- * item.withTag(ProjectileVelocitySystem.CUSTOM, velMult(0.5).thenAdd(0, 0, 0, 0.01, 0, 0))
- *
- * // Presets
  * item.withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER)
  * </pre>
  */
@@ -67,7 +68,6 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
     // UNIFIED TAG SYSTEM
     // ===========================
 
-    /** Unified velocity tag (projectiles only) - USING CUSTOM SERIALIZER */
     public static final Tag<VelocityTagValue> CUSTOM =
             Tag.Structure("projectile_velocity_custom", new VelocityTagSerializer());
 
@@ -87,7 +87,11 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
     // ===========================
 
     @Override
-    protected ProjectileVelocityConfig resolveBaseConfig(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+    protected ProjectileVelocityConfig resolveBaseConfig(
+            Entity attacker,
+            @Nullable LivingEntity victim,
+            @Nullable ItemStack item) {  // ← Fixed signature to match parent!
+
         // Projectiles get velocity from registry
         if (isProjectileAttacker(attacker)) {
             try {
@@ -96,15 +100,16 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
                         .getVelocityConfig(attacker.getEntityType());
 
                 if (registryConfig != null) {
+                    log.debug("Using registry config for {}", attacker.getEntityType());
                     return registryConfig;
                 }
             } catch (Exception e) {
-                log.debug("Could not get projectile velocity from registry: {}", e.getMessage());
+                log.debug("Could not get registry config: {}", e.getMessage());
             }
         }
 
         // Fallback to server default
-        return super.resolveBaseConfig(attacker, victim, handUsed);
+        return super.resolveBaseConfig(attacker, victim, item);  // ← Pass item, not handUsed!
     }
 
     // ===========================
@@ -112,14 +117,17 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
     // ===========================
 
     /**
-     * Resolve velocity config through tag system.
-     * Checks item, player, and projectile tags in priority order.
+     * Resolve velocity config for projectiles.
+     * Uses base class method with item parameter for proper priority.
+     *
+     * Priority: Item > Projectile > Shooter (if player) > World > Registry
      */
     public ProjectileVelocityConfig resolveConfig(Entity shooter, Entity projectile, ItemStack item) {
+        // Use base class method that handles item priority!
         double[] components = resolveComponents(
-                shooter,
-                projectile instanceof LivingEntity le ? le : null,
-                item != null ? EquipmentSlot.MAIN_HAND : null,
+                projectile,  // Pass projectile as "attacker" for registry lookup
+                null,        // No victim for velocity resolution
+                item,        // Item gets checked first!
                 config -> new double[]{
                         config.horizontalMultiplier(),
                         config.verticalMultiplier(),

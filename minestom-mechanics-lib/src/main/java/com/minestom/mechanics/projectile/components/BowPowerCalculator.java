@@ -7,6 +7,7 @@ import net.minestom.server.ServerFlag;
  * Calculates bow power based on drawing time.
  * Handles the power calculation formula for bow shooting.
  */
+@Deprecated
 public class BowPowerCalculator {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowPowerCalculator");
     

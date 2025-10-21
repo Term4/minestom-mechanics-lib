@@ -256,7 +256,7 @@ public class Main {
         // Weapons
         inventory.setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD).with(DataComponents.BLOCKS_ATTACKS, new BlocksAttacks(0, 0, List.of(), new BlocksAttacks.ItemDamageFunction(0, 0, 0), null, null, null)));
         inventory.setItemStack(1, ItemStack.of(Material.BOW));
-        inventory.setItemStack(2, ItemStack.of(Material.FISHING_ROD)); // ✅ Added fishing rod
+        inventory.setItemStack(2, ItemStack.of(Material.FISHING_ROD));
         inventory.setItemStack(3, ItemStack.of(Material.SNOWBALL, 64));
         inventory.setItemStack(4, ItemStack.of(Material.EGG, 64));
         inventory.setItemStack(5, ItemStack.of(Material.WHITE_WOOL, 64));

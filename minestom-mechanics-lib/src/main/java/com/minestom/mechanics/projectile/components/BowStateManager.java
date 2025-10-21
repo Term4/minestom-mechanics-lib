@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Manages bow drawing state for players.
  * Handles tracking which players are currently drawing bows.
  */
+@Deprecated
 public class BowStateManager {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowStateManager");
     

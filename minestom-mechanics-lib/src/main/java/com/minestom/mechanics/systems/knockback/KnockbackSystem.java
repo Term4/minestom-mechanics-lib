@@ -8,6 +8,7 @@ import com.minestom.mechanics.util.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
 import net.minestom.server.entity.*;
+import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.Nullable;
 
@@ -92,10 +93,15 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     // ===========================
 
     public KnockbackConfig resolveConfig(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+        // For melee: derive item from hand
+        ItemStack item = null;
+        if (attacker instanceof Player p && handUsed != null) {
+            item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
+        }
         double[] components = resolveComponents(
                 attacker,
                 victim,
-                handUsed,
+                item,
                 config -> new double[]{
                         config.horizontal(),
                         config.vertical(),

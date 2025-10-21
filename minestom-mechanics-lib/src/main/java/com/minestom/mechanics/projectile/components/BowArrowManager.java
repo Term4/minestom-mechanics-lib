@@ -11,6 +11,7 @@ import com.minestom.mechanics.projectile.entities.Arrow;
  * Manages arrow inventory and consumption for bow shooting.
  * Handles finding arrows in player inventory and consuming them.
  */
+@Deprecated
 public class BowArrowManager {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowArrowManager");
 

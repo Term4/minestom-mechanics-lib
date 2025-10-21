@@ -51,9 +51,6 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
             this.projectileRegistry = new ProjectileRegistry();
             this.projectileRegistry.initialize(config);
 
-            log.debug("Initializing ProjectileVelocitySystem...");
-            ProjectileVelocitySystem.initialize(config.snowballVelocity());
-
             // Initialize bow feature
             log.debug("Initializing BowFeature...");
             bowFeature = BowFeature.initialize();
@@ -65,6 +62,9 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
             // Initialize misc projectile feature
             log.debug("Initializing MiscProjectileFeature...");
             miscProjectileFeature = MiscProjectileFeature.initialize();
+
+            log.debug("Initializing ProjectileVelocitySystem...");
+            ProjectileVelocitySystem.initialize(config.snowballVelocity());
 
             // Register centralized cleanup handlers
             log.debug("Registering cleanup handlers...");

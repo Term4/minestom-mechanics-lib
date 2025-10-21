@@ -26,6 +26,7 @@ import java.util.Objects;
  * Creates and configures arrows for bow shooting.
  * Handles arrow creation, enchantment application, and spawning.
  */
+@Deprecated
 public class BowArrowCreator {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowArrowCreator");
 

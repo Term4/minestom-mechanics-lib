@@ -96,7 +96,7 @@ public class TestItems {
                 ))
                 .build()
                 .withTag(ProjectileVelocitySystem.CUSTOM,
-                        velMult(1.0, 1.0, 0.0, 0.9, 0.0, 0.0)); // Low gravity
+                        velMult(0.25, 0.25, 1.0, 0.16, 1.0, 1.0)); // Low gravity
     }
 
     /**
