@@ -1,27 +1,31 @@
 package com.minestom.mechanics.projectile;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.util.ConfigTagWrapper;
 import com.minestom.mechanics.util.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.util.ProjectileTagRegistry;
-import net.minestom.server.entity.Entity;
-import net.minestom.server.entity.EquipmentSlot;
-import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.*;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
-
-import java.util.List;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * Projectile velocity configuration system using Universal Tag System.
- * Manages velocity config resolution through tags on items, players, and projectiles.
+ * Projectile velocity configuration system using unified tag approach.
  *
- * Tag format: [horizontalMult, verticalMult, spreadMult, gravity, horizontalAirRes, verticalAirRes]
+ * Usage:
+ * <pre>
+ * import static VelocityTagValue.*;
  *
- * Priority order (same as KnockbackSystem):
- * 1. Custom configs (item > player > projectile > server)
- * 2. Modifications (additive)
- * 3. Multipliers (multiplicative)
+ * // Simple
+ * item.withTag(ProjectileVelocitySystem.CUSTOM, mult(2.0))
+ *
+ * // Combined
+ * item.withTag(ProjectileVelocitySystem.CUSTOM, mult(0.5).thenModify(0, 0, 0, 0.01, 0, 0))
+ *
+ * // Presets
+ * item.withTag(ProjectileVelocitySystem.CUSTOM, LASER)
+ * </pre>
  */
 public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVelocityConfig> {
 
@@ -58,40 +62,56 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
     }
 
     // ===========================
-    // UNIVERSAL TAG SYSTEM
+    // UNIFIED TAG SYSTEM
     // ===========================
 
-    /**
-     * Multiply velocity components: [horizontalMult, verticalMult, spreadMult, gravity, horizontalAirRes, verticalAirRes]
-     * Example for slow-mo: [0.5, 0.5, 1.0, 0.5, 1.0, 1.0] = 50% speed and gravity
-     */
-    public static final Tag<List<Double>> MULTIPLIER = Tag.Double("projectile_velocity_multiplier").list();
-    public static final Tag<List<Double>> MODIFY = Tag.Double("projectile_velocity_modify").list();
-    public static final Tag<ProjectileVelocityConfig> CUSTOM = Tag.Transient("projectile_velocity_custom");
+    /** Unified velocity tag (projectiles only) */
+    public static final Tag<ConfigTagWrapper<ProjectileVelocityConfig>> CUSTOM = Tag.Transient("projectile_velocity_custom");
 
-    @Override protected Tag<List<Double>> getMultiplierTag() { return MULTIPLIER; }
-    @Override protected Tag<List<Double>> getModifyTag() { return MODIFY; }
-    @Override protected Tag<ProjectileVelocityConfig> getCustomTag() { return CUSTOM; }
-    @Override protected Tag<List<Double>> getProjectileMultiplierTag() { return MULTIPLIER; }
-    @Override protected Tag<List<Double>> getProjectileModifyTag() { return MODIFY; }
-    @Override protected Tag<ProjectileVelocityConfig> getProjectileCustomTag() { return CUSTOM; }
-    @Override protected int getModifyComponentCount() { return 6; }
+    @Override
+    protected Tag<ConfigTagWrapper<ProjectileVelocityConfig>> getWrapperTag(Entity attacker) {
+        return CUSTOM; // Velocity only applies to projectiles
+    }
+
+    @Override
+    protected int getComponentCount() {
+        return 6; // [hMult, vMult, spread, gravity, hAirRes, vAirRes]
+    }
 
     // ===========================
-    // CONFIG RESOLUTION
+    // OVERRIDE: Use registry for projectile base config
+    // ===========================
+
+    @Override
+    protected ProjectileVelocityConfig resolveBaseConfig(Entity attacker, LivingEntity victim, @Nullable EquipmentSlot handUsed) {
+        // Projectiles get velocity from registry
+        if (isProjectileAttacker(attacker)) {
+            try {
+                var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
+                ProjectileVelocityConfig registryConfig = projectileManager.getProjectileRegistry()
+                        .getVelocityConfig(attacker.getEntityType());
+
+                if (registryConfig != null) {
+                    return registryConfig;
+                }
+            } catch (Exception e) {
+                log.debug("Could not get projectile velocity from registry: {}", e.getMessage());
+            }
+        }
+
+        // Fallback to server default
+        return super.resolveBaseConfig(attacker, victim, handUsed);
+    }
+
+    // ===========================
+    // PUBLIC API
     // ===========================
 
     /**
      * Resolve velocity config through tag system.
      * Checks item, player, and projectile tags in priority order.
-     *
-     * @param shooter The entity shooting (for player tags)
-     * @param projectile The projectile entity (can be null before spawn)
-     * @param item The item being used (for item tags)
-     * @return Resolved velocity config
      */
     public ProjectileVelocityConfig resolveConfig(Entity shooter, Entity projectile, ItemStack item) {
-        // Use resolveComponents to get final values
         double[] components = resolveComponents(
                 shooter,
                 projectile instanceof LivingEntity le ? le : null,
@@ -110,30 +130,5 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
                 components[0], components[1], components[2],
                 components[3], components[4], components[5]
         );
-    }
-
-    // ===========================
-    // HELPER METHODS
-    // ===========================
-
-    /**
-     * Create a multiplier for global speed changes (affects horizontal and vertical equally).
-     */
-    public static List<Double> createSpeedMultiplier(double speedMultiplier) {
-        return List.of(speedMultiplier, speedMultiplier, 1.0, 1.0, 1.0, 1.0);
-    }
-
-    /**
-     * Create a multiplier for gravity changes.
-     */
-    public static List<Double> createGravityMultiplier(double gravityMultiplier) {
-        return List.of(1.0, 1.0, 1.0, gravityMultiplier, 1.0, 1.0);
-    }
-
-    /**
-     * Create a multiplier for air resistance/drag changes.
-     */
-    public static List<Double> createAirResistanceMultiplier(double resistanceMultiplier) {
-        return List.of(1.0, 1.0, 1.0, 1.0, resistanceMultiplier, resistanceMultiplier);
     }
 }

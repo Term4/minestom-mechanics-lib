@@ -1,5 +1,6 @@
 package com.minestom.mechanics.manager;
 
+import com.minestom.mechanics.projectile.ProjectileRegistry;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.projectile.features.BowFeature;
 import com.minestom.mechanics.projectile.features.FishingRodFeature;
@@ -20,9 +21,8 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
 
     // Configuration
     private ProjectileConfig projectileConfig;
-
-    // Knockback applicator (shared by all projectiles)
     private KnockbackApplicator knockbackApplicator;
+    private ProjectileRegistry projectileRegistry;
 
     private ProjectileManager() {
         super("ProjectileManager");
@@ -40,10 +40,15 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
         this.projectileConfig = config;
 
         return initializeWithWrapper(() -> {
-            // Initialize knockback applicator from CombatManager's config
+            // Initialize knockback applicator
             log.debug("Initializing KnockbackApplicator for projectiles...");
             var combatConfig = CombatManager.getInstance().getCombatConfig();
             this.knockbackApplicator = new KnockbackApplicator(combatConfig.knockbackConfig());
+
+            // Initialize unified projectile registry
+            log.debug("Initializing ProjectileRegistry...");
+            this.projectileRegistry = new ProjectileRegistry();
+            this.projectileRegistry.initialize(config);
 
             // Initialize bow feature
             log.debug("Initializing BowFeature...");
@@ -61,7 +66,7 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
             log.debug("Registering cleanup handlers...");
             ProjectileCleanupHandler.registerCleanupListeners();
 
-            // Set configurations on initialized features
+            // Configure features
             if (fishingRodFeature != null) {
                 fishingRodFeature.setConfig(config.getFishingRodVelocityConfig());
             }
@@ -145,6 +150,15 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
     }
 
     /**
+     * Get the unified projectile registry.
+     * Contains all projectile data: knockback, velocity, material mappings, etc.
+     */
+    public ProjectileRegistry getProjectileRegistry() {
+        requireInitialized();
+        return projectileRegistry;
+    }
+
+    /**
      * Get the shared knockback applicator for all projectiles.
      * Projectile entities should use this to apply knockback.
      */
@@ -159,14 +173,7 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
 
     /**
      * Get the base projectile configuration.
-     * This is the default/fallback used when no tags are present.
-     *
-     * For runtime modifications, use tags:
-     * - KnockbackSystem.PROJECTILE_MULTIPLIER
-     * - KnockbackSystem.PROJECTILE_MODIFY
-     * - KnockbackSystem.PROJECTILE_CUSTOM
-     *
-     * To change the base config permanently, reinitialize with a new config.
+     * For runtime modifications, use the ProjectileRegistry.
      */
     public ProjectileConfig getProjectileConfig() {
         requireInitialized();

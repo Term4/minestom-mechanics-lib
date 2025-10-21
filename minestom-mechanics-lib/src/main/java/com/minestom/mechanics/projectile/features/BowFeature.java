@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackCon
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
-import com.minestom.mechanics.projectile.ProjectileCreator;
+import com.minestom.mechanics.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.projectile.entities.AbstractArrow;
 import com.minestom.mechanics.projectile.entities.Arrow;
 import com.minestom.mechanics.projectile.components.ProjectileSoundHandler;

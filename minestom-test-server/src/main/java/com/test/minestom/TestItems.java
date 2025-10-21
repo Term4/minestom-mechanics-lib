@@ -1,6 +1,7 @@
 package com.test.minestom;
 
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
+import com.minestom.mechanics.projectile.ProjectileVelocitySystem;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.component.DataComponents;
@@ -10,77 +11,69 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 import java.util.List;
 
+import static com.minestom.mechanics.config.knockback.KnockbackTagValue.*;
+import static com.minestom.mechanics.projectile.utils.VelocityTagValue.*;
+
+
 /**
- * Test items for Universal Config System
+ * Test items for Universal Config System - Using prefixed methods!
  */
 public class TestItems {
 
     /**
-     * Knockback Stick - 2x horizontal
+     * Knockback Stick - 5x horizontal knockback
      */
     public static ItemStack knockbackStick() {
         return ItemStack.builder(Material.STICK)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Knockback Stick", NamedTextColor.GOLD, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
-                        Component.text("2x Horizontal Knockback", NamedTextColor.GRAY)
+                        Component.text("5x Horizontal Knockback", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.MULTIPLIER, List.of(
-                        5.0,  // horizontal × 2
-                        1.0,  // vertical × 1 (no change)
-                        1.0, 1.0, 1.0, 1.0 // others no change
-                ));
+                .withTag(KnockbackSystem.CUSTOM, kbMult(5.0, 1.0));
     }
 
     /**
-     * Knockback Egg - adds +0.5 horizontal, +0.3 vertical
+     * Knockback Egg - adds +100 horizontal, +1 vertical
      */
     public static ItemStack knockbackEgg() {
         return ItemStack.builder(Material.EGG)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Knockback Egg", NamedTextColor.YELLOW, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
-                        Component.text("+0.5 Horizontal, +0.3 Vertical", NamedTextColor.GRAY)
+                        Component.text("+100 Horizontal, +1 Vertical", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.PROJECTILE_MODIFY, List.of(
-                        100.0,  // horizontal × 2
-                        1.0,  // vertical × 1 (no change)
-                        0.0, 0.0, 0.0, 0.0 // others no change
-                ));
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbAdd(100.0, 1.0));
     }
 
     /**
-     * Grapple Snowball
+     * Grapple Snowball - pulls enemies toward you!
      */
-    public static ItemStack GrappleKnockbackSnowball() {
+    public static ItemStack grappleKnockbackSnowball() {
         return ItemStack.builder(Material.SNOWBALL)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Grapple Snowball", NamedTextColor.WHITE, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
                         Component.text("Pull your enemies towards you!", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
-                        -1.5, 1.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
-                ));
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, KB_GRAPPLE);
     }
 
     /**
-     * Sky Snowball
+     * Sky Snowball - launches enemies upward
      */
-    public static ItemStack noHKnockbackSnowball() {
+    public static ItemStack skySnowball() {
         return ItemStack.builder(Material.SNOWBALL)
-                .set(DataComponents.CUSTOM_NAME, Component.text("Sky ball", NamedTextColor.YELLOW, TextDecoration.BOLD))
+                .set(DataComponents.CUSTOM_NAME, Component.text("Sky Ball", NamedTextColor.YELLOW, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
                         Component.text("Shoot your enemies to the sky!", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
-                        0.0, 5.0, 1.0, 1.0, 1.0, 1.0  // All components × 0
-                ));
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbMult(0.0, 5.0));
     }
 
     /**
-     * Cannon Bow - 10x horizontal, 1.5x vertical
+     * Cannon Bow - massive knockback arrows
      */
     public static ItemStack cannonBow() {
         return ItemStack.builder(Material.BOW)
@@ -89,13 +82,63 @@ public class TestItems {
                         Component.text("5x Horizontal, 3x Vertical", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(KnockbackSystem.PROJECTILE_MULTIPLIER, List.of(
-                        5.0,  // horizontal × 5
-                        3.0,   // vertical × 1.5
-                        1.0,  // sprint bonus horizontal × 10 (scales with base)
-                        1.0,   // sprint bonus vertical × 1.5 (scales with base)
-                        1.0,   // air multiplier horizontal (NO CHANGE - already a multiplier!)
-                        1.0    // air multiplier vertical (NO CHANGE - already a multiplier!)
-                ));
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbMult(5.0, 3.0));
+    }
+
+    /**
+     * Gravity Egg - slow moving with low gravity
+     */
+    public static ItemStack gravityEgg() {
+        return ItemStack.builder(Material.EGG)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Gravity Egg", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Floats through the air slowly", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(ProjectileVelocitySystem.CUSTOM,
+                        velMult(0.5, 0.5)
+                                .thenAdd(0, 0, 0, 0.01, 0, 0)); // Low gravity
+    }
+
+    /**
+     * Laser Snowball - super fast, no gravity, no air resistance
+     */
+    public static ItemStack laserSnowball() {
+        return ItemStack.builder(Material.SNOWBALL)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Laser Snowball", NamedTextColor.AQUA, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Flies straight and fast!", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER);
+    }
+
+    /**
+     * Heavy Rock Snowball - slow, heavy drop
+     */
+    public static ItemStack heavyRock() {
+        return ItemStack.builder(Material.SNOWBALL)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Heavy Rock", NamedTextColor.DARK_GRAY, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Drops like a rock!", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(ProjectileVelocitySystem.CUSTOM, VEL_HEAVY)
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, KB_HEAVY);
+    }
+
+    /**
+     * Combo Example - multiply velocity, add knockback
+     */
+    public static ItemStack comboEgg() {
+        return ItemStack.builder(Material.EGG)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Combo Egg", NamedTextColor.GREEN, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Fast + Extra Knockback", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(ProjectileVelocitySystem.CUSTOM, velMult(1.5))
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM,
+                        kbMult(2.0, 1.5).thenAdd(0.2, 0.1));
     }
 }
