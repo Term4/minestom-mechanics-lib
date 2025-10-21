@@ -16,15 +16,15 @@ public class ProjectileVelocityPresets {
 
     /** Default snowball velocity (1.5 speed, light gravity) */
     public static final ProjectileVelocityConfig SNOWBALL =
-            new ProjectileVelocityConfig(1.5, 1.5, 1.0, 0.03, 0.99, 0.99);
+            new ProjectileVelocityConfig(1.0, 1.0, 1.0, 0.03, 0.99, 0.99);
 
     /** Default egg velocity (1.5 speed, light gravity) */
     public static final ProjectileVelocityConfig EGG =
-            new ProjectileVelocityConfig(1.5, 1.5, 1.0, 0.03, 0.99, 0.99);
+            new ProjectileVelocityConfig(1.0, 1.0, 1.0, 0.03, 0.99, 0.99);
 
     /** Default ender pearl velocity (1.5 speed, light gravity) */
     public static final ProjectileVelocityConfig ENDER_PEARL =
-            new ProjectileVelocityConfig(1.5, 1.5, 1.0, 0.03, 0.99, 0.99);
+            new ProjectileVelocityConfig(1.0, 1.0, 1.0, 0.03, 0.99, 0.99);
 
     /** Default fishing rod bobber velocity (3.0 speed, medium gravity) */
     public static final ProjectileVelocityConfig FISHING_ROD =

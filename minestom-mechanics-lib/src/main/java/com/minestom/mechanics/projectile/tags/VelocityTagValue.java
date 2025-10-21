@@ -94,7 +94,7 @@ public record VelocityTagValue(
     // ===========================
 
     /** Laser: Fast, no gravity, no air resistance, no spread */
-    public static final VelocityTagValue VEL_LASER = velMult(2.0, 2.0, 0.1, 0.0, 1.0, 1.0);
+    public static final VelocityTagValue VEL_LASER = velMult(2.5, 2.5, 0.1, 0.0, 1.0, 1.0);
 
     /** Floaty: Slow, low gravity */
     public static final VelocityTagValue VEL_FLOATY = velMult(0.5, 0.5, 1.0, 0.01, 1.0, 1.0);
