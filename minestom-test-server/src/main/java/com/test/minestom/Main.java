@@ -226,7 +226,7 @@ public class Main {
                 player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
 
-                GravitySystem.setGravity(player, 0.02);
+                MinecraftServer.getConnectionManager().setPlayerProvider(CustomPhysicsPlayer::new);
 
             }
         });

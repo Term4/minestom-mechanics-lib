@@ -276,7 +276,7 @@ public final class CombatConstants {
     public static final int DEFAULT_SPRINTWINDOW_TICKS = 2;
 
     /** Default maximum sprint window tick buffer */
-    public static final int DEFAULT_SPRINT_WINDOW_MAX_TICKS = 5;
+    public static final int DEFAULT_SPRINT_WINDOW_MAX_TICKS = 10;
 
     /** Maximum knockback multiplier for validation */
     public static final double MAX_KNOCKBACK_MULTIPLIER = 2.0;

@@ -25,7 +25,7 @@ public final class CombatPresets {
             // Knockback
             KnockbackPresets.minemen(),
             // Sprint window
-            true, false, 5,
+            true, true, 8,
             // Blocking
             true, 0.5, 0.95, 0.95, true, true
     );

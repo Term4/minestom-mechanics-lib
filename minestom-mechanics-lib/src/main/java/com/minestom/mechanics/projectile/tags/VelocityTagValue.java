@@ -27,6 +27,9 @@ import java.util.List;
  * .withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER)
  * </pre>
  */
+
+// TODO: See if spawning the misc projectile with the players
+//  yaw / pitch solves the high velocity desync on legacy clients
 public record VelocityTagValue(
         @Nullable List<Double> multiplier,
         @Nullable List<Double> modify,

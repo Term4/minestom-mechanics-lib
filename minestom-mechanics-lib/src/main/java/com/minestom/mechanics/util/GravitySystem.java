@@ -3,12 +3,17 @@ package com.minestom.mechanics.util;
 import com.minestom.mechanics.util.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.RelativeFlags;
 import net.minestom.server.event.entity.EntityTickEvent;
 import net.minestom.server.item.ItemStack;
+import net.minestom.server.network.packet.client.play.ClientInputPacket;
+import net.minestom.server.network.packet.server.play.EntityTeleportPacket;
+import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.Nullable;
 
@@ -92,73 +97,65 @@ public class GravitySystem extends InitializableSystem {
         return instance;
     }
 
-    private static final Tag<Boolean> GRAVITY_CONTROLLED = Tag.Boolean("grav_controlled").defaultValue(false);
-
     private void registerListener() {
         MinecraftServer.getGlobalEventHandler().addListener(EntityTickEvent.class, event -> {
             Entity entity = event.getEntity();
+            if (!(entity instanceof LivingEntity livingEntity)) return;
 
-            // Only handle living entities (not projectiles - they have custom physics)
-            if (!(entity instanceof LivingEntity livingEntity)) {
-                return;
-            }
-
-            // Check for custom gravity tag
             Double customGravity = entity.getTag(GRAVITY);
-
             if (customGravity == null) {
-                // No custom gravity - restore vanilla
-                if (livingEntity.getTag(GRAVITY_CONTROLLED)) {
-                    livingEntity.setNoGravity(false);
-                    livingEntity.setTag(GRAVITY_CONTROLLED, false);
-                }
+                if (entity.hasNoGravity()) entity.setNoGravity(false);
                 return;
             }
 
-            // Tell client to stop applying gravity
-            if (!livingEntity.getTag(GRAVITY_CONTROLLED)) {
-                livingEntity.setNoGravity(true);
-                livingEntity.setTag(GRAVITY_CONTROLLED, true);
-            }
-
-            Vec velocity = livingEntity.getVelocity();
-
-            // ONLY apply gravity when falling (Y <= 0), NOT when jumping (Y > 0)
-            // This prevents cutting off jumps!
-            if (!livingEntity.isOnGround() && velocity.y() <= 0) {
-                applyCustomGravity(livingEntity, customGravity);
-            }
+            applyCustomGravity(livingEntity, customGravity);
         });
     }
 
-    /**
-     * Apply custom gravity ONLY to Y velocity.
-     * Should NOT touch X or Z at all.
-     */
+    private static final Tag<Double> VY = Tag.Double("gravity_vy");
+
     private void applyCustomGravity(LivingEntity entity, double customGravity) {
-        // Don't apply if flying
-        if (entity instanceof Player player && player.isFlying()) {
+        if (entity.isOnGround()) {
+            entity.setTag(VY, 0.0);
             return;
         }
-
+        if (entity instanceof Player p && p.isFlying()) {
+            entity.setTag(VY, 0.0);
+            return;
+        }
         if (entity.isFlyingWithElytra()) {
+            entity.setTag(VY, 0.0);
             return;
         }
 
-        Vec velocity = entity.getVelocity();
+        entity.setNoGravity(true);
 
-        // Explicitly preserve X and Z, only change Y
-        double newY = velocity.y() - customGravity;
+        Double vyBoxed = entity.getTag(VY);
+        double vy = (vyBoxed != null) ? vyBoxed : 0.0;
 
-        // Use Vec constructor to be 100% explicit
-        Vec newVelocity = new Vec(velocity.x(), newY, velocity.z());
-        entity.setVelocity(newVelocity);
+        if (vy <= 0) {
+            vy -= customGravity;
+        }
 
-        // Debug X/Z changes
-        if (entity.getAliveTicks() % 40 == 0) {
-            log.debug("Gravity applied - Before: X={} Y={} Z={}, After: X={} Y={} Z={}",
-                    velocity.x(), velocity.y(), velocity.z(),
-                    newVelocity.x(), newVelocity.y(), newVelocity.z());
+        entity.setTag(VY, vy);
+
+        if (entity instanceof Player player) {
+            var pos = player.getPosition();
+
+            // Send packet with ONLY Y as relative
+            player.sendPacket(new EntityTeleportPacket(
+                    player.getEntityId(),
+                    pos, // Current position (for X/Z reference)
+                    new Vec(0, vy, 0), // Only Y delta
+                    RelativeFlags.Y, // ONLY Y is relative, X/Z are absolute from pos
+                    player.isOnGround()
+            ));
+
+            // Update server position
+            entity.refreshPosition(pos.withY(pos.y() + vy));
+        } else {
+            var pos = entity.getPosition();
+            entity.teleport(pos.withY(pos.y() + vy));
         }
     }
 
@@ -208,76 +205,4 @@ public class GravitySystem extends InitializableSystem {
         return entity.getTag(GRAVITY) != null;
     }
 
-    // ===========================
-    // PROJECTILE GRAVITY RESOLUTION
-    // ===========================
-
-    /**
-     * Resolve gravity for a projectile with priority chain.
-     *
-     * <p><b>Priority:</b></p>
-     * <ol>
-     *   <li>Projectile GRAVITY tag (highest)</li>
-     *   <li>Item GRAVITY tag</li>
-     *   <li>Shooter GRAVITY tag</li>
-     *   <li>Registry config gravity</li>
-     *   <li>Default fallback</li>
-     * </ol>
-     *
-     * @param projectile The projectile entity
-     * @param shooter The shooting entity (can be null)
-     * @param item The item used (can be null)
-     * @param registryGravity Registry config gravity (can be null)
-     * @param defaultGravity Default fallback value
-     * @return resolved gravity value
-     */
-    public static double resolveProjectileGravity(Entity projectile,
-                                                  @Nullable Entity shooter,
-                                                  @Nullable ItemStack item,
-                                                  @Nullable Double registryGravity,
-                                                  double defaultGravity) {
-        // 1. Projectile GRAVITY tag (highest priority)
-        Double projectileGravity = projectile.getTag(GRAVITY);
-        if (projectileGravity != null) {
-            return projectileGravity;
-        }
-
-        // 2. Item GRAVITY tag
-        if (item != null) {
-            Double itemGravity = item.getTag(GRAVITY);
-            if (itemGravity != null) {
-                return itemGravity;
-            }
-        }
-
-        // 3. Shooter GRAVITY tag (works for both 1.8 and modern!)
-        if (shooter != null) {
-            Double shooterGravity = shooter.getTag(GRAVITY);
-            if (shooterGravity != null) {
-                return shooterGravity;
-            }
-        }
-
-        // 4. Registry config
-        if (registryGravity != null) {
-            return registryGravity;
-        }
-
-        // 5. Default fallback
-        return defaultGravity;
-    }
-
-    /**
-     * Simple projectile gravity resolution.
-     *
-     * @param projectile The projectile entity
-     * @param registryGravity Registry config gravity (can be null)
-     * @param defaultGravity Default fallback
-     * @return resolved gravity value
-     */
-    public static double resolveProjectileGravity(Entity projectile,
-                                                  @Nullable Double registryGravity,
-                                                  double defaultGravity) {
-        return resolveProjectileGravity(projectile, null, null, registryGravity, defaultGravity);
-    }
 }
