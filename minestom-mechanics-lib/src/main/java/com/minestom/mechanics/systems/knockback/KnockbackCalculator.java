@@ -1,8 +1,6 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.systems.knockback.components.KnockbackStrength;
-import com.minestom.mechanics.systems.knockback.components.KnockbackType;
 import com.minestom.mechanics.systems.util.GameplayUtils;
 import com.minestom.mechanics.systems.util.LogUtil;
 import net.minestom.server.ServerFlag;
@@ -98,14 +96,16 @@ public class KnockbackCalculator {
     /**
      * Calculate final velocity from knockback components.
      */
-    public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackStrength strength,
-                                      KnockbackType type) {
+    public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackSystem.KnockbackStrength strength,
+                                      KnockbackSystem.KnockbackType type) {
         double tps = ServerFlag.SERVER_TICKS_PER_SECOND;
         double horizontal = strength.horizontal() / tps;
         double vertical = strength.vertical() / tps;
 
         Vec oldVelocity = victim.getVelocity();
 
+
+        // TODO: Is this necessary?
         // Handle ground state velocity correction
         if (victim.isOnGround()) {
             Vec minestomVel = victim.getVelocity();
@@ -136,7 +136,7 @@ public class KnockbackCalculator {
             return oldVelocity.y() / 2.0 + vertical * tps;
         }
 
-        // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug (where it has a ~ -1.518 offset)
+        // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug
         boolean isFalling = GameplayUtils.isFalling(victim);
 
         if (isFalling) {

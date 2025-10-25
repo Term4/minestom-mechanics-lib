@@ -2,7 +2,7 @@ package com.minestom.mechanics.systems.attack;
 
 import com.minestom.mechanics.systems.damage.DamageFeature;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
-import com.minestom.mechanics.systems.knockback.components.KnockbackType;
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.validation.HitDetection;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.systems.util.GameplayUtils;
@@ -205,7 +205,7 @@ public class AttackFeature extends InitializableSystem {
             knockbackApplicator.applyKnockback(
                     victim,
                     attacker,
-                    KnockbackType.ATTACK,
+                    KnockbackSystem.KnockbackType.ATTACK,
                     result.hadSprintBonus(),
                     0   // Placeholder for enchantment level
             );

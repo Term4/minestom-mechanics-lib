@@ -42,7 +42,7 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     // ===========================
     // INITIALIZATION
     // ===========================
-
+    // TODO: Clean this up, move to initializablesystem
     public static KnockbackSystem initialize(KnockbackConfig config) {
         if (instance != null && instance.initialized) {
             LogUtil.logAlreadyInitialized("KnockbackSystem");
@@ -78,6 +78,7 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
 
     @Override
     @SuppressWarnings("unchecked")
+    // TODO: Make this checked!!!
     protected Tag<ConfigTagWrapper<KnockbackConfig>> getWrapperTag(Entity attacker) {
         return (Tag<ConfigTagWrapper<KnockbackConfig>>) (Tag<?>)
                 (isProjectileAttacker(attacker) ? PROJECTILE_CUSTOM : CUSTOM);
@@ -98,6 +99,8 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
         if (attacker instanceof Player p && handUsed != null) {
             item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
         }
+
+        // TODO: Move to knockbackconfig getters?
         double[] components = resolveComponents(
                 attacker,
                 victim,
@@ -126,5 +129,17 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     public KnockbackConfig getConfig() {
         requireInitialized();
         return serverDefaultConfig;
+    }
+
+    /**
+     * Simple record holding knockback strength values.
+     */
+    public record KnockbackStrength(double horizontal, double vertical) {}
+
+    /**
+     * Types of knockback that can be applied.
+     */
+    public enum KnockbackType {
+        ATTACK, DAMAGE, SWEEPING, EXPLOSION, PROJECTILE
     }
 }

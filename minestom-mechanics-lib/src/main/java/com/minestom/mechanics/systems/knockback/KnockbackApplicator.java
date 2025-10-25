@@ -2,8 +2,6 @@ package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
-import com.minestom.mechanics.systems.knockback.components.KnockbackStrength;
-import com.minestom.mechanics.systems.knockback.components.KnockbackType;
 import com.minestom.mechanics.systems.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -31,7 +29,7 @@ public class KnockbackApplicator {
     /**
      * Apply melee knockback.
      */
-    public void applyKnockback(LivingEntity victim, Entity attacker, KnockbackType type,
+    public void applyKnockback(LivingEntity victim, Entity attacker, KnockbackSystem.KnockbackType type,
                                boolean wasSprinting, int kbEnchantLevel) {
         applyKnockbackInternal(victim, attacker, attacker.getPosition(),
                 type, wasSprinting, kbEnchantLevel);
@@ -43,7 +41,7 @@ public class KnockbackApplicator {
     public void applyProjectileKnockback(LivingEntity victim, Entity projectile,
                                          Pos shooterOrigin, int kbEnchantLevel) {
         applyKnockbackInternal(victim, projectile, shooterOrigin,
-                KnockbackType.PROJECTILE, false, kbEnchantLevel);
+                KnockbackSystem.KnockbackType.PROJECTILE, false, kbEnchantLevel);
     }
 
     // ===========================
@@ -51,14 +49,14 @@ public class KnockbackApplicator {
     // ===========================
 
     private void applyKnockbackInternal(LivingEntity victim, Entity attacker, Pos sourcePos,
-                                        KnockbackType type, boolean wasSprinting, int kbEnchantLevel) {
+                                        KnockbackSystem.KnockbackType type, boolean wasSprinting, int kbEnchantLevel) {
         // Resolve config from KnockbackSystem
-        EquipmentSlot handUsed = (attacker instanceof Player && type != KnockbackType.PROJECTILE)
+        EquipmentSlot handUsed = (attacker instanceof Player && type != KnockbackSystem.KnockbackType.PROJECTILE)
                 ? EquipmentSlot.MAIN_HAND : null;
         KnockbackConfig resolved = KnockbackSystem.getInstance().resolveConfig(attacker, victim, handUsed);
 
         // Calculate direction
-        Vec direction = type == KnockbackType.PROJECTILE
+        Vec direction = type == KnockbackSystem.KnockbackType.PROJECTILE
                 ? calculator.calculateProjectileKnockbackDirection(victim, sourcePos)
                 : calculator.calculateKnockbackDirection(victim, attacker);
 
@@ -67,7 +65,7 @@ public class KnockbackApplicator {
         double vertical = resolved.vertical();
 
         // Apply sprint bonus (melee only)
-        if (wasSprinting && type != KnockbackType.PROJECTILE) {
+        if (wasSprinting && type != KnockbackSystem.KnockbackType.PROJECTILE) {
             horizontal += resolved.sprintBonusHorizontal();
             vertical += resolved.sprintBonusVertical();
             if (attacker instanceof Player player) {
@@ -76,20 +74,22 @@ public class KnockbackApplicator {
         }
 
         // Apply enchantment bonus (melee only)
-        if (kbEnchantLevel > 0 && type != KnockbackType.PROJECTILE) {
+        if (kbEnchantLevel > 0 && type != KnockbackSystem.KnockbackType.PROJECTILE) {
             horizontal += kbEnchantLevel * 0.6;
             vertical += 0.1;
         }
 
         // Sweeping reduction
-        if (type == KnockbackType.SWEEPING) {
+        if (type == KnockbackSystem.KnockbackType.SWEEPING) {
             horizontal *= 0.5;
             vertical *= 0.5;
         }
 
         // Create strength record
-        KnockbackStrength strength = new KnockbackStrength(horizontal, vertical);
+        KnockbackSystem.KnockbackStrength strength = new KnockbackSystem.KnockbackStrength(horizontal, vertical);
 
+
+        // TODO: Generalize this!! Not JUST blocking (do the same with damage)
         // Apply blocking reduction
         if (victim instanceof Player player) {
             try {
@@ -97,7 +97,7 @@ public class KnockbackApplicator {
                 if (blocking.isBlocking(player)) {
                     horizontal *= (1.0 - blocking.getKnockbackHorizontalReduction());
                     vertical *= (1.0 - blocking.getKnockbackVerticalReduction());
-                    strength = new KnockbackStrength(horizontal, vertical);
+                    strength = new KnockbackSystem.KnockbackStrength(horizontal, vertical);
                 }
             } catch (IllegalStateException e) {
                 // BlockingSystem not initialized - skip blocking reduction
@@ -106,7 +106,7 @@ public class KnockbackApplicator {
 
         // Apply air multipliers
         if (!victim.isOnGround()) {
-            strength = new KnockbackStrength(
+            strength = new KnockbackSystem.KnockbackStrength(
                     strength.horizontal() * resolved.airMultiplierHorizontal(),
                     strength.vertical() * resolved.airMultiplierVertical()
             );
@@ -114,7 +114,7 @@ public class KnockbackApplicator {
 
         // Apply resistance attribute
         double resistance = victim.getAttributeValue(net.minestom.server.entity.attribute.Attribute.KNOCKBACK_RESISTANCE);
-        strength = new KnockbackStrength(
+        strength = new KnockbackSystem.KnockbackStrength(
                 strength.horizontal() * (1 - resistance),
                 strength.vertical() * (1 - resistance)
         );

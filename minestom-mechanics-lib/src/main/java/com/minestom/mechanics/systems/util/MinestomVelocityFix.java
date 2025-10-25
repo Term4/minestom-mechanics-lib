@@ -1,4 +1,4 @@
-package com.minestom.mechanics.systems.knockback.components;
+package com.minestom.mechanics.systems.util;
 
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
