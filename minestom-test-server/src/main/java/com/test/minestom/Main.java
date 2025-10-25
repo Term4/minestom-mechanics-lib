@@ -4,8 +4,10 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.config.gameplay.GameplayPresets;
-import com.minestom.mechanics.systems.blocking.BlockingStateManager;
+import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.systems.blocking.BlockingState;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
+import com.minestom.mechanics.systems.util.*;
 import com.test.minestom.commands.CommandRegistry;
 import com.minestom.mechanics.manager.CombatManager;
 import com.test.minestom.commands.debug.EntityVisibilityTest;
@@ -13,14 +15,12 @@ import com.minestom.mechanics.config.combat.CombatPresets;
 import com.minestom.mechanics.config.world.WorldInteractionConfig;
 import com.test.minestom.config.server.ServerConfig;
 import com.test.minestom.gui.GuiManager;
-import com.minestom.mechanics.util.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
-import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
@@ -136,7 +136,7 @@ public class Main {
     // ===========================
 
     private static void initializePvP() {
-        com.minestom.mechanics.MechanicsManager.getInstance()
+        MechanicsManager.getInstance()
                 .configure()
                 .withCombat(COMBAT_CONFIG)
                 .withGameplay(GameplayPresets.MINEMEN)
@@ -225,9 +225,6 @@ public class Main {
                 // Default movement speed is 0.1, Speed II increases by 40% (0.1 * 1.4 = 0.14)
                 player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
-
-                MinecraftServer.getConnectionManager().setPlayerProvider(CustomPhysicsPlayer::new);
-
             }
         });
 
@@ -242,9 +239,9 @@ public class Main {
             GuiManager.getInstance().cleanup(player);
 
             // Force aggressive cleanup
-            player.removeTag(BlockingStateManager.BLOCKING);
-            player.removeTag(BlockingStateManager.ORIGINAL_OFFHAND);
-            player.removeTag(BlockingStateManager.PREFERENCES);
+            player.removeTag(BlockingState.BLOCKING);
+            player.removeTag(BlockingState.ORIGINAL_OFFHAND);
+            player.removeTag(BlockingState.PREFERENCES);
 
             MinecraftServer.LOGGER.info("Cleaned up all data for: {}", player.getUsername());
         });

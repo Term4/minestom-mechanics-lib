@@ -1,6 +1,6 @@
 package com.minestom.mechanics.manager;
 
-import com.minestom.mechanics.attack.AttackFeature;
+import com.minestom.mechanics.systems.attack.AttackFeature;
 import com.minestom.mechanics.config.combat.*;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 

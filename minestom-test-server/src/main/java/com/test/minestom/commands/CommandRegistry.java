@@ -6,7 +6,7 @@ import com.test.minestom.commands.combat.KnockbackCommand;
 import com.test.minestom.commands.debug.MemCheckCommand;
 import com.test.minestom.gui.views.BlockingSettingsGui;
 import com.minestom.mechanics.manager.CombatManager;
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.event.player.PlayerSpawnEvent;
@@ -16,7 +16,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 import java.util.*;
 
-import static com.minestom.mechanics.util.MessageBuilder.*;
+import static com.minestom.mechanics.systems.util.MessageBuilder.*;
 
 /**
  * Central registry for all server commands.

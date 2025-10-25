@@ -1,12 +1,12 @@
 package com.minestom.mechanics.manager;
 
-import com.minestom.mechanics.projectile.utils.ProjectileRegistry;
-import com.minestom.mechanics.projectile.components.ProjectileVelocitySystem;
+import com.minestom.mechanics.systems.projectile.utils.ProjectileRegistry;
+import com.minestom.mechanics.systems.projectile.components.ProjectileVelocitySystem;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
-import com.minestom.mechanics.projectile.features.BowFeature;
-import com.minestom.mechanics.projectile.features.FishingRodFeature;
-import com.minestom.mechanics.projectile.features.MiscProjectileFeature;
-import com.minestom.mechanics.events.ProjectileCleanupHandler;
+import com.minestom.mechanics.systems.projectile.features.BowFeature;
+import com.minestom.mechanics.systems.projectile.features.FishingRodFeature;
+import com.minestom.mechanics.systems.projectile.features.MiscProjectileFeature;
+import com.minestom.mechanics.systems.projectile.components.ProjectileCleanupHandler;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 
 /**

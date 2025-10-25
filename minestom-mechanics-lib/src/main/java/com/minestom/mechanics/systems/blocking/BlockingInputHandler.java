@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.blocking;
 
 import com.minestom.mechanics.config.combat.CombatConfig;
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -51,7 +51,7 @@ public class BlockingInputHandler {
 
     private void handlePlayerSpawn(PlayerSpawnEvent event) {
         Player player = event.getPlayer();
-        if (player.getTag(BlockingStateManager.PREFERENCES) == null) {
+        if (player.getTag(BlockingState.PREFERENCES) == null) {
             BlockingPreferences prefs = new BlockingPreferences();
             prefs.showShieldOnSelf = true;
             prefs.showShieldOnOthers = true;
@@ -60,7 +60,7 @@ public class BlockingInputHandler {
             prefs.showActionBarOnBlock = true;
             prefs.particleType = BlockingPreferences.ParticleType.CRIT;
             prefs.particleCount = 8; // TODO: remove hard coded value here!!!
-            player.setTag(BlockingStateManager.PREFERENCES, prefs);
+            player.setTag(BlockingState.PREFERENCES, prefs);
         }
     }
 

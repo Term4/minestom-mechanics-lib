@@ -1,7 +1,7 @@
 package com.test.minestom;
 
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
-import com.minestom.mechanics.projectile.components.ProjectileVelocitySystem;
+import com.minestom.mechanics.systems.projectile.components.ProjectileVelocitySystem;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.component.DataComponents;
@@ -11,8 +11,8 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 import java.util.List;
 
-import static com.minestom.mechanics.projectile.tags.VelocityTagValue.*;
 import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.*;
+import static com.minestom.mechanics.systems.projectile.tags.VelocityTagValue.*;
 
 
 /**

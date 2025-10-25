@@ -1,12 +1,10 @@
 package com.minestom.mechanics.systems.knockback;
 
-import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.knockback.components.KnockbackStrength;
 import com.minestom.mechanics.systems.knockback.components.KnockbackType;
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.*;

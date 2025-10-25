@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.knockback.tags;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.util.ConfigTagWrapper;
+import com.minestom.mechanics.systems.util.ConfigTagWrapper;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

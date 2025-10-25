@@ -1,8 +1,8 @@
 package com.minestom.mechanics.systems.gameplay;
 
 import com.minestom.mechanics.config.gameplay.MovementConfig;
-import com.minestom.mechanics.util.InitializableSystem;
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.util.InitializableSystem;
+import com.minestom.mechanics.systems.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.EntityPose;

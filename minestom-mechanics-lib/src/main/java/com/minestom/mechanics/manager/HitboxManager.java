@@ -1,7 +1,7 @@
 package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
-import com.minestom.mechanics.validation.HitDetection;
+import com.minestom.mechanics.systems.validation.HitDetection;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 

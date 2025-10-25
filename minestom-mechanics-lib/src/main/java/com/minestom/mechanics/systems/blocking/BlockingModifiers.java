@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.blocking;
 
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;
@@ -20,6 +20,8 @@ import net.minestom.server.sound.SoundEvent;
 //  should generalize that class, then the only thing blockingmodifiers would really do is to
 //  provide feedback. Then just move that feedback to blockingvisuals in effects.
 
+// TODO: Remove this??? Only have handled by tags? Is there a point in hard coding it or nah?
+
 /**
  * Handles damage and knockback reduction for blocking players.
  * Consolidated from BlockingDamageReducer and BlockingKnockbackReducer.
@@ -28,9 +30,9 @@ public class BlockingModifiers {
     private static final LogUtil.SystemLogger log = LogUtil.system("BlockingModifiers");
 
     private final BlockingSystem blockingSystem;
-    private final BlockingStateManager stateManager;
+    private final BlockingState stateManager;
 
-    public BlockingModifiers(BlockingSystem blockingSystem, BlockingStateManager stateManager) {
+    public BlockingModifiers(BlockingSystem blockingSystem, BlockingState stateManager) {
         this.blockingSystem = blockingSystem;
         this.stateManager = stateManager;
     }
@@ -63,7 +65,7 @@ public class BlockingModifiers {
      * Provide visual and audio feedback for successful blocks
      */
     private void provideFeedback(Player victim, float originalAmount, float reducedAmount) {
-        BlockingPreferences prefs = victim.getTag(BlockingStateManager.PREFERENCES);
+        BlockingPreferences prefs = victim.getTag(BlockingState.PREFERENCES);
         if (prefs == null) return;
 
         // Action bar message

@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.blocking;
 
-import com.minestom.mechanics.util.InitializableSystem;
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.util.InitializableSystem;
+import com.minestom.mechanics.systems.util.LogUtil;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.MinecraftServer;
@@ -23,7 +23,7 @@ public class BlockingSystem extends InitializableSystem {
     private static final LogUtil.SystemLogger log = LogUtil.system("BlockingSystem");
 
     // Component references
-    private final BlockingStateManager stateManager;
+    private final BlockingState stateManager;
     private final BlockingInputHandler inputHandler;
     private final BlockingModifiers modifiers;
     private final BlockingVisualEffects visualEffects;
@@ -38,7 +38,7 @@ public class BlockingSystem extends InitializableSystem {
         this.config = config;
 
         // Initialize components
-        this.stateManager = new BlockingStateManager(config);
+        this.stateManager = new BlockingState(config);
         this.inputHandler = new BlockingInputHandler(config, this);
         this.modifiers = new BlockingModifiers(this, stateManager);
         this.visualEffects = new BlockingVisualEffects(config, stateManager);
@@ -142,11 +142,11 @@ public class BlockingSystem extends InitializableSystem {
     // ===========================
 
     public void setPlayerPreferences(Player player, BlockingPreferences preferences) {
-        player.setTag(BlockingStateManager.PREFERENCES, preferences);
+        player.setTag(BlockingState.PREFERENCES, preferences);
     }
 
     public BlockingPreferences getPlayerPreferences(Player player) {
-        return player.getTag(BlockingStateManager.PREFERENCES);
+        return player.getTag(BlockingState.PREFERENCES);
     }
 
     // ===========================

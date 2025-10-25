@@ -2,13 +2,13 @@ package com.test.minestom.commands.combat;
 
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
-import com.minestom.mechanics.util.CommandHelpBuilder;
+import com.minestom.mechanics.systems.util.CommandHelpBuilder;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.arguments.ArgumentType;
 import net.minestom.server.entity.Player;
 import net.kyori.adventure.text.Component;
 
-import static com.minestom.mechanics.util.MessageBuilder.*;
+import static com.minestom.mechanics.systems.util.MessageBuilder.*;
 
 /**
  * Admin command to configure blocking system at runtime.

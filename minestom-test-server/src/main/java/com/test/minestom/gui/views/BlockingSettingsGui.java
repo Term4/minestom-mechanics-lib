@@ -2,7 +2,7 @@ package com.test.minestom.gui.views;
 
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.test.minestom.gui.GuiBuilder;
-import com.minestom.mechanics.systems.blocking.BlockingStateManager;
+import com.minestom.mechanics.systems.blocking.BlockingState;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.key.Key;
@@ -10,7 +10,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.Material;
 
-import static com.minestom.mechanics.util.MessageBuilder.error;
+import static com.minestom.mechanics.systems.util.MessageBuilder.error;
 
 // TODO: To be honest, we should just move the gui and guibuilder to the server directly.
 //  Having a GUI builder and set guis in a mechanics lib doesn't make sense.
@@ -29,10 +29,10 @@ public class BlockingSettingsGui {
 
     public static void open(Player player) {
         try {
-            BlockingPreferences prefs = player.getTag(BlockingStateManager.PREFERENCES);
+            BlockingPreferences prefs = player.getTag(BlockingState.PREFERENCES);
             if (prefs == null) {
                 prefs = new BlockingPreferences();
-                player.setTag(BlockingStateManager.PREFERENCES, prefs);
+                player.setTag(BlockingState.PREFERENCES, prefs);
             }
 
             // Store prefs reference for click handlers

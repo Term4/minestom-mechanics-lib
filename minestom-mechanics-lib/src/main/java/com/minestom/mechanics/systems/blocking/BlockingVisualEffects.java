@@ -41,10 +41,10 @@ import static com.minestom.mechanics.config.constants.CombatConstants.*;
 public class BlockingVisualEffects {
 
     private final CombatConfig config;
-    private final BlockingStateManager stateManager;
+    private final BlockingState stateManager;
     private final Map<UUID, Task> particleTasks = new ConcurrentHashMap<>();
 
-    public BlockingVisualEffects(CombatConfig config, BlockingStateManager stateManager) {
+    public BlockingVisualEffects(CombatConfig config, BlockingState stateManager) {
         this.config = config;
         this.stateManager = stateManager;
     }
@@ -53,13 +53,13 @@ public class BlockingVisualEffects {
      * Update blocking visuals for a player
      */
     public void updateBlockingVisuals(Player blockingPlayer, boolean blocking) {
-        BlockingPreferences selfPrefs = blockingPlayer.getTag(BlockingStateManager.PREFERENCES);
-        ItemStack original = blockingPlayer.getTag(BlockingStateManager.ORIGINAL_OFFHAND);
+        BlockingPreferences selfPrefs = blockingPlayer.getTag(BlockingState.PREFERENCES);
+        ItemStack original = blockingPlayer.getTag(BlockingState.ORIGINAL_OFFHAND);
         if (original == null) original = ItemStack.AIR;
 
         // Update for other viewers
         for (Player viewer : blockingPlayer.getViewers()) {
-            BlockingPreferences viewerPrefs = viewer.getTag(BlockingStateManager.PREFERENCES);
+            BlockingPreferences viewerPrefs = viewer.getTag(BlockingState.PREFERENCES);
 
             ItemStack toShow = blocking && viewerPrefs != null && viewerPrefs.showShieldOnOthers
                     ? ItemStack.of(Material.SHIELD)
@@ -114,7 +114,7 @@ public class BlockingVisualEffects {
         // Cancel existing task if any
         stopParticleTask(player);
 
-        BlockingPreferences prefs = player.getTag(BlockingStateManager.PREFERENCES);
+        BlockingPreferences prefs = player.getTag(BlockingState.PREFERENCES);
         if (prefs == null) return;
 
         // Check if particles should be shown (per-player preference)
@@ -169,7 +169,7 @@ public class BlockingVisualEffects {
 
         // Batch send to viewers
         for (Player viewer : player.getViewers()) {
-            BlockingPreferences viewerPrefs = viewer.getTag(BlockingStateManager.PREFERENCES);
+            BlockingPreferences viewerPrefs = viewer.getTag(BlockingState.PREFERENCES);
             if (viewerPrefs != null && viewerPrefs.showParticlesOnOthers) {
                 packets.forEach(viewer::sendPacket);
             }
@@ -210,7 +210,7 @@ public class BlockingVisualEffects {
      * Show action bar message for blocking
      */
     public void showBlockingMessage(Player player, boolean blocking) {
-        BlockingPreferences prefs = player.getTag(BlockingStateManager.PREFERENCES);
+        BlockingPreferences prefs = player.getTag(BlockingState.PREFERENCES);
         if (prefs != null && prefs.showActionBarOnBlock) {
             if (blocking) {
                 player.sendActionBar(Component.text("⚔ Blocking ⚔", NamedTextColor.YELLOW));
