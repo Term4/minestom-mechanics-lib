@@ -39,6 +39,8 @@ import java.util.List;
 
 import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.kbMult;
 
+// TODO: Fix velocity 'Already connected to proxy' issue?? Possible? idk
+
 /**
  * 1.8 PvP Test Server - WITH PROJECTILES
  * Full combat + projectile system
@@ -272,6 +274,7 @@ public class Main {
         player.getInventory().addItemStack(TestItems.laserSnowball().withAmount(16));
         player.getInventory().addItemStack(TestItems.heavyRock().withAmount(16));
         player.getInventory().addItemStack(TestItems.comboEgg().withAmount(16));
+        player.getInventory().setItemStack(10, TestItems.slowGrappleEgg().withAmount(64));
         player.getInventory().addItemStack(TestItems.cannonBow());
 
         // Food

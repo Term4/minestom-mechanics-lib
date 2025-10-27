@@ -21,6 +21,10 @@ import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
+// TODO: Generalize velocity + rest into basic projectile system,
+//  ALSO find a way to make them invisible with a tag
+//  ALSO add lookweight like we have in kbsystem, ALSO FIX THE DAMN LOOK DIRECTION!!!
+
 /**
  * Misc projectile feature using unified ProjectileCreator and registry.
  */

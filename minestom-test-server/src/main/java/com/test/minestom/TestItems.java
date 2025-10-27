@@ -47,6 +47,21 @@ public class TestItems {
     }
 
     /**
+     * Knockback Egg - adds +100 horizontal, +1 vertical
+     */
+    public static ItemStack slowGrappleEgg() {
+        return ItemStack.builder(Material.EGG)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Lazy Grapple Egg", NamedTextColor.DARK_RED, TextDecoration.BOLD, TextDecoration.ITALIC))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Feeling lazy?", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbMult(-3, 1.0))
+                .withTag(ProjectileVelocitySystem.CUSTOM,
+                        velMult(0.0, 0.0, 0.0, 0, 1.0, 1.0));
+    }
+
+    /**
      * Grapple Snowball - pulls enemies toward you!
      */
     public static ItemStack grappleKnockbackSnowball() {
