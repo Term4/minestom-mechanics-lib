@@ -8,6 +8,11 @@ import net.minestom.server.entity.Entity;
 //  this interface isn't used really though, sooo...
 //  Still unsure if I should use an interface here or an abstract class.
 
+// TODO: Add 'Look direction' knockback (where the direction a player is looking upon
+//  being hit with a projectile determines the direction they take the knockback in)
+//  Should have attacker based, victim based, and an onlyself (only works for attacker
+//  hitting themselves, not on other players) boolean
+
 /**
  * Interface for defining projectile behavior patterns.
  * ✅ ABSTRACTION: Provides consistent behavior interface for all projectile types.
