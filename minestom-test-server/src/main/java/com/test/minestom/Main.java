@@ -223,10 +223,11 @@ public class Main {
                         Potion.INFINITE_DURATION
                 ));
 
-                // ✅ CRITICAL: Actually apply the speed by modifying movement speed attribute
                 // Default movement speed is 0.1, Speed II increases by 40% (0.1 * 1.4 = 0.14)
                 player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
+
+                GravitySystem.setGravity(player, -1);
             }
         });
 
