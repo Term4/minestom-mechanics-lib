@@ -18,6 +18,7 @@ public final class KnockbackPresets {
         );
     }
 
+    // Could be 0.5 ?? Check this
     public static KnockbackConfig vanilla18() {
         return KnockbackConfig.validated(
                 0.4,    // horizontal
@@ -33,6 +34,7 @@ public final class KnockbackPresets {
         );
     }
 
+    // Potential hit stacking???
     public static KnockbackConfig hypixel() {
         return KnockbackConfig.validated(
                 0.42,   // horizontal

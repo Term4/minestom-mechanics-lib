@@ -29,6 +29,7 @@ public class KnockbackSyncHandler extends InitializableSystem {
     // Configuration
     private boolean enabled = false;
     private boolean offGroundSyncEnabled = true;
+    // decrease to ~200-300ms
     private long maxRewindTime = 1000; // ms
     // private int positionHistorySize = 30; // Unused field
     private double interpolationFactor = 0.75;

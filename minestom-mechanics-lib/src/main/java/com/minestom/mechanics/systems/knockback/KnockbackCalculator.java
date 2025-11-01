@@ -33,7 +33,6 @@ public class KnockbackCalculator {
     
     /**
      * Calculate knockback direction from victim to attacker position.
-     * ✅ REFACTORED: Using MIN_KNOCKBACK_DISTANCE constant
      */
     public Vec calculateKnockbackDirection(LivingEntity victim, Entity attacker) {
         double dx = victim.getPosition().x() - attacker.getPosition().x();
@@ -41,7 +40,6 @@ public class KnockbackCalculator {
 
         double distance = Math.sqrt(dx * dx + dz * dz);
 
-        // ✅ REFACTORED: Using constant instead of magic number
         if (distance < MIN_KNOCKBACK_DISTANCE) {
             dx = Math.random() * 0.02 - 0.01;
             dz = Math.random() * 0.02 - 0.01;
@@ -102,7 +100,9 @@ public class KnockbackCalculator {
         double horizontal = strength.horizontal() / tps;
         double vertical = strength.vertical() / tps;
 
+        // TODO: Come up with an actual USABLE method to get the old player velocity
         Vec oldVelocity = victim.getVelocity();
+        System.out.println(oldVelocity);
 
 
         // TODO: Is this necessary?
