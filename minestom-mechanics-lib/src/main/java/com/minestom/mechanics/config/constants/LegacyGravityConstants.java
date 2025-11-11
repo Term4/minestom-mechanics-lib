@@ -1,7 +1,6 @@
 package com.minestom.mechanics.config.constants;
 
 import net.minestom.server.ServerFlag;
-import net.minestom.server.network.socket.Server;
 
 /**
  * Constants for the legacy gravity system.
@@ -20,15 +19,16 @@ public final class LegacyGravityConstants {
     /**
      * Scale factor for explosion velocity.
      * Controls how strongly gravity affects the player.
-     * 0.05 = gentle/moon-like, 0.1 = normal-ish, 0.2 = heavy
+     * Set to 1.0 for 1:1 conversion from gravity units to explosion velocity units.
      */
-    public static final double EXPLOSION_VELOCITY_SCALE = 0.22;
+    public static final double EXPLOSION_VELOCITY_SCALE = 1.0;
 
     /**
-     * Base terminal velocity (NEGATIVE value).
-     * This is the terminal velocity for GRAVITY_NORMAL.
-     * For other gravity values, terminal velocity is scaled proportionally.
+     * Base terminal velocity (POSITIVE value representing magnitude).
+     * This is the terminal velocity magnitude for GRAVITY_NORMAL.
+     * For other gravity values, terminal velocity is scaled by multiplying with customGravity.
      * Prevents unlimited acceleration.
+     * Note: Stored as positive value due to abs() usage in the gravity system.
      */
     public static final double TERMINAL_VELOCITY = 0.6 * ServerFlag.SERVER_TICKS_PER_SECOND;
 
