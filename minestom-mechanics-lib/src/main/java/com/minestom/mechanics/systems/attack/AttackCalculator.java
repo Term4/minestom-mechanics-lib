@@ -2,7 +2,7 @@ package com.minestom.mechanics.systems.attack;
 
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.systems.damage.DamageFeature;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;

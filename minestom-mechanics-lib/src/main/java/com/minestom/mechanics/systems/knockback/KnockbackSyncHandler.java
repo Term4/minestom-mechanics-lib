@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.knockback;
 
-import com.minestom.mechanics.systems.util.InitializableSystem;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;

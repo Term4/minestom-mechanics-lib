@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.projectile.components;
 
 import com.minestom.mechanics.systems.sounds.SoundPlayer;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;

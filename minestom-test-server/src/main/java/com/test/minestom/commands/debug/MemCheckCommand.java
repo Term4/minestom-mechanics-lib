@@ -3,7 +3,7 @@ package com.test.minestom.commands.debug;
 import com.minestom.mechanics.systems.damage.DamageFeature;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.test.minestom.gui.GuiManager;
-import com.minestom.mechanics.systems.util.PlayerCleanupManager;
+import com.minestom.mechanics.systems.player.PlayerCleanupManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;

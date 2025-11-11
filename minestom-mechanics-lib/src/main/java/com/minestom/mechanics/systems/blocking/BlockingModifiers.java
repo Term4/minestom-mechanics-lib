@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.blocking;
 
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;

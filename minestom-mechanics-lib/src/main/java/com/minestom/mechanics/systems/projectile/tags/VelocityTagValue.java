@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.projectile.tags;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
-import com.minestom.mechanics.systems.util.ConfigTagWrapper;
+import com.minestom.mechanics.systems.ConfigTagWrapper;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

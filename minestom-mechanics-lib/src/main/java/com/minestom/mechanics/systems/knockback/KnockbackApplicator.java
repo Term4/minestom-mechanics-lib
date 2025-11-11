@@ -2,7 +2,7 @@ package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.*;

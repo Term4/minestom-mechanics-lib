@@ -1,13 +1,13 @@
 package com.test.minestom.commands.combat;
 
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
-import com.minestom.mechanics.systems.util.CommandHelpBuilder;
+import com.test.minestom.misc.CommandHelpBuilder;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.arguments.ArgumentType;
 
-import static com.minestom.mechanics.systems.util.MessageBuilder.*;
+import static com.test.minestom.misc.MessageBuilder.*;
 
 /**
  * Knockback command - Shows current knockback configuration.

@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.damage.util;
 
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;

@@ -10,7 +10,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.Material;
 
-import static com.minestom.mechanics.systems.util.MessageBuilder.error;
+import static com.test.minestom.misc.MessageBuilder.error;
 
 // TODO: To be honest, we should just move the gui and guibuilder to the server directly.
 //  Having a GUI builder and set guis in a mechanics lib doesn't make sense.

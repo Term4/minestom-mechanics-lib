@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.item.Material;
 import org.jetbrains.annotations.Nullable;

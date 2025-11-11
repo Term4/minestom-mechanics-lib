@@ -2,7 +2,7 @@ package com.minestom.mechanics.systems.projectile.components;
 
 import com.minestom.mechanics.systems.projectile.features.BowFeature;
 import com.minestom.mechanics.systems.projectile.features.FishingRodFeature;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerDeathEvent;

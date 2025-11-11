@@ -1,8 +1,8 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.systems.util.GameplayUtils;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.systems.misc.GameplayUtils;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;

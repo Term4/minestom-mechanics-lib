@@ -8,7 +8,7 @@ import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.systems.damage.DamageFeature;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
-import com.minestom.mechanics.systems.util.LogUtil;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 

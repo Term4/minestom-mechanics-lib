@@ -2,11 +2,12 @@ package com.minestom.mechanics.systems.projectile.components;
 
 import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
 import com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
 import com.minestom.mechanics.systems.projectile.utils.VelocityCalculator;
-import com.minestom.mechanics.systems.util.LogUtil;
-import com.minestom.mechanics.systems.util.ProjectileTagRegistry;
+import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Player;
@@ -78,7 +79,7 @@ public class ProjectileCreator {
     public void spawnArrow(CustomEntityProjectile projectile, Player player, ItemStack bowStack,
                            ProjectileVelocityConfig velocityConfig, double power) {
         // Calculate spawn position (arrows spawn slightly below eye)
-        Pos eyePos = com.minestom.mechanics.systems.gameplay.EyeHeightSystem.getInstance()
+        Pos eyePos = EyeHeightSystem.getInstance()
                 .getEyePosition(player);
         Pos spawnPos = eyePos.add(0D, -ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
 

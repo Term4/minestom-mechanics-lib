@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static com.minestom.mechanics.systems.util.MessageBuilder.*;
+import static com.test.minestom.misc.MessageBuilder.*;
 
 /**
  * Custom GUI system built on Minestom's native inventory system.
