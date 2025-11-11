@@ -233,7 +233,7 @@ public class Main {
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
 
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
-                GravitySystem.setGravity(player, 0);
+                GravitySystem.setGravity(player, 0.16);
             }
         });
 
