@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.systems.damage.util.FallDamageTracker;
 import com.minestom.mechanics.systems.damage.util.FireDamageModifier;
 import com.minestom.mechanics.systems.damage.util.Invulnerability;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.manager.ArmorManager;

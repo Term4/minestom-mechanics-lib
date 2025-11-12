@@ -1,4 +1,4 @@
-package com.minestom.mechanics.manager;
+package com.minestom.mechanics;
 
 import net.minestom.server.entity.Player;
 

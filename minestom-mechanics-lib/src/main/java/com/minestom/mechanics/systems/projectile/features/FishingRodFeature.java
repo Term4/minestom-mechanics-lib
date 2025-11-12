@@ -8,7 +8,7 @@ import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPres
 import com.minestom.mechanics.systems.projectile.entities.FishingBobber;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
 import com.minestom.mechanics.systems.projectile.utils.VelocityCalculator;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;

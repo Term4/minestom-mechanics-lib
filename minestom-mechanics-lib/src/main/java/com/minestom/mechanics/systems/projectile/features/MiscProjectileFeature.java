@@ -10,7 +10,7 @@ import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.systems.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileRegistry;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.EntityType;

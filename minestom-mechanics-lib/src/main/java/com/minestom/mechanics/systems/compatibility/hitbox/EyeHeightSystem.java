@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.compatibility.hitbox;
 
 import com.minestom.mechanics.config.gameplay.EyeHeightConfig;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Point;

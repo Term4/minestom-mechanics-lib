@@ -1,5 +1,6 @@
-package com.minestom.mechanics.systems;
+package com.minestom.mechanics;
 
+import com.minestom.mechanics.systems.ConfigTagWrapper;
 import net.minestom.server.entity.*;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;

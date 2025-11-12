@@ -1,5 +1,6 @@
 package com.minestom.mechanics.manager;
 
+import com.minestom.mechanics.Lifecycle;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;

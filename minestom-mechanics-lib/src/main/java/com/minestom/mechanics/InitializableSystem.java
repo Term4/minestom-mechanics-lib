@@ -1,6 +1,4 @@
-package com.minestom.mechanics.systems;
-
-import com.minestom.mechanics.manager.Lifecycle;
+package com.minestom.mechanics;
 
 /**
  * Base class for systems that require explicit initialization.

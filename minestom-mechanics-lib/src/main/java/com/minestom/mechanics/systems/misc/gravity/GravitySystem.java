@@ -2,7 +2,7 @@ package com.minestom.mechanics.systems.misc.gravity;
 
 import com.minestom.mechanics.config.constants.LegacyGravityConstants;
 import com.minestom.mechanics.systems.damage.DamageFeature;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;

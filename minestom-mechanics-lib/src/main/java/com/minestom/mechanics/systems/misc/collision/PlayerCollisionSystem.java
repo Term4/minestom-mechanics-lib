@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.misc.collision;
 
 import com.minestom.mechanics.config.gameplay.PlayerCollisionConfig;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;

@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.blocking;
 
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;

@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.systems.knockback.tags.KnockbackTagSerializer;
 import com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue;
 import com.minestom.mechanics.systems.ConfigTagWrapper;
-import com.minestom.mechanics.systems.ConfigurableSystem;
+import com.minestom.mechanics.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
 import net.minestom.server.entity.*;

@@ -9,7 +9,7 @@ import com.minestom.mechanics.systems.projectile.entities.AbstractArrow;
 import com.minestom.mechanics.systems.projectile.entities.Arrow;
 import com.minestom.mechanics.systems.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
 import net.minestom.server.MinecraftServer;

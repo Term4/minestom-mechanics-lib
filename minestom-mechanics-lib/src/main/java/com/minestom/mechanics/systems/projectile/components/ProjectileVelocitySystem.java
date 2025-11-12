@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConf
 import com.minestom.mechanics.systems.projectile.tags.VelocityTagSerializer;
 import com.minestom.mechanics.systems.projectile.tags.VelocityTagValue;
 import com.minestom.mechanics.systems.ConfigTagWrapper;
-import com.minestom.mechanics.systems.ConfigurableSystem;
+import com.minestom.mechanics.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
 import net.minestom.server.entity.*;

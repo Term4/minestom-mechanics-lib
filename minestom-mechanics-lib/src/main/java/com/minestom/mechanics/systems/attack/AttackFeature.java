@@ -6,7 +6,7 @@ import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.validation.hits.HitDetection;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.systems.misc.GameplayUtils;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.constants.MechanicsConstants;
 import net.minestom.server.MinecraftServer;

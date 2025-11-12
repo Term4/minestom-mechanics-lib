@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.validation.hits;
 
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
-import com.minestom.mechanics.systems.InitializableSystem;
+import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
