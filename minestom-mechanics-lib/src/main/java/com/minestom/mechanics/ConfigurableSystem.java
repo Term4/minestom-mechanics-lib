@@ -79,12 +79,29 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
      * Resolve base config from wrapper's CUSTOM field with priority chain.
      * <p>Priority: Item > Attacker Entity > Player (if attacker is player) > World > Server Default</p>
      *
-     * @param attacker The attacking entity (player for melee, projectile for ranged)
+     * @param attacker The attacking entity (player for melee, projectile for ranged, null for environmental damage)
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
      * @param item The item being used (weapon for melee, bow/throwable for projectiles, null if none)
      */
     protected TConfig resolveBaseConfig(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item) {
-        Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
+        // For environmental damage (no attacker), we need to get the wrapper tag differently
+        Tag<ConfigTagWrapper<TConfig>> wrapperTag;
+        if (attacker != null) {
+            wrapperTag = getWrapperTag(attacker);
+        } else {
+            // For environmental damage, use victim to determine tag (or a default)
+            // We'll need to handle this case - for now, use victim if it's a player
+            if (victim instanceof Player) {
+                wrapperTag = getWrapperTag(victim);
+            } else if (victim != null) {
+                // Use victim as the entity to determine tag type
+                wrapperTag = getWrapperTag(victim);
+            } else {
+                // Fallback - this shouldn't happen in practice
+                wrapperTag = getWrapperTag(null);
+            }
+        }
+        
         ConfigTagWrapper<TConfig> wrapper;
 
         // 1. Check item FIRST (highest priority)
@@ -93,23 +110,31 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
         }
 
-        // 2. Check attacker entity
-        wrapper = attacker.getTag(wrapperTag);
-        if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
+        // 2. Check attacker entity (if attacker exists)
+        if (attacker != null) {
+            wrapper = attacker.getTag(wrapperTag);
+            if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
 
-        // 3. Check player (if attacker is player)
-        if (attacker instanceof Player p) {
-            wrapper = p.getTag(wrapperTag);
+            // 3. Check player (if attacker is player)
+            if (attacker instanceof Player p) {
+                wrapper = p.getTag(wrapperTag);
+                if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
+            }
+        }
+
+        // 4. Check victim entity (for environmental damage, victim is the source of config)
+        if (victim != null) {
+            wrapper = victim.getTag(wrapperTag);
             if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
         }
 
-        // 4. Check world (only if victim exists)
+        // 5. Check world (only if victim exists)
         if (victim != null && victim.getInstance() != null) {
             wrapper = victim.getInstance().getTag(wrapperTag);
             if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
         }
 
-        // 5. Server default
+        // 6. Server default
         return serverDefaultConfig;
     }
 
@@ -117,7 +142,7 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
      * Get MODIFY value for a specific component index from all sources.
      * Values stack additively: item + attacker + player + world
      *
-     * @param attacker The attacking entity
+     * @param attacker The attacking entity (null for environmental damage)
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
      * @param item The item being used (null if none)
      * @param index Component index to retrieve
@@ -127,7 +152,15 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             throw new IllegalArgumentException("Invalid component index " + index + " (max: " + (getComponentCount() - 1) + ")");
         }
 
-        Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
+        Tag<ConfigTagWrapper<TConfig>> wrapperTag;
+        if (attacker != null) {
+            wrapperTag = getWrapperTag(attacker);
+        } else if (victim != null) {
+            wrapperTag = getWrapperTag(victim);
+        } else {
+            wrapperTag = getWrapperTag(null);
+        }
+        
         double total = 0.0;
         ConfigTagWrapper<TConfig> wrapper;
         List<Double> modify;
@@ -140,21 +173,31 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             }
         }
 
-        // 2. Attacker entity
-        wrapper = attacker.getTag(wrapperTag);
-        if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
-            total += modify.get(index);
+        // 2. Attacker entity (if attacker exists)
+        if (attacker != null) {
+            wrapper = attacker.getTag(wrapperTag);
+            if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
+                total += modify.get(index);
+            }
+
+            // 3. Player (if attacker is player)
+            if (attacker instanceof Player p) {
+                wrapper = p.getTag(wrapperTag);
+                if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
+                    total += modify.get(index);
+                }
+            }
         }
 
-        // 3. Player
-        if (attacker instanceof Player p) {
-            wrapper = p.getTag(wrapperTag);
+        // 4. Victim entity (for environmental damage)
+        if (victim != null) {
+            wrapper = victim.getTag(wrapperTag);
             if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
                 total += modify.get(index);
             }
         }
 
-        // 4. World (only if victim exists)
+        // 5. World (only if victim exists)
         if (victim != null && victim.getInstance() != null) {
             wrapper = victim.getInstance().getTag(wrapperTag);
             if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
@@ -169,12 +212,20 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
      * Get combined MULTIPLIER from all sources.
      * Multipliers stack multiplicatively: item × attacker × player × world
      *
-     * @param attacker The attacking entity
+     * @param attacker The attacking entity (null for environmental damage)
      * @param victim The victim entity (null during projectile spawn/velocity calculation)
      * @param item The item being used (null if none)
      */
     protected double[] getMultipliers(Entity attacker, @Nullable LivingEntity victim, @Nullable ItemStack item) {
-        Tag<ConfigTagWrapper<TConfig>> wrapperTag = getWrapperTag(attacker);
+        Tag<ConfigTagWrapper<TConfig>> wrapperTag;
+        if (attacker != null) {
+            wrapperTag = getWrapperTag(attacker);
+        } else if (victim != null) {
+            wrapperTag = getWrapperTag(victim);
+        } else {
+            wrapperTag = getWrapperTag(null);
+        }
+        
         int componentCount = getComponentCount();
         double[] multipliers = new double[componentCount];
         Arrays.fill(multipliers, 1.0);
@@ -192,17 +243,29 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             }
         }
 
-        // 2. Attacker entity
-        wrapper = attacker.getTag(wrapperTag);
-        if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
-            for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
-                multipliers[i] *= mults.get(i);
+        // 2. Attacker entity (if attacker exists)
+        if (attacker != null) {
+            wrapper = attacker.getTag(wrapperTag);
+            if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
+                for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
+                    multipliers[i] *= mults.get(i);
+                }
+            }
+
+            // 3. Player (if attacker is player)
+            if (attacker instanceof Player p) {
+                wrapper = p.getTag(wrapperTag);
+                if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
+                    for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
+                        multipliers[i] *= mults.get(i);
+                    }
+                }
             }
         }
 
-        // 3. Player
-        if (attacker instanceof Player p) {
-            wrapper = p.getTag(wrapperTag);
+        // 4. Victim entity (for environmental damage)
+        if (victim != null) {
+            wrapper = victim.getTag(wrapperTag);
             if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
                 for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
                     multipliers[i] *= mults.get(i);
@@ -210,7 +273,7 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
             }
         }
 
-        // 4. World (only if victim exists)
+        // 5. World (only if victim exists)
         if (victim != null && victim.getInstance() != null) {
             wrapper = victim.getInstance().getTag(wrapperTag);
             if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {

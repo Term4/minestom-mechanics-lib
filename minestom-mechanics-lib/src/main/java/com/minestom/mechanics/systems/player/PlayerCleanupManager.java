@@ -26,8 +26,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * // Register systems that need cleanup
  * PlayerCleanupManager.register(player -> {
- *     DamageFeature.getInstance().cleanup(player);
- * }, "DamageSystem");
+ *     HealthSystem.getInstance().cleanup(player);
+ * }, "HealthSystem");
  * </pre>
  */
 public class PlayerCleanupManager {

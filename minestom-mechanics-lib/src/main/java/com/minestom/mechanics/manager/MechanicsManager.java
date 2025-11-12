@@ -6,7 +6,8 @@ import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.systems.damage.DamageFeature;
+import com.minestom.mechanics.systems.health.HealthConfig;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -42,7 +43,7 @@ public class MechanicsManager {
     // Manager references
     private CombatManager combatManager;
     private GameplayManager gameplayManager;
-    private DamageFeature damageFeature;
+    private HealthSystem healthSystem;
     private HitboxManager hitboxManager;
     private ArmorManager armorManager;
     private KnockbackSystem knockbackSystem;
@@ -129,8 +130,8 @@ public class MechanicsManager {
         if (gameplayEnabled && gameplayManager != null) {
             gameplayManager.cleanupPlayer(player);
         }
-        if (damageEnabled && damageFeature != null) {
-            // DamageFeature cleanup if needed
+        if (damageEnabled && healthSystem != null) {
+            healthSystem.cleanup(player);
         }
         if (hitboxEnabled && hitboxManager != null) {
             hitboxManager.cleanupPlayer(player);
@@ -178,12 +179,12 @@ public class MechanicsManager {
             }
         }
 
-        if (damageEnabled && damageFeature != null) {
+        if (damageEnabled && healthSystem != null) {
             try {
-                damageFeature.shutdown();
-                log.info("Damage system shut down");
+                healthSystem.shutdown();
+                log.info("Health system shut down");
             } catch (Exception e) {
-                log.error("Damage shutdown failed", e);
+                log.error("Health system shutdown failed", e);
             }
         }
         
@@ -217,7 +218,7 @@ public class MechanicsManager {
         // Reset references
         combatManager = null;
         gameplayManager = null;
-        damageFeature = null;
+        healthSystem = null;
         hitboxManager = null;
         armorManager = null;
         knockbackSystem = null;
@@ -252,11 +253,14 @@ public class MechanicsManager {
         return gameplayManager;
     }
 
-    public DamageFeature getDamageFeature() {
+    /**
+     * Get the health system instance
+     */
+    public HealthSystem getHealthSystem() {
         if (!damageEnabled) {
-            throw new IllegalStateException("Damage system not enabled!");
+            throw new IllegalStateException("Health system not enabled!");
         }
-        return damageFeature;
+        return healthSystem;
     }
     
     public HitboxManager getHitboxManager() {
@@ -445,10 +449,23 @@ public class MechanicsManager {
                 systemCount++;
             }
 
-            // Initialize damage if configured
+            // Initialize health system if configured
             if (damageConfig != null) {
-                log.info("Initializing Damage System...");
-                manager.damageFeature = DamageFeature.initialize(damageConfig);
+                log.info("Initializing Health System...");
+                // Convert DamageConfig to HealthConfig
+                HealthConfig healthConfig = new HealthConfig(
+                        damageConfig.getInvulnerabilityTicks(),
+                        damageConfig.isFallDamageEnabled(),
+                        damageConfig.getFallDamageMultiplier(),
+                        damageConfig.isFireDamageEnabled(),
+                        damageConfig.getFireDamageMultiplier(),
+                        true, 1.0f,  // Cactus damage (default enabled)
+                        damageConfig.isDamageReplacementEnabled(),
+                        damageConfig.isKnockbackOnReplacement(),
+                        damageConfig.isLogReplacementDamage(),
+                        false, 0.0f, 0  // Regeneration (disabled)
+                );
+                manager.healthSystem = HealthSystem.initialize(healthConfig);
                 manager.damageEnabled = true;
                 systemCount++;
             }

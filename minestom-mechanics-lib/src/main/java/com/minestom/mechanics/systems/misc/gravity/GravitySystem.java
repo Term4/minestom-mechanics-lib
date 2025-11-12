@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.misc.gravity;
 
 import com.minestom.mechanics.config.constants.LegacyGravityConstants;
-import com.minestom.mechanics.systems.damage.DamageFeature;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -262,11 +262,11 @@ public class GravitySystem extends InitializableSystem {
     }
 
     /**
-     * Get fall distance from DamageFeature (if available)
+     * Get fall distance from HealthSystem (if available)
      */
     private double getFallDistance(Player player) {
         try {
-            return DamageFeature.getInstance().getFallDistance(player);
+            return HealthSystem.getInstance().getFallDistance(player);
         } catch (IllegalStateException e) {
             return 0.0;
         }

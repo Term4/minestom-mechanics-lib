@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.attack;
 
-import com.minestom.mechanics.systems.damage.DamageFeature;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.validation.hits.HitDetection;
@@ -229,8 +229,8 @@ public class AttackFeature extends InitializableSystem {
     }
 
     private boolean shouldApplyKnockback(LivingEntity victim) {
-        DamageFeature damageFeature = DamageFeature.getInstance();
-        return damageFeature.shouldApplyKnockback(victim);
+        HealthSystem healthSystem = HealthSystem.getInstance();
+        return healthSystem.shouldApplyKnockback(victim);
     }
     
     /**

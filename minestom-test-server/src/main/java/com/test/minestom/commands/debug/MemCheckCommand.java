@@ -1,6 +1,6 @@
 package com.test.minestom.commands.debug;
 
-import com.minestom.mechanics.systems.damage.DamageFeature;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.test.minestom.gui.GuiManager;
 import com.minestom.mechanics.systems.player.PlayerCleanupManager;
@@ -37,8 +37,8 @@ public class MemCheckCommand extends Command {
             player.sendMessage(Component.empty());
 
             // Check each system
-            checkSystem(player, "DamageFeature",
-                    DamageFeature.getInstance().getTrackedEntities(), onlinePlayers);
+            checkSystem(player, "HealthSystem",
+                    HealthSystem.getInstance().getTrackedEntities(), onlinePlayers);
             checkSystem(player, "BlockingSystem",
                     BlockingSystem.getInstance().getActiveCount(), 0); // Blocking can be 0
             checkSystem(player, "GuiManager",

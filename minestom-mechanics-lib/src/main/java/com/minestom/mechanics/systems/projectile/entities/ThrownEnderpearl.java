@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
-import com.minestom.mechanics.systems.damage.DamageFeature;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
@@ -68,8 +68,8 @@ public class ThrownEnderpearl extends CustomEntityProjectile implements ItemHold
 
                 player.teleport(position);
 
-                // Reset fall distance using DamageFeature
-                DamageFeature.getInstance().resetFallDistance(player);
+                // Reset fall distance using HealthSystem
+                HealthSystem.getInstance().resetFallDistance(player);
 
                 player.damage(DamageType.FALL, 5.0F);
             }

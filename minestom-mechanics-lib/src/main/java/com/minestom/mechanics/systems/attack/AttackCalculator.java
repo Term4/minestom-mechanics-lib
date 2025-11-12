@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.attack;
 
 import com.minestom.mechanics.config.combat.CombatConfig;
-import com.minestom.mechanics.systems.damage.DamageFeature;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
@@ -120,9 +120,9 @@ public class AttackCalculator {
      */
     private double getFallDistance(Player player) {
         try {
-            return DamageFeature.getInstance().getFallDistance(player);
+            return HealthSystem.getInstance().getFallDistance(player);
         } catch (IllegalStateException e) {
-            return 0.0; // DamageFeature not initialized
+            return 0.0; // HealthSystem not initialized
         }
     }
 }

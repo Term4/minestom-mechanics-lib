@@ -11,6 +11,7 @@ import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.LegacyInventoryUtil;
 import com.minestom.mechanics.systems.compatibility.ModernClientOptimizer;
 import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.misc.gravity.GravitySystem;
 import com.minestom.mechanics.systems.player.PlayerCleanupManager;
 import com.test.minestom.commands.CommandRegistry;
@@ -42,6 +43,7 @@ import net.minestom.server.potion.PotionEffect;
 
 import java.util.List;
 
+import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.healthMult;
 import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.kbMult;
 
 // TODO: Fix velocity 'Already connected to proxy' issue?? Possible? idk
@@ -233,7 +235,8 @@ public class Main {
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
 
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
-                GravitySystem.setGravity(player, 0.16);
+                GravitySystem.setGravity(player, 0.167);
+                player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
             }
         });
 

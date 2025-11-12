@@ -1,13 +1,15 @@
-package com.minestom.mechanics.systems.damage;
+package com.minestom.mechanics.systems.health;
 
-import com.minestom.mechanics.config.gameplay.DamageConfig;
-import com.minestom.mechanics.systems.damage.util.FallDamageTracker;
-import com.minestom.mechanics.systems.damage.util.FireDamageModifier;
-import com.minestom.mechanics.systems.damage.util.Invulnerability;
+import com.minestom.mechanics.manager.ArmorManager;
+import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.systems.health.damagetypes.CactusDamageType;
+import com.minestom.mechanics.systems.health.damagetypes.DamageTypeRegistry;
+import com.minestom.mechanics.systems.health.damagetypes.FallDamageType;
+import com.minestom.mechanics.systems.health.damagetypes.FireDamageType;
+import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagSerializer;
+import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.manager.MechanicsManager;
-import com.minestom.mechanics.manager.ArmorManager;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
@@ -15,6 +17,7 @@ import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.player.PlayerDeathEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
+import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.Task;
 import net.minestom.server.timer.TaskSchedule;
 
@@ -22,24 +25,23 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-// TODO: Same as with InvulnerabilityTracker, it works very well, it's just long.
-//  ALSO ensure safety / scalability.
-
 /**
- * Main damage system orchestrator - coordinates all damage-related components.
- * Replaces the monolithic DamageSystem with focused component architecture.
+ * Main health system orchestrator - coordinates all health-related components.
+ * Replaces DamageFeature with a more general health system architecture.
  */
-public class DamageFeature extends InitializableSystem {
-    private static DamageFeature instance;
-    private static final LogUtil.SystemLogger log = LogUtil.system("DamageFeature");
+public class HealthSystem extends InitializableSystem {
+    private static HealthSystem instance;
+    private static final LogUtil.SystemLogger log = LogUtil.system("HealthSystem");
 
     // Component references
     private final Invulnerability invulnerability;
-    private final FallDamageTracker fallDamageTracker;
-    private final FireDamageModifier fireDamageModifier;
+    private final DamageTypeRegistry damageTypeRegistry;
+    private final FallDamageType fallDamageType;
+    private final FireDamageType fireDamageType;
+    private final CactusDamageType cactusDamageType;
 
     // Configuration
-    private DamageConfig config;
+    private HealthConfig config;
     private long currentTick = 0;
     
     // Attack deduplication - prevent same attack from being processed multiple times
@@ -48,31 +50,60 @@ public class DamageFeature extends InitializableSystem {
     // Tasks
     private Task tickCounterTask;
     private Task cleanupTask;
+    
+    // ===========================
+    // TAG SYSTEM (using ConfigTagWrapper pattern)
+    // ===========================
+    
+    /** Tag for fall damage configuration */
+    public static final Tag<com.minestom.mechanics.systems.health.tags.HealthTagWrapper> FALL_DAMAGE = 
+            Tag.Structure("health_fall_damage", new com.minestom.mechanics.systems.health.tags.HealthTagSerializer());
+    
+    /** Tag for fire damage configuration */
+    public static final Tag<com.minestom.mechanics.systems.health.tags.HealthTagWrapper> FIRE_DAMAGE = 
+            Tag.Structure("health_fire_damage", new com.minestom.mechanics.systems.health.tags.HealthTagSerializer());
+    
+    /** Tag for cactus damage configuration */
+    public static final Tag<com.minestom.mechanics.systems.health.tags.HealthTagWrapper> CACTUS_DAMAGE = 
+            Tag.Structure("health_cactus_damage", new com.minestom.mechanics.systems.health.tags.HealthTagSerializer());
+    
+    /** Tag for invulnerability configuration (using ConfigTagWrapper pattern) */
+    public static final Tag<com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper> INVULNERABILITY = 
+            Tag.Structure("health_invulnerability", new InvulnerabilityTagSerializer());
 
-    private DamageFeature(DamageConfig config) {
+    private HealthSystem(HealthConfig config) {
         this.config = config;
         
         // Initialize components
         this.invulnerability = new Invulnerability(config);
-        this.fallDamageTracker = new FallDamageTracker(config);
-        this.fireDamageModifier = new FireDamageModifier(config);
+        this.damageTypeRegistry = new DamageTypeRegistry();
+        
+        // Initialize damage types
+        this.fallDamageType = new FallDamageType(config);
+        this.fireDamageType = new FireDamageType(config);
+        this.cactusDamageType = new CactusDamageType(config);
+        
+        // Register damage types
+        damageTypeRegistry.register(fallDamageType);
+        damageTypeRegistry.register(fireDamageType);
+        damageTypeRegistry.register(cactusDamageType);
     }
 
     // ===========================
     // INITIALIZATION
     // ===========================
 
-    public static DamageFeature initialize(DamageConfig config) {
+    public static HealthSystem initialize(HealthConfig config) {
         if (instance != null && instance.isInitialized()) {
-            LogUtil.logAlreadyInitialized("DamageFeature");
+            LogUtil.logAlreadyInitialized("HealthSystem");
             return instance;
         }
 
-        instance = new DamageFeature(config);
+        instance = new HealthSystem(config);
         instance.registerListeners();
         instance.markInitialized();
 
-        LogUtil.logInit("DamageFeature");
+        LogUtil.logInit("HealthSystem");
         return instance;
     }
 
@@ -90,7 +121,7 @@ public class DamageFeature extends InitializableSystem {
 
         // Player tick events for fall damage tracking
         handler.addListener(PlayerTickEvent.class, event -> {
-            fallDamageTracker.trackFallDamage(event.getPlayer());
+            fallDamageType.trackFallDamage(event.getPlayer());
         });
 
         // Entity damage events
@@ -176,28 +207,26 @@ public class DamageFeature extends InitializableSystem {
                     getEntityName(victim), config.getInvulnerabilityTicks(), damageAmount);
                 invulnerability.setInvulnerable(victim, damageAmount);
                 
-                // ✅ CENTRALIZED: Log all damage through the base damage feature
+                // ✅ CENTRALIZED: Log all damage through the base health system
                 logDamage(victim, event.getDamage(), damageAmount);
             }
+            
+            // Process damage types (fire, cactus, etc.)
+            damageTypeRegistry.processEntityDamageEvent(event);
         });
 
         // Player spawn events
         handler.addListener(PlayerSpawnEvent.class, event -> {
             Player player = event.getPlayer();
-            fallDamageTracker.resetFallDistance(player);
+            fallDamageType.resetFallDistance(player);
             log.debug("Reset fall distance for {} on spawn", player.getUsername());
         });
 
         // Player death events
         handler.addListener(PlayerDeathEvent.class, event -> {
             Player player = event.getPlayer();
-            fallDamageTracker.resetFallDistance(player);
+            fallDamageType.resetFallDistance(player);
             log.debug("Reset fall distance for {} on death", player.getUsername());
-        });
-
-        // Damage modification events
-        handler.addListener(EntityDamageEvent.class, event -> {
-            fireDamageModifier.modifyFireDamage(event);
         });
 
         // Start periodic cleanup
@@ -233,14 +262,14 @@ public class DamageFeature extends InitializableSystem {
      * Get fall distance for a player
      */
     public double getFallDistance(Player player) {
-        return fallDamageTracker.getFallDistance(player);
+        return fallDamageType.getFallDistance(player);
     }
 
     /**
      * Reset fall distance for a player
      */
     public void resetFallDistance(Player player) {
-        fallDamageTracker.resetFallDistance(player);
+        fallDamageType.resetFallDistance(player);
     }
 
     /**
@@ -250,8 +279,9 @@ public class DamageFeature extends InitializableSystem {
         UUID entityId = entity.getUuid();
         lastProcessedTick.remove(entityId);
         invulnerability.cleanup(entity);
+        damageTypeRegistry.cleanup(entity);
         if (entity instanceof Player player) {
-            LogUtil.logCleanup("DamageFeature", player.getUsername());
+            LogUtil.logCleanup("HealthSystem", player.getUsername());
         }
     }
 
@@ -279,8 +309,15 @@ public class DamageFeature extends InitializableSystem {
     /**
      * Get configuration
      */
-    public DamageConfig getConfig() {
+    public HealthConfig getConfig() {
         return config;
+    }
+
+    /**
+     * Get damage type registry
+     */
+    public DamageTypeRegistry getDamageTypeRegistry() {
+        return damageTypeRegistry;
     }
 
     // ===========================
@@ -292,7 +329,6 @@ public class DamageFeature extends InitializableSystem {
                 .buildTask(() -> {
                     // Clean up stale entries
                     int beforeSize = invulnerability.getTrackedEntities();
-                    // Note: Individual cleanup would need to be implemented in InvulnerabilityTracker
                     
                     if (beforeSize > 0) {
                         log.debug("Periodic cleanup completed");
@@ -313,7 +349,7 @@ public class DamageFeature extends InitializableSystem {
         }
         lastProcessedTick.clear();
         invulnerability.clearAll(); // Clear all tracking data
-        log.info("DamageFeature shutdown complete");
+        log.info("HealthSystem shutdown complete");
     }
 
     // ===========================
@@ -321,22 +357,21 @@ public class DamageFeature extends InitializableSystem {
     // ===========================
     
     /**
-     * Update damage configuration at runtime
+     * Update health configuration at runtime
      */
-    public void updateConfig(DamageConfig newConfig) {
+    public void updateConfig(HealthConfig newConfig) {
         this.config = newConfig;
-        // Note: The components (InvulnerabilityTracker, FallDamageTracker, FireDamageModifier)
-        // will use the new config on their next operation since they reference this.config
-        log.info("DamageFeature configuration updated");
+        // Note: The components will use the new config on their next operation since they reference this.config
+        log.info("HealthSystem configuration updated");
     }
 
     // ===========================
     // STATIC ACCESS
     // ===========================
 
-    public static DamageFeature getInstance() {
+    public static HealthSystem getInstance() {
         if (instance == null) {
-            throw new IllegalStateException("DamageFeature not initialized!");
+            throw new IllegalStateException("HealthSystem not initialized!");
         }
         return instance;
     }
@@ -362,4 +397,40 @@ public class DamageFeature extends InitializableSystem {
         // Log with consistent format
         log.debug("{} took {} {} damage", victimName, formattedAmount, damageType);
     }
+    
+    // ===========================
+    // TAG USAGE EXAMPLES
+    // ===========================
+    
+    /**
+     * Example usage of health tags:
+     * <pre>
+     * import static HealthTagWrapper.*;
+     * import static InvulnerabilityTagWrapper.*;
+     * 
+     * // Per-item configuration (weapon that reduces fall damage)
+     * ItemStack boots = ItemStack.of(Material.LEATHER_BOOTS);
+     * boots.setTag(HealthSystem.FALL_DAMAGE, healthMult(0.5)); // 50% fall damage
+     * 
+     * // Per-player configuration (player immune to fire)
+     * player.setTag(HealthSystem.FIRE_DAMAGE, DISABLED);
+     * 
+     * // Per-world configuration (world with double fall damage)
+     * world.setTag(HealthSystem.FALL_DAMAGE, DOUBLE_DAMAGE);
+     * 
+     * // Combined multiplier and modify
+     * player.setTag(HealthSystem.CACTUS_DAMAGE, healthMult(2.0).thenAdd(5.0));
+     * 
+     * // Invulnerability configuration
+     * player.setTag(HealthSystem.INVULNERABILITY, invulnSet(InvulnerabilityTagValue.invulnTicks(20)));
+     * world.setTag(HealthSystem.INVULNERABILITY, REPLACEMENT_ENABLED);
+     * </pre>
+     * 
+     * Priority chain for damage types:
+     * Item > Attacker > Player > Victim > World > Server Default
+     * 
+     * Priority chain for invulnerability:
+     * Item > Attacker > Player > Victim > World > Server Default
+     */
 }
+
