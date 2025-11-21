@@ -82,9 +82,9 @@ public class Main {
         MinecraftServer server;
         if (SERVER_CONFIG.isVelocityEnabled()) {
             server = MinecraftServer.init(
-                    new net.minestom.server.Auth.Velocity(SERVER_CONFIG.getVelocitySecret())
+                    new net.minestom.server.Auth.Bungee()
             );
-            System.setProperty("minestom.velocity-support", "true");
+            System.setProperty("minestom.velocity-support", "false");
         } else {
             server = MinecraftServer.init();
         }
@@ -206,7 +206,7 @@ public class Main {
             Player player = event.getPlayer();
 
             if (event.isFirstSpawn()) {
-                player.setGameMode(GameMode.SURVIVAL);
+                player.setGameMode(GameMode.SPECTATOR);
 
                 giveStarterKit(player);
 
@@ -235,7 +235,7 @@ public class Main {
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
 
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
-                GravitySystem.setGravity(player, 0.167);
+                //GravitySystem.setGravity(player, 0.167);
                 player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
             }
         });

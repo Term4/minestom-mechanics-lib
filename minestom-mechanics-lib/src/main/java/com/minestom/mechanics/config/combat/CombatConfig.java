@@ -22,6 +22,8 @@ public record CombatConfig(
         //  I mean they would be applied server side already (I think???) but we'd need a way
         //  for them to see it.
         //  --> attack cooldown charging with tags ???
+
+        // TODO: Move out from combat (needs to be separate)
         boolean removeAttackCooldown,
         float criticalMultiplier,
         boolean allowSprintCrits,

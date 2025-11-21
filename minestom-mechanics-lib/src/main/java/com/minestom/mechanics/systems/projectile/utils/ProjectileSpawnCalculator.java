@@ -4,6 +4,8 @@ import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
 
+// TODO: Fix projectile spawn 'direction' (so that the projectile / arrow spawns "looking" the correct direction)
+
 /**
  * Utility class for calculating projectile spawn positions.
  * Consolidates spawn position logic to eliminate code duplication.

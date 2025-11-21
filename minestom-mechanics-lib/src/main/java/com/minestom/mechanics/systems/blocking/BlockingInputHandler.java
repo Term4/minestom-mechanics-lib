@@ -75,6 +75,8 @@ public class BlockingInputHandler {
                 blockingSystem.startBlocking(player);
             }
         } else if (event.getPacket() instanceof ClientPlayerDiggingPacket digging) {
+            log.debug(player.getName() + "Sent" + digging.status());
+
             if (digging.status() == ClientPlayerDiggingPacket.Status.UPDATE_ITEM_STATE && 
                 blockingSystem.isBlocking(player)) {
                 blockingSystem.stopBlocking(player);

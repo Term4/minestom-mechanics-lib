@@ -143,9 +143,12 @@ public class ClientVersionDetector {
         if (lower.contains("pvplounge") || lower.contains("kohi")) {
             return ClientVersion.LEGACY;
         }
+        if (lower.contains("forge") || lower.contains("1.8.9") || lower.contains("1.7.10") || lower.contains("vanilla")) {
+            return ClientVersion.LEGACY;
+        }
 
         // Known modern clients
-        if (lower.contains("fabric") || lower.contains("forge") || lower.contains("quilt")) {
+        if (lower.contains("fabric") || lower.contains("quilt")) {
             // Modded clients - usually modern
             return ClientVersion.MODERN;
         }
