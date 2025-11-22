@@ -8,7 +8,7 @@ import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.systems.projectile.entities.AbstractArrow;
 import com.minestom.mechanics.systems.projectile.entities.Arrow;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
-import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
+import com.minestom.mechanics.systems.projectile.utils.ProjectileCalculator;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
@@ -133,7 +133,7 @@ public class Bow extends InitializableSystem implements ProjectileFeature {
 
         // Spawn using unified creator with arrow-specific spawn position
         ProjectileVelocityConfig velocityConfig = getArrowVelocityConfig();
-        Pos spawnPos = ProjectileSpawnCalculator.calculateArrowSpawnPosition(player);
+        Pos spawnPos = ProjectileCalculator.calculateArrowSpawnPosition(player);
         creator.spawn(arrow, player, bowStack, velocityConfig, power, spawnPos);
 
         // Consume arrow

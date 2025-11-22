@@ -276,7 +276,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     @Override
     public void remove() {
         // Tag cleanup is handled by FishingRodFeature.cleanup()
-        // when player disconnects/dies via ProjectileCleanupHandler
+        // when player disconnects/dies via ProjectileCreator
         super.remove();
     }
 

@@ -6,8 +6,7 @@ import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 import com.minestom.mechanics.systems.projectile.entities.FishingBobber;
-import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
-import com.minestom.mechanics.systems.projectile.utils.VelocityCalculator;
+import com.minestom.mechanics.systems.projectile.utils.ProjectileCalculator;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -90,7 +89,7 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
             }).delay(TaskSchedule.tick(1)).schedule();
         });
 
-        // Note: PlayerDeathEvent and PlayerDisconnectEvent cleanup handled by ProjectileCleanupHandler
+        // Note: PlayerDeathEvent and PlayerDisconnectEvent cleanup handled by ProjectileCreator
     }
 
     // ===========================
@@ -127,7 +126,7 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
 
         // Calculate spawn position and velocity
         Pos playerPos = player.getPosition();
-        Pos spawnPos = ProjectileSpawnCalculator.calculateSpawnOffset(player);
+        Pos spawnPos = ProjectileCalculator.calculateSpawnOffset(player);
         Vec velocity = calculateFishingVelocity(playerPos, playerPos.pitch(), playerPos.yaw());
 
         // Calculate direction from velocity to ensure correct visual orientation
@@ -184,7 +183,7 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
     private Vec calculateFishingVelocity(Pos playerPos, float playerPitch, float playerYaw) {
         // Base velocity from player's aim
         double maxVelocity = 0.4F;
-        Vec velocity = VelocityCalculator.calculateDirectionalVelocity(playerPitch, playerYaw, maxVelocity);
+        Vec velocity = ProjectileCalculator.calculateDirectionalVelocity(playerPitch, playerYaw, maxVelocity);
 
         // Apply horizontal and vertical multipliers
         velocity = new Vec(
@@ -195,10 +194,10 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
 
         // Apply spread with multiplier
         double spread = 0.0075 * config.spreadMultiplier();
-        velocity = VelocityCalculator.applySpread(velocity, spread);
+        velocity = ProjectileCalculator.applySpread(velocity, spread);
 
         // Convert to per-tick velocity
-        return VelocityCalculator.toPerTickVelocity(velocity, 0.75);
+        return ProjectileCalculator.toPerTickVelocity(velocity, 0.75);
     }
 
     // ===========================

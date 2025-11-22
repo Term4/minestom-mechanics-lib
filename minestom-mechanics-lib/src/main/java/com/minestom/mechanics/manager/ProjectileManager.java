@@ -6,7 +6,7 @@ import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.systems.projectile.features.Bow;
 import com.minestom.mechanics.systems.projectile.features.FishingRod;
 import com.minestom.mechanics.systems.projectile.features.MiscProjectile;
-import com.minestom.mechanics.systems.projectile.components.ProjectileCleanupHandler;
+import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 
 /**
@@ -68,7 +68,7 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
 
             // Register centralized cleanup handlers
             log.debug("Registering cleanup handlers...");
-            ProjectileCleanupHandler.registerCleanupListeners();
+            ProjectileCreator.registerCleanupListeners();
 
             // Configure features
             if (fishingRodFeature != null) {

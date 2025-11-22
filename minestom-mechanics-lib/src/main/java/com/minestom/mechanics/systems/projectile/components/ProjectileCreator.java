@@ -3,13 +3,17 @@ package com.minestom.mechanics.systems.projectile.components;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile;
-import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
-import com.minestom.mechanics.systems.projectile.utils.VelocityCalculator;
+import com.minestom.mechanics.systems.projectile.features.Bow;
+import com.minestom.mechanics.systems.projectile.features.FishingRod;
+import com.minestom.mechanics.systems.projectile.utils.ProjectileCalculator;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.player.PlayerDeathEvent;
+import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.item.ItemStack;
 
 import java.util.Objects;
@@ -32,7 +36,7 @@ public class ProjectileCreator {
      */
     public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
                       ProjectileVelocityConfig velocityConfig) {
-        Pos spawnPos = ProjectileSpawnCalculator.calculateSpawnPosition(player);
+        Pos spawnPos = ProjectileCalculator.calculateSpawnPosition(player);
         spawn(projectile, player, sourceItem, velocityConfig, ProjectileConstants.MISC_PROJECTILE_POWER, spawnPos);
     }
 
@@ -66,7 +70,7 @@ public class ProjectileCreator {
     public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
                       ProjectileVelocityConfig velocityConfig, double power, Pos spawnPos) {
         // 1. Calculate velocity with power
-        Vec velocity = VelocityCalculator.calculateProjectileVelocity(
+        Vec velocity = ProjectileCalculator.calculateProjectileVelocity(
                 player, sourceItem, projectile, velocityConfig, power, shouldInheritPlayerMomentum()
         );
 
@@ -122,6 +126,67 @@ public class ProjectileCreator {
                     .getProjectileConfig().shouldInheritPlayerMomentum();
         } catch (IllegalStateException e) {
             return false;
+        }
+    }
+
+    // ===========================
+    // CLEANUP HANDLING
+    // ===========================
+
+    /**
+     * Register cleanup event listeners for all projectile features.
+     * Call this once during server initialization.
+     */
+    public static void registerCleanupListeners() {
+        var handler = MinecraftServer.getGlobalEventHandler();
+        
+        // Handle player disconnect - cleanup all projectile state
+        handler.addListener(PlayerDisconnectEvent.class, event -> {
+            Player player = event.getPlayer();
+            cleanupAllProjectiles(player);
+        });
+        
+        // Handle player death - only cleanup bow state, fishing rods should persist
+        handler.addListener(PlayerDeathEvent.class, event -> {
+            Player player = event.getPlayer();
+            // Only cleanup bow drawing state on death
+            // Fishing rod bobbers should stay in world until timeout
+            try {
+                if (Bow.getInstance().isDrawingBow(player)) {
+                    Bow.getInstance().cleanup(player);
+                    log.debug("Cleaned up bow state for {} on death", player.getUsername());
+                }
+            } catch (Exception e) {
+                log.error("Error cleaning up bow for {}: {}", player.getUsername(), e.getMessage());
+            }
+        });
+        
+        log.info("Registered projectile cleanup handlers");
+    }
+    
+    /**
+     * Clean up all projectile features for a player.
+     * 
+     * @param player The player to clean up
+     */
+    private static void cleanupAllProjectiles(Player player) {
+        try {
+            // Clean up bow drawing state
+            if (Bow.getInstance().isDrawingBow(player)) {
+                Bow.getInstance().cleanup(player);
+                log.debug("Cleaned up bow state for {}", player.getUsername());
+            }
+            
+            // Clean up fishing rod state on disconnect
+            if (FishingRod.getInstance().hasActiveBobber(player)) {
+                FishingRod.getInstance().cleanup(player);
+                log.debug("Cleaned up fishing rod state for {}", player.getUsername());
+            }
+            
+            // Clean up misc projectile state (if any)
+            
+        } catch (Exception e) {
+            log.error("Error cleaning up projectiles for {}: {}", player.getUsername(), e.getMessage());
         }
     }
 }
