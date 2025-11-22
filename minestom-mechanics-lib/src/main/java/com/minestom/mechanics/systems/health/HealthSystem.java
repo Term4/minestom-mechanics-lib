@@ -11,6 +11,7 @@ import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.entity.EntityDamageEvent;
@@ -70,6 +71,15 @@ public class HealthSystem extends InitializableSystem {
     /** Tag for invulnerability configuration (using ConfigTagWrapper pattern) */
     public static final Tag<com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper> INVULNERABILITY = 
             Tag.Structure("health_invulnerability", new InvulnerabilityTagSerializer());
+    
+    /** Tag to track if a player is dead (for hitbox removal) */
+    public static final Tag<Boolean> IS_DEAD = Tag.Boolean("health_is_dead");
+    
+    /** Default player bounding box (0.6 width, 1.8 height, 0.6 depth) */
+    private static final BoundingBox DEFAULT_PLAYER_BOX = new BoundingBox(0.6, 1.8, 0.6);
+    
+    /** Zero bounding box for dead players (no collision) */
+    private static final BoundingBox ZERO_BOX = new BoundingBox(0, 0, 0);
 
     private HealthSystem(HealthConfig config) {
         this.config = config;
@@ -219,6 +229,14 @@ public class HealthSystem extends InitializableSystem {
         handler.addListener(PlayerSpawnEvent.class, event -> {
             Player player = event.getPlayer();
             fallDamageType.resetFallDistance(player);
+            
+            // Restore hitbox if player was dead
+            if (Boolean.TRUE.equals(player.getTag(IS_DEAD))) {
+                player.removeTag(IS_DEAD);
+                player.setBoundingBox(DEFAULT_PLAYER_BOX);
+                log.debug("Restored hitbox for {} on respawn", player.getUsername());
+            }
+            
             log.debug("Reset fall distance for {} on spawn", player.getUsername());
         });
 
@@ -226,6 +244,11 @@ public class HealthSystem extends InitializableSystem {
         handler.addListener(PlayerDeathEvent.class, event -> {
             Player player = event.getPlayer();
             fallDamageType.resetFallDistance(player);
+            
+            // Remove hitbox to prevent dead players from blocking arrows, picking up items, etc.
+            player.setTag(IS_DEAD, true);
+            player.setBoundingBox(ZERO_BOX);
+            log.debug("Removed hitbox for {} on death", player.getUsername());
             
             // Cancel death messages to prevent 1.7 client crashes with incomplete TranslatableComponent
             event.setDeathText(null);

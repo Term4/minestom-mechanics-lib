@@ -108,6 +108,11 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 						if (!player.canPickupItem()) return;
 						if (!isViewer(player)) return;
 						if (isRemoved() || !canBePickedUp(player)) return;
+						
+						// Don't allow dead players to pick up arrows
+						if (Boolean.TRUE.equals(player.getTag(com.minestom.mechanics.systems.health.HealthSystem.IS_DEAD))) {
+							return;
+						}
 
 						if (player.getBoundingBox().expand(1, 0.5f, 1)
 								.intersectEntity(player.getPosition(), this)) {

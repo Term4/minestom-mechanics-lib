@@ -115,50 +115,6 @@ public abstract class CustomEntityProjectile extends Entity {
             this.shooterOriginPos = shooter.getPosition();
         }
     }
-
-    // TODO: Remove, dead code
-
-    /**
-     * Shoot the projectile from a rotation with specified velocity and inaccuracy.
-     * 
-     * @param pitch The pitch angle in degrees
-     * @param yaw The yaw angle in degrees  
-     * @param yBias The y-bias for trajectory adjustment
-     * @param power The power level (0-3, typically for bow power)
-     * @param spread The inaccuracy factor (0.0 = perfect aim, higher = more spread)
-     */
-    public void shootFromRotation(float pitch, float yaw, float yBias, double power, double spread) {
-        double dx = -Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch));
-        double dy = -Math.sin(Math.toRadians(pitch + yBias));
-        double dz = Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch));
-        
-        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        dx /= length;
-        dy /= length;
-        dz /= length;
-        
-        // Apply spread
-        if (spread > 0) {
-            java.util.Random random = java.util.concurrent.ThreadLocalRandom.current();
-            spread *= ProjectileConstants.SPREAD_MULTIPLIER;
-            dx += random.nextGaussian() * spread;
-            dy += random.nextGaussian() * spread;
-            dz += random.nextGaussian() * spread;
-        }
-        
-        // Set velocity in blocks per second (not per tick!)
-        final double mul = ServerFlag.SERVER_TICKS_PER_SECOND * power;
-        this.velocity = new Vec(dx * mul, dy * mul, dz * mul);
-        
-        // Also set velocity on the entity for Minestom's physics
-        setVelocity(this.velocity);
-        
-        // Set view direction
-        setView(
-            (float) Math.toDegrees(Math.atan2(dx, dz)),
-            (float) Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)))
-        );
-    }
     
     /**
      * Get the current velocity of this projectile.
@@ -222,7 +178,13 @@ public abstract class CustomEntityProjectile extends Entity {
         // Default: can hit any living entity except spectators
         // Allow hitting the shooter (self-hits are allowed)
         if (!(entity instanceof LivingEntity)) return false;
-        if (entity instanceof Player player && player.getGameMode() == GameMode.SPECTATOR) return false;
+        if (entity instanceof Player player) {
+            if (player.getGameMode() == GameMode.SPECTATOR) return false;
+            // Don't hit dead players (they have no hitbox)
+            if (Boolean.TRUE.equals(player.getTag(com.minestom.mechanics.systems.health.HealthSystem.IS_DEAD))) {
+                return false;
+            }
+        }
         return true;
     }
     
