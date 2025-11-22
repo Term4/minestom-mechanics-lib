@@ -46,4 +46,3 @@ public interface HealthEvent {
         REGENERATION
     }
 }
-

@@ -172,4 +172,3 @@ if (custom config exists) {
     finalDamage = customConfig.calculate(customConfig)
 }
 ```
-

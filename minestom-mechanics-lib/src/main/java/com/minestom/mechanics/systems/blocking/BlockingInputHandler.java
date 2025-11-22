@@ -75,7 +75,7 @@ public class BlockingInputHandler {
                 blockingSystem.startBlocking(player);
             }
         } else if (event.getPacket() instanceof ClientPlayerDiggingPacket digging) {
-            log.debug(player.getName() + "Sent" + digging.status());
+            log.debug(player.getUsername() + " Sent " + digging.status());
 
             if (digging.status() == ClientPlayerDiggingPacket.Status.UPDATE_ITEM_STATE && 
                 blockingSystem.isBlocking(player)) {
@@ -99,7 +99,6 @@ public class BlockingInputHandler {
         Player player = event.getPlayer();
         if (blockingSystem.isBlocking(player)) {
             blockingSystem.stopBlocking(player);
-            log.debug("Stopped blocking for {} on death", player.getUsername());
         }
     }
 

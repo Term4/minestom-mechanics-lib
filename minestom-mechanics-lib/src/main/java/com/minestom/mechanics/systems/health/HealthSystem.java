@@ -226,6 +226,11 @@ public class HealthSystem extends InitializableSystem {
         handler.addListener(PlayerDeathEvent.class, event -> {
             Player player = event.getPlayer();
             fallDamageType.resetFallDistance(player);
+            
+            // Cancel death messages to prevent 1.7 client crashes with incomplete TranslatableComponent
+            event.setDeathText(null);
+            event.setChatMessage(null);
+            
             log.debug("Reset fall distance for {} on death", player.getUsername());
         });
 

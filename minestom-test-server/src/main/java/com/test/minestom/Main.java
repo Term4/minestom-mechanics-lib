@@ -206,7 +206,7 @@ public class Main {
             Player player = event.getPlayer();
 
             if (event.isFirstSpawn()) {
-                player.setGameMode(GameMode.SPECTATOR);
+                player.setGameMode(GameMode.SURVIVAL);
 
                 giveStarterKit(player);
 
@@ -216,24 +216,18 @@ public class Main {
 
                 sendWelcomeMessage(player);
 
-                // Add permanent Resistance V
+                // Add permanent Levitation
                 player.addEffect(new Potion(
                         PotionEffect.RESISTANCE,
-                        (byte) 4,
-                        Potion.INFINITE_DURATION
-                ));
-
-                // Add permanent Speed II
-                player.addEffect(new Potion(
-                        PotionEffect.SPEED,
-                        (byte) 1,
+                        (byte) 2,
                         Potion.INFINITE_DURATION
                 ));
 
                 // Default movement speed is 0.1, Speed II increases by 40% (0.1 * 1.4 = 0.14)
+                /*
                 player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
-
+                 */
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
                 //GravitySystem.setGravity(player, 0.167);
                 player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
@@ -292,7 +286,7 @@ public class Main {
 
         // Diamond Armor
         player.setHelmet(ItemStack.of(Material.DIAMOND_HELMET));
-        player.setChestplate(ItemStack.of(Material.DIAMOND_CHESTPLATE));
+        player.setChestplate(ItemStack.of(Material.ELYTRA));
         player.setLeggings(ItemStack.of(Material.DIAMOND_LEGGINGS));
         player.setBoots(ItemStack.of(Material.DIAMOND_BOOTS));
     }
