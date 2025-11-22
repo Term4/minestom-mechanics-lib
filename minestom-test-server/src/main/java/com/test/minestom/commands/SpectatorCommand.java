@@ -5,11 +5,18 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Pos;
+import net.minestom.server.coordinate.Vec;
+import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
+import net.minestom.server.entity.metadata.other.FallingBlockMeta;
+import net.minestom.server.event.entity.EntityTickEvent;
 import net.minestom.server.event.player.PlayerMoveEvent;
+import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
+import net.minestom.server.network.packet.server.play.DestroyEntitiesPacket;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.instance.Instance;
@@ -21,9 +28,7 @@ import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.network.packet.server.play.TeamsPacket;
 import net.minestom.server.tag.Tag;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -63,11 +68,14 @@ public class SpectatorCommand extends Command {
     /** Team for spectator collision control (players can pass through spectators) */
     private static Team spectatorTeam;
     
-    /** Track blocks that have been changed to air for each spectator */
-    private static final Map<UUID, Set<Pos>> changedBlocks = new ConcurrentHashMap<>();
+    /** View distance for block noclip (blocks around player to make appear as entities) */
+    private static final int NOCLIP_VIEW_DISTANCE = 5;
     
-    /** View distance for block noclip (blocks around player to make appear as air) */
-    private static final int NOCLIP_VIEW_DISTANCE = 2;
+    /** 
+     * Map to store falling block entities for each spectator.
+     * Key: player UUID, Value: Map of block positions to falling block entities
+     */
+    private static final Map<UUID, Map<Pos, Entity>> ghostBlockEntities = new ConcurrentHashMap<>();
     
     private static boolean listenersRegistered = false;
     
@@ -92,6 +100,68 @@ public class SpectatorCommand extends Command {
         TeamManager teamManager = MinecraftServer.getTeamManager();
         spectatorTeam = teamManager.createTeam("spectator_collision");
         spectatorTeam.setCollisionRule(TeamsPacket.CollisionRule.NEVER); // Spectators can pass through players
+        
+        // Keep ghost block entities stationary and hide them from non-spectators
+        handler.addListener(EntityTickEvent.class, event -> {
+            Entity entity = event.getEntity();
+            if (entity.getEntityType() != EntityType.FALLING_BLOCK) return;
+            
+            // Check if this is one of our ghost block entities
+            UUID ownerId = findGhostBlockOwner(entity);
+            if (ownerId == null) return;
+            
+            // Find the original block position for this entity
+            Pos targetPos = findGhostBlockPosition(entity);
+            if (targetPos == null) return;
+            
+            // Calculate target position - falling blocks render at block position (not center)
+            // X and Z are centered, but Y should be at the block's bottom
+            Pos blockCenter = new Pos(targetPos.blockX() + 0.5, targetPos.blockY(), targetPos.blockZ() + 0.5);
+            
+            // Always teleport to ensure position is correct (client-side physics may drift)
+            // Teleport every tick to override any client-side movement
+            entity.teleport(blockCenter);
+            
+            // Reset velocity and ensure no gravity every tick
+            // This must be done every tick as client-side physics may override it
+            entity.setNoGravity(true);
+            entity.setVelocity(Vec.ZERO);
+            
+            // Hide entity from all players except the owner
+            Player owner = null;
+            for (Player p : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
+                if (p.getUuid().equals(ownerId)) {
+                    owner = p;
+                    break;
+                }
+            }
+            
+            if (owner != null) {
+                for (Player viewer : entity.getViewers()) {
+                    if (viewer != owner) {
+                        // Hide entity from this viewer
+                        viewer.sendPacket(new DestroyEntitiesPacket(entity.getEntityId()));
+                    }
+                }
+            }
+        });
+        
+        // Hide ghost block entities from newly spawned players
+        handler.addListener(PlayerSpawnEvent.class, event -> {
+            Player newPlayer = event.getPlayer();
+            if (Boolean.TRUE.equals(newPlayer.getTag(SPECTATOR_MODE))) {
+                return; // Don't hide from other spectators
+            }
+            
+            // Hide all ghost block entities from this new player
+            for (Map<Pos, Entity> entities : ghostBlockEntities.values()) {
+                for (Entity entity : entities.values()) {
+                    if (entity != null && !entity.isRemoved()) {
+                        newPlayer.sendPacket(new DestroyEntitiesPacket(entity.getEntityId()));
+                    }
+                }
+            }
+        });
         
         // Ensure spectators stay in flying mode and nametag stays hidden
         handler.addListener(PlayerTickEvent.class, event -> {
@@ -155,7 +225,35 @@ public class SpectatorCommand extends Command {
     }
     
     /**
-     * Update block noclip - make blocks around spectator appear as air
+     * Find which spectator owns a ghost block entity
+     */
+    private static UUID findGhostBlockOwner(Entity entity) {
+        for (Map.Entry<UUID, Map<Pos, Entity>> entry : ghostBlockEntities.entrySet()) {
+            for (Entity e : entry.getValue().values()) {
+                if (e == entity) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Find the original block position for a ghost block entity
+     */
+    private static Pos findGhostBlockPosition(Entity entity) {
+        for (Map.Entry<UUID, Map<Pos, Entity>> entry : ghostBlockEntities.entrySet()) {
+            for (Map.Entry<Pos, Entity> blockEntry : entry.getValue().entrySet()) {
+                if (blockEntry.getValue() == entity) {
+                    return blockEntry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Update block noclip - make blocks appear as falling block entities and set blocks to air
      */
     private static void updateBlockNoclip(Player player) {
         Instance instance = player.getInstance();
@@ -164,9 +262,9 @@ public class SpectatorCommand extends Command {
         Pos playerPos = player.getPosition();
         UUID playerId = player.getUuid();
         
-        // Get current set of changed blocks for this player
-        Set<Pos> currentChanged = changedBlocks.getOrDefault(playerId, new HashSet<>());
-        Set<Pos> newChanged = new HashSet<>();
+        // Get current map of ghost block entities for this player
+        Map<Pos, Entity> currentEntities = ghostBlockEntities.getOrDefault(playerId, new ConcurrentHashMap<>());
+        Map<Pos, Entity> newEntities = new ConcurrentHashMap<>();
         
         // Calculate range of blocks to check around player
         int minX = (int) Math.floor(playerPos.x() - NOCLIP_VIEW_DISTANCE);
@@ -176,18 +274,47 @@ public class SpectatorCommand extends Command {
         int maxY = (int) Math.floor(playerPos.y() + NOCLIP_VIEW_DISTANCE);
         int maxZ = (int) Math.floor(playerPos.z() + NOCLIP_VIEW_DISTANCE);
         
-        // Make blocks in range appear as air
+        // Make blocks in range appear as falling block entities
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     Block block = instance.getBlock(x, y, z);
                     if (block.isSolid()) {
                         Pos blockPos = new Pos(x, y, z);
-                        newChanged.add(blockPos);
                         
-                        // Only send packet if we haven't already changed this block
-                        if (!currentChanged.contains(blockPos)) {
-                            // Send block change packet to make block appear as air
+                        // Check if we already have an entity for this block
+                        Entity existingEntity = currentEntities.get(blockPos);
+                        if (existingEntity != null && !existingEntity.isRemoved()) {
+                            // Keep existing entity
+                            newEntities.put(blockPos, existingEntity);
+                        } else {
+                            // Create new falling block entity
+                            Entity fallingBlock = new Entity(EntityType.FALLING_BLOCK);
+                            
+                            // Set the block data on the falling block
+                            if (fallingBlock.getEntityMeta() instanceof FallingBlockMeta fallingMeta) {
+                                fallingMeta.setBlock(block);
+                            }
+                            
+                            // Disable gravity and set velocity to zero to prevent falling
+                            fallingBlock.setNoGravity(true);
+                            fallingBlock.setVelocity(Vec.ZERO);
+                            
+                            // Position falling block - X and Z centered, Y at block bottom
+                            // Falling blocks render with their origin at the bottom of the block
+                            Pos entityPos = new Pos(x + 0.5, y, z + 0.5);
+                            fallingBlock.setInstance(instance, entityPos);
+                            
+                            // Hide entity from all players except the spectator
+                            for (Player otherPlayer : instance.getPlayers()) {
+                                if (otherPlayer != player) {
+                                    otherPlayer.sendPacket(new DestroyEntitiesPacket(fallingBlock.getEntityId()));
+                                }
+                            }
+                            
+                            newEntities.put(blockPos, fallingBlock);
+                            
+                            // Make the actual block appear as air to this player
                             BlockChangePacket packet = new BlockChangePacket(
                                     new Pos(x, y, z),
                                     Block.AIR
@@ -199,9 +326,12 @@ public class SpectatorCommand extends Command {
             }
         }
         
-        // Restore blocks that are no longer in range
-        for (Pos oldPos : currentChanged) {
-            if (!newChanged.contains(oldPos)) {
+        // Remove entities for blocks that are no longer in range
+        for (Map.Entry<Pos, Entity> entry : currentEntities.entrySet()) {
+            Pos oldPos = entry.getKey();
+            Entity entity = entry.getValue();
+            
+            if (!newEntities.containsKey(oldPos)) {
                 // Restore the original block
                 Block originalBlock = instance.getBlock(oldPos.blockX(), oldPos.blockY(), oldPos.blockZ());
                 BlockChangePacket packet = new BlockChangePacket(
@@ -209,11 +339,16 @@ public class SpectatorCommand extends Command {
                         originalBlock
                 );
                 player.sendPacket(packet);
+                
+                // Remove the entity
+                if (entity != null && !entity.isRemoved()) {
+                    entity.remove();
+                }
             }
         }
         
-        // Update the set of changed blocks
-        changedBlocks.put(playerId, newChanged);
+        // Update the map of ghost block entities
+        ghostBlockEntities.put(playerId, newEntities);
     }
     
     private void toggleSpectator(CommandSender sender, Object context) {
@@ -398,8 +533,8 @@ public class SpectatorCommand extends Command {
             player.sendPacketToViewers(player.getMetadataPacket());
         }
         
-        // Restore all changed blocks
-        restoreChangedBlocks(player);
+        // Remove all ghost block entities and restore blocks
+        removeGhostBlockEntities(player);
         
         // Remove player from spectator team
         if (spectatorTeam != null) {
@@ -421,18 +556,27 @@ public class SpectatorCommand extends Command {
     }
     
     /**
-     * Restore all blocks that were changed to air for a spectator
+     * Remove all ghost block entities and restore original blocks for a spectator
      */
-    private static void restoreChangedBlocks(Player player) {
+    private static void removeGhostBlockEntities(Player player) {
         UUID playerId = player.getUuid();
-        Set<Pos> changed = changedBlocks.remove(playerId);
-        if (changed == null || changed.isEmpty()) return;
+        Map<Pos, Entity> entities = ghostBlockEntities.remove(playerId);
+        if (entities == null || entities.isEmpty()) return;
         
         Instance instance = player.getInstance();
         if (instance == null) return;
         
-        // Restore all changed blocks
-        for (Pos pos : changed) {
+        // Remove all entities and restore blocks
+        for (Map.Entry<Pos, Entity> entry : entities.entrySet()) {
+            Pos pos = entry.getKey();
+            Entity entity = entry.getValue();
+            
+            // Remove the entity
+            if (entity != null && !entity.isRemoved()) {
+                entity.remove();
+            }
+            
+            // Restore the original block
             Block originalBlock = instance.getBlock(pos.blockX(), pos.blockY(), pos.blockZ());
             BlockChangePacket packet = new BlockChangePacket(
                     new Pos(pos.blockX(), pos.blockY(), pos.blockZ()),
