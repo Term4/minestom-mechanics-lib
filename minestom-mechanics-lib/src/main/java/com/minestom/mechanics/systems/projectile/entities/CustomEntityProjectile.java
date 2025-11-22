@@ -392,9 +392,16 @@ public abstract class CustomEntityProjectile extends Entity {
             float yaw = position.yaw();
             float pitch = position.pitch();
             
-            if (!noClip) {
-                yaw = (float) Math.toDegrees(Math.atan2(diff.x(), diff.z()));
-                pitch = (float) Math.toDegrees(Math.atan2(diff.y(), Math.sqrt(diff.x() * diff.x() + diff.z() * diff.z())));
+            if (!noClip && velocity.lengthSquared() > 0.0001) {
+                // Calculate direction from velocity (matches calculateDirectionFromVelocity logic)
+                // Use velocity direction for consistent rotation matching flight path
+                double horizontalLength = Math.sqrt(velocity.x() * velocity.x() + velocity.z() * velocity.z());
+                
+                // Calculate pitch (vertical angle) - matches old implementation: atan2(dy, sqrt(dx² + dz²))
+                pitch = (float) Math.toDegrees(Math.atan2(velocity.y(), horizontalLength));
+                
+                // Calculate yaw (horizontal angle) - matches old implementation: atan2(dx, dz)
+                yaw = (float) Math.toDegrees(Math.atan2(velocity.x(), velocity.z()));
                 
                 // Smooth rotation for better visuals
                 yaw = lerp(prevYaw, yaw);

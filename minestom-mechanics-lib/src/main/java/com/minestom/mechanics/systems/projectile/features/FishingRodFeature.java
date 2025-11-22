@@ -2,6 +2,7 @@ package com.minestom.mechanics.systems.projectile.features;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
+import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.systems.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
@@ -134,11 +135,16 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
         Pos spawnPos = ProjectileSpawnCalculator.calculateSpawnOffset(player);
         Vec velocity = calculateFishingVelocity(playerPos, playerPos.pitch(), playerPos.yaw());
 
-        // Spawn bobber in world
-        bobber.setInstance(Objects.requireNonNull(player.getInstance()), spawnPos);
+        // Calculate direction from velocity to ensure correct visual orientation
+        float[] direction = ProjectileCreator.calculateDirectionFromVelocity(velocity);
+
+        // Spawn bobber in world with correct direction
+        bobber.setInstance(Objects.requireNonNull(player.getInstance()), 
+                spawnPos.withView(direction[0], direction[1]));
         bobber.setVelocity(velocity);
 
-        log.debug("Cast fishing bobber for {} at {}", player.getUsername(), spawnPos);
+        log.debug("Cast fishing bobber for {} at {} with direction yaw={:.2f}, pitch={:.2f}", 
+                player.getUsername(), spawnPos, direction[0], direction[1]);
     }
 
     private void handleSlotChange(Player player) {

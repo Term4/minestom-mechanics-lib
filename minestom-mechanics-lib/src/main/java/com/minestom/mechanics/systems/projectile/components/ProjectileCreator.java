@@ -57,7 +57,7 @@ public class ProjectileCreator {
         ProjectileTagRegistry.copyAllProjectileTags(sourceItem, projectile);
 
         // 3. Calculate direction from velocity vector (handles spread/momentum correctly!)
-        float[] direction = calculateDirectionFromVelocity(velocity);
+        float[] direction = ProjectileCreator.calculateDirectionFromVelocity(velocity);
 
         // 4. Spawn with direction matching actual velocity
         projectile.setInstance(Objects.requireNonNull(player.getInstance()),
@@ -98,7 +98,7 @@ public class ProjectileCreator {
         ProjectileTagRegistry.copyAllProjectileTags(bowStack, projectile);
 
         // FIX: Calculate direction from velocity vector (not player yaw/pitch!)
-        float[] direction = calculateDirectionFromVelocity(velocity);
+        float[] direction = ProjectileCreator.calculateDirectionFromVelocity(velocity);
 
         // Spawn with correct direction
         projectile.setInstance(Objects.requireNonNull(player.getInstance()),
@@ -111,11 +111,15 @@ public class ProjectileCreator {
     /**
      * Calculate yaw and pitch from a velocity vector.
      * This ensures the projectile's visual rotation matches its actual flight direction.
+     * 
+     * This method converts a velocity vector to Minecraft's yaw/pitch coordinate system:
+     * - Yaw: horizontal rotation (0° = south, increases counterclockwise)
+     * - Pitch: vertical angle (-90° = straight up, 90° = straight down)
      *
      * @param velocity The velocity vector
      * @return [yaw, pitch] in degrees
      */
-    private float[] calculateDirectionFromVelocity(Vec velocity) {
+    public static float[] calculateDirectionFromVelocity(Vec velocity) {
         // Handle zero velocity edge case
         if (velocity.lengthSquared() < 0.0001) {
             return new float[]{0f, 0f};
@@ -125,12 +129,12 @@ public class ProjectileCreator {
         double horizontalLength = Math.sqrt(velocity.x() * velocity.x() + velocity.z() * velocity.z());
 
         // Calculate pitch (vertical angle)
-        // atan2(opposite, adjacent) = atan2(-y, horizontal_distance)
-        float pitch = (float) Math.toDegrees(Math.atan2(-velocity.y(), horizontalLength));
+        // Matches old implementation: atan2(dy, sqrt(dx² + dz²)) where dy = -sin(pitch)
+        float pitch = (float) Math.toDegrees(Math.atan2(velocity.y(), horizontalLength));
 
         // Calculate yaw (horizontal angle)
-        // atan2(-x, z) gives correct Minecraft yaw direction
-        float yaw = (float) Math.toDegrees(Math.atan2(-velocity.x(), velocity.z()));
+        // Matches old implementation: atan2(dx, dz) where dx = -sin(yaw)*cos(pitch), dz = cos(yaw)*cos(pitch)
+        float yaw = (float) Math.toDegrees(Math.atan2(velocity.x(), velocity.z()));
 
         return new float[]{yaw, pitch};
     }
