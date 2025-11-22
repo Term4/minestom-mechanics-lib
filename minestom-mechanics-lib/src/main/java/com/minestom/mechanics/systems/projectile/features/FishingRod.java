@@ -40,9 +40,9 @@ import java.util.Objects;
  * Manages fishing rod functionality - casting, retrieving, and bobber lifecycle.
  * Consolidated design: All fishing rod logic in one place.
  */
-public class FishingRodFeature extends InitializableSystem implements ProjectileFeature {
+public class FishingRod extends InitializableSystem implements ProjectileFeature {
 
-    private static FishingRodFeature instance;
+    private static FishingRod instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("FishingRodFeature");
 
     // Bobber tracking
@@ -51,7 +51,7 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
     // Configuration and components
     private ProjectileVelocityConfig config;
 
-    private FishingRodFeature() {
+    private FishingRod() {
         this.config = ProjectileVelocityPresets.FISHING_ROD;
     }
 
@@ -59,13 +59,13 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
     // INITIALIZATION
     // ===========================
 
-    public static FishingRodFeature initialize() {
+    public static FishingRod initialize() {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("FishingRodFeature");
             return instance;
         }
 
-        instance = new FishingRodFeature();
+        instance = new FishingRod();
         instance.registerListeners();
         instance.markInitialized();
 
@@ -219,7 +219,7 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
         }
     }
 
-    public static FishingRodFeature getInstance() {
+    public static FishingRod getInstance() {
         return requireInstance(instance, "FishingRodFeature");
     }
 

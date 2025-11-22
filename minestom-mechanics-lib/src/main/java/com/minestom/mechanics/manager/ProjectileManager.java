@@ -1,11 +1,11 @@
 package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.systems.projectile.utils.ProjectileRegistry;
-import com.minestom.mechanics.systems.projectile.components.ProjectileVelocitySystem;
+import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
-import com.minestom.mechanics.systems.projectile.features.BowFeature;
-import com.minestom.mechanics.systems.projectile.features.FishingRodFeature;
-import com.minestom.mechanics.systems.projectile.features.MiscProjectileFeature;
+import com.minestom.mechanics.systems.projectile.features.Bow;
+import com.minestom.mechanics.systems.projectile.features.FishingRod;
+import com.minestom.mechanics.systems.projectile.features.MiscProjectile;
 import com.minestom.mechanics.systems.projectile.components.ProjectileCleanupHandler;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 
@@ -16,9 +16,9 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
     private static ProjectileManager instance;
 
     // Refactored projectile features with focused components
-    private BowFeature bowFeature;
-    private FishingRodFeature fishingRodFeature;
-    private MiscProjectileFeature miscProjectileFeature;
+    private Bow bowFeature;
+    private FishingRod fishingRodFeature;
+    private MiscProjectile miscProjectileFeature;
 
     // Configuration
     private ProjectileConfig projectileConfig;
@@ -53,18 +53,18 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
 
             // Initialize bow feature
             log.debug("Initializing BowFeature...");
-            bowFeature = BowFeature.initialize();
+            bowFeature = Bow.initialize();
 
             // Initialize fishing rod feature
             log.debug("Initializing FishingRodFeature...");
-            fishingRodFeature = FishingRodFeature.initialize();
+            fishingRodFeature = FishingRod.initialize();
 
             // Initialize misc projectile feature
             log.debug("Initializing MiscProjectileFeature...");
-            miscProjectileFeature = MiscProjectileFeature.initialize();
+            miscProjectileFeature = MiscProjectile.initialize();
 
             log.debug("Initializing ProjectileVelocitySystem...");
-            ProjectileVelocitySystem.initialize(config.snowballVelocity());
+            ProjectileVelocity.initialize(config.snowballVelocity());
 
             // Register centralized cleanup handlers
             log.debug("Registering cleanup handlers...");
@@ -138,17 +138,17 @@ public class ProjectileManager extends AbstractManager<ProjectileManager> {
     // SYSTEM ACCESS
     // ===========================
 
-    public BowFeature getBowFeature() {
+    public Bow getBowFeature() {
         requireInitialized();
         return bowFeature;
     }
 
-    public FishingRodFeature getFishingRodFeature() {
+    public FishingRod getFishingRodFeature() {
         requireInitialized();
         return fishingRodFeature;
     }
 
-    public MiscProjectileFeature getMiscProjectileFeature() {
+    public MiscProjectile getMiscProjectileFeature() {
         requireInitialized();
         return miscProjectileFeature;
     }

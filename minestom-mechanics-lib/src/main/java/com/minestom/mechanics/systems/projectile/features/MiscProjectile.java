@@ -2,8 +2,8 @@ package com.minestom.mechanics.systems.projectile.features;
 
 import com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile;
 import com.minestom.mechanics.systems.projectile.entities.Snowball;
-import com.minestom.mechanics.systems.projectile.entities.ThrownEgg;
-import com.minestom.mechanics.systems.projectile.entities.ThrownEnderpearl;
+import com.minestom.mechanics.systems.projectile.entities.Egg;
+import com.minestom.mechanics.systems.projectile.entities.Enderpearl;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileData;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
@@ -26,25 +26,25 @@ import net.minestom.server.item.Material;
 /**
  * Misc projectile feature using unified ProjectileCreator and registry.
  */
-public class MiscProjectileFeature extends InitializableSystem implements ProjectileFeature {
+public class MiscProjectile extends InitializableSystem implements ProjectileFeature {
 
-    private static MiscProjectileFeature instance;
+    private static MiscProjectile instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("MiscProjectileFeature");
 
     // Unified components
     private final ProjectileCreator creator;
 
-    private MiscProjectileFeature() {
+    private MiscProjectile() {
         this.creator = new ProjectileCreator();
     }
 
-    public static MiscProjectileFeature initialize() {
+    public static MiscProjectile initialize() {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("MiscProjectileFeature");
             return instance;
         }
 
-        instance = new MiscProjectileFeature();
+        instance = new MiscProjectile();
         instance.registerListeners();
         instance.markInitialized();
 
@@ -106,9 +106,9 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
         if (type == EntityType.SNOWBALL) {
             return new Snowball(player);
         } else if (type == EntityType.EGG) {
-            return new ThrownEgg(player);
+            return new Egg(player);
         } else if (type == EntityType.ENDER_PEARL) {
-            return new ThrownEnderpearl(player);
+            return new Enderpearl(player);
         }
         throw new IllegalArgumentException("Unsupported: " + type);
     }
@@ -118,7 +118,7 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
         if (data.hasKnockback()) {
             if (projectile instanceof Snowball s) {
                 s.setUseKnockbackHandler(true);
-            } else if (projectile instanceof ThrownEgg e) {
+            } else if (projectile instanceof Egg e) {
                 e.setUseKnockbackHandler(true);
             }
         }
@@ -129,7 +129,7 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
                 .getProjectileRegistry();
     }
 
-    public static MiscProjectileFeature getInstance() {
+    public static MiscProjectile getInstance() {
         return requireInstance(instance, "MiscProjectileFeature");
     }
 }

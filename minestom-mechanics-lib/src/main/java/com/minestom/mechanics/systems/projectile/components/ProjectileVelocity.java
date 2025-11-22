@@ -26,16 +26,16 @@ import org.jetbrains.annotations.Nullable;
  * <pre>
  * import static VelocityTagValue.*;
  *
- * item.withTag(ProjectileVelocitySystem.CUSTOM, velMult(2.0))
- * item.withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER)
+ * item.withTag(ProjectileVelocity.CUSTOM, velMult(2.0))
+ * item.withTag(ProjectileVelocity.CUSTOM, VEL_LASER)
  * </pre>
  */
-public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVelocityConfig> {
+public class ProjectileVelocity extends ConfigurableSystem<ProjectileVelocityConfig> {
 
-    private static ProjectileVelocitySystem instance;
-    private static final LogUtil.SystemLogger log = LogUtil.system("ProjectileVelocitySystem");
+    private static ProjectileVelocity instance;
+    private static final LogUtil.SystemLogger log = LogUtil.system("ProjectileVelocity");
 
-    private ProjectileVelocitySystem(ProjectileVelocityConfig config) {
+    private ProjectileVelocity(ProjectileVelocityConfig config) {
         super(config);
     }
 
@@ -43,23 +43,23 @@ public class ProjectileVelocitySystem extends ConfigurableSystem<ProjectileVeloc
     // INITIALIZATION
     // ===========================
 
-    public static ProjectileVelocitySystem initialize(ProjectileVelocityConfig config) {
+    public static ProjectileVelocity initialize(ProjectileVelocityConfig config) {
         if (instance != null && instance.initialized) {
-            LogUtil.logAlreadyInitialized("ProjectileVelocitySystem");
+            LogUtil.logAlreadyInitialized("ProjectileVelocity");
             return instance;
         }
 
-        instance = new ProjectileVelocitySystem(config);
+        instance = new ProjectileVelocity(config);
         instance.markInitialized();
 
-        ProjectileTagRegistry.register(ProjectileVelocitySystem.class);
-        LogUtil.logInit("ProjectileVelocitySystem");
+        ProjectileTagRegistry.register(ProjectileVelocity.class);
+        LogUtil.logInit("ProjectileVelocity");
         return instance;
     }
 
-    public static ProjectileVelocitySystem getInstance() {
+    public static ProjectileVelocity getInstance() {
         if (instance == null || !instance.initialized) {
-            throw new IllegalStateException("ProjectileVelocitySystem not initialized!");
+            throw new IllegalStateException("ProjectileVelocity not initialized!");
         }
         return instance;
     }

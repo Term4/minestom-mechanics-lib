@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.projectile.utils;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
-import com.minestom.mechanics.systems.projectile.components.ProjectileVelocitySystem;
+import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;
@@ -52,7 +52,7 @@ public class VelocityCalculator {
         // Resolve config through tag system
         ProjectileVelocityConfig config;
         try {
-            config = ProjectileVelocitySystem.getInstance()
+            config = ProjectileVelocity.getInstance()
                     .resolveConfig(shooter, projectile, item);
         } catch (IllegalStateException e) {
             // System not initialized, use base config

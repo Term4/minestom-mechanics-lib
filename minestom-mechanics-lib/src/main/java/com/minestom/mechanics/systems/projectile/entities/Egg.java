@@ -17,11 +17,11 @@ import org.jetbrains.annotations.Nullable;
 
 // TODO: Add boolean for if the eggs should spawn chickens
 
-public class ThrownEgg extends CustomEntityProjectile implements ItemHoldingProjectile {
+public class Egg extends CustomEntityProjectile implements ItemHoldingProjectile {
 
     private ProjectileKnockbackConfig knockbackConfig;
 
-    public ThrownEgg(@Nullable Entity shooter) {
+    public Egg(@Nullable Entity shooter) {
         super(shooter, EntityType.EGG);
         this.knockbackConfig = ProjectileKnockbackPresets.EGG;
     }

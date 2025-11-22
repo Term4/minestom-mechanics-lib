@@ -1,7 +1,7 @@
 package com.test.minestom;
 
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
-import com.minestom.mechanics.systems.projectile.components.ProjectileVelocitySystem;
+import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.component.DataComponents;
@@ -57,7 +57,7 @@ public class TestItems {
                 ))
                 .build()
                 .withTag(KnockbackSystem.PROJECTILE_CUSTOM, kbMult(-3, 1.0))
-                .withTag(ProjectileVelocitySystem.CUSTOM,
+                .withTag(ProjectileVelocity.CUSTOM,
                         velMult(0.0, 0.0, 0.0, 0, 1.0, 1.0));
     }
 
@@ -110,7 +110,7 @@ public class TestItems {
                         Component.text("Floats through the air slowly", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(ProjectileVelocitySystem.CUSTOM,
+                .withTag(ProjectileVelocity.CUSTOM,
                         velMult(0.25, 0.25, 1.0, 0.16, 1.0, 1.0)); // Low gravity
     }
 
@@ -124,7 +124,7 @@ public class TestItems {
                         Component.text("Flies straight and fast!", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER);
+                .withTag(ProjectileVelocity.CUSTOM, VEL_LASER);
     }
 
     /**
@@ -137,7 +137,7 @@ public class TestItems {
                         Component.text("Drops like a rock!", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(ProjectileVelocitySystem.CUSTOM, VEL_HEAVY)
+                .withTag(ProjectileVelocity.CUSTOM, VEL_HEAVY)
                 .withTag(KnockbackSystem.PROJECTILE_CUSTOM, KB_HEAVY);
     }
 
@@ -151,7 +151,7 @@ public class TestItems {
                         Component.text("Fast + Extra Knockback", NamedTextColor.GRAY)
                 ))
                 .build()
-                .withTag(ProjectileVelocitySystem.CUSTOM, velMult(1.5))
+                .withTag(ProjectileVelocity.CUSTOM, velMult(1.5))
                 .withTag(KnockbackSystem.PROJECTILE_CUSTOM,
                         kbMult(2.0, 1.5).thenAdd(0.2, 0.1));
     }

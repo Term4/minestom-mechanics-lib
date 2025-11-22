@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.projectile.components;
 
-import com.minestom.mechanics.systems.projectile.features.BowFeature;
-import com.minestom.mechanics.systems.projectile.features.FishingRodFeature;
+import com.minestom.mechanics.systems.projectile.features.Bow;
+import com.minestom.mechanics.systems.projectile.features.FishingRod;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -39,8 +39,8 @@ public class ProjectileCleanupHandler {
             // Only cleanup bow drawing state on death
             // Fishing rod bobbers should stay in world until timeout
             try {
-                if (BowFeature.getInstance().isDrawingBow(player)) {
-                    BowFeature.getInstance().cleanup(player);
+                if (Bow.getInstance().isDrawingBow(player)) {
+                    Bow.getInstance().cleanup(player);
                     log.debug("Cleaned up bow state for {} on death", player.getUsername());
                 }
             } catch (Exception e) {
@@ -59,14 +59,14 @@ public class ProjectileCleanupHandler {
     private static void cleanupAllProjectiles(Player player) {
         try {
             // Clean up bow drawing state
-            if (BowFeature.getInstance().isDrawingBow(player)) {
-                BowFeature.getInstance().cleanup(player);
+            if (Bow.getInstance().isDrawingBow(player)) {
+                Bow.getInstance().cleanup(player);
                 log.debug("Cleaned up bow state for {}", player.getUsername());
             }
             
             // Clean up fishing rod state on disconnect
-            if (FishingRodFeature.getInstance().hasActiveBobber(player)) {
-                FishingRodFeature.getInstance().cleanup(player);
+            if (FishingRod.getInstance().hasActiveBobber(player)) {
+                FishingRod.getInstance().cleanup(player);
                 log.debug("Cleaned up fishing rod state for {}", player.getUsername());
             }
             

@@ -26,11 +26,11 @@ import java.util.concurrent.ThreadLocalRandom;
  * Ender pearl projectile
  * FIXED: Uses DamageSystem instead of FallFeature
  */
-public class ThrownEnderpearl extends CustomEntityProjectile implements ItemHoldingProjectile {
+public class Enderpearl extends CustomEntityProjectile implements ItemHoldingProjectile {
     private Pos prevPos = Pos.ZERO;
     private ProjectileKnockbackConfig knockbackConfig;
 
-    public ThrownEnderpearl(@Nullable Entity shooter) {
+    public Enderpearl(@Nullable Entity shooter) {
         super(shooter, EntityType.ENDER_PEARL);
         // Initialize with default ender pearl knockback config (no knockback)
         this.knockbackConfig = ProjectileKnockbackPresets.ENDER_PEARL;

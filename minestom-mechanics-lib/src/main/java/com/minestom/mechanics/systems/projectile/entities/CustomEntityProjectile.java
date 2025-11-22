@@ -116,8 +116,7 @@ public abstract class CustomEntityProjectile extends Entity {
         }
     }
 
-    // TODO: Very mathy, could move to aformentioned math / physics package
-    //  also the spread could be too high for some projectiles
+    // TODO: Remove, dead code
 
     /**
      * Shoot the projectile from a rotation with specified velocity and inaccuracy.
@@ -181,7 +180,8 @@ public abstract class CustomEntityProjectile extends Entity {
         // Also set velocity on the entity for Minestom's physics
         super.setVelocity(velocity);
     }
-    
+
+    // TODO: Figure out what this is??? Maybe use ProjectileBehavior interface?
     /**
      * Called when this projectile hits an entity.
      * Override in subclasses to implement hit behavior.

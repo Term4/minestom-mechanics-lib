@@ -34,9 +34,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Unified bow feature handling all bow mechanics.
  * Manages drawing state, arrow inventory, power calculation, and shooting.
  */
-public class BowFeature extends InitializableSystem implements ProjectileFeature {
+public class Bow extends InitializableSystem implements ProjectileFeature {
     private static final LogUtil.SystemLogger log = LogUtil.system("BowFeature");
-    private static BowFeature instance;
+    private static Bow instance;
 
     // State management
     private final Map<UUID, Boolean> drawingBows = new ConcurrentHashMap<>();
@@ -44,17 +44,17 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
     // Components
     private final ProjectileCreator creator;
 
-    private BowFeature() {
+    private Bow() {
         this.creator = new ProjectileCreator();
     }
 
-    public static BowFeature initialize() {
+    public static Bow initialize() {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("BowFeature");
             return instance;
         }
 
-        instance = new BowFeature();
+        instance = new Bow();
         instance.registerListeners();
         instance.markInitialized();
 
@@ -290,7 +290,7 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
         return drawingBows.size();
     }
 
-    public static BowFeature getInstance() {
+    public static Bow getInstance() {
         return requireInstance(instance, "BowFeature");
     }
 }
