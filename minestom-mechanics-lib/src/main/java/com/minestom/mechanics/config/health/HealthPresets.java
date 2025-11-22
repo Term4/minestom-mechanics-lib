@@ -1,4 +1,4 @@
-package com.minestom.mechanics.systems.health;
+package com.minestom.mechanics.config.health;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.*;
 

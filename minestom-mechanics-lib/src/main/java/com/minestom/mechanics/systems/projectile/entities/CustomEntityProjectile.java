@@ -177,11 +177,14 @@ public abstract class CustomEntityProjectile extends Entity {
     public boolean canHit(@NotNull Entity entity) {
         // Default: can hit any living entity except spectators
         // Allow hitting the shooter (self-hits are allowed)
-        if (!(entity instanceof LivingEntity)) return false;
+        if (!(entity instanceof LivingEntity livingEntity)) return false;
         if (entity instanceof Player player) {
             if (player.getGameMode() == GameMode.SPECTATOR) return false;
             // Don't hit dead players (they have no hitbox)
-            if (Boolean.TRUE.equals(player.getTag(com.minestom.mechanics.systems.health.HealthSystem.IS_DEAD))) {
+            // If player has health > 0, they're alive and can be hit regardless of tag state
+            // Only block hits if they have the IS_DEAD tag AND health <= 0
+            boolean isDead = Boolean.TRUE.equals(player.getTag(com.minestom.mechanics.systems.player.PlayerDeathHandler.IS_DEAD));
+            if (isDead && livingEntity.getHealth() <= 0) {
                 return false;
             }
         }

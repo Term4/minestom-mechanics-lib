@@ -1,4 +1,4 @@
-package com.minestom.mechanics.systems.health;
+package com.minestom.mechanics.config.health;
 
 /**
  * Health system configuration record.

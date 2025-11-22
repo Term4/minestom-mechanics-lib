@@ -6,7 +6,7 @@ import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.systems.health.HealthConfig;
+import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.LogUtil;

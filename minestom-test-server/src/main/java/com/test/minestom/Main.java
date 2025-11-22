@@ -333,7 +333,6 @@ public class Main {
                 .append(Component.text("3.0 blocks", NamedTextColor.AQUA))
                 .build());
 
-        // ✅ NEW: Mention projectiles
         player.sendMessage(Component.empty());
         player.sendMessage(Component.text()
                 .append(Component.text("   Projectiles: ", NamedTextColor.GRAY))

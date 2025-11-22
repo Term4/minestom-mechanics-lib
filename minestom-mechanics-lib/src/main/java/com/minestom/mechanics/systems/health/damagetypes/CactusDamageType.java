@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.health.damagetypes;
 
-import com.minestom.mechanics.systems.health.HealthConfig;
+import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.systems.health.HealthEvent;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.util.LogUtil;
