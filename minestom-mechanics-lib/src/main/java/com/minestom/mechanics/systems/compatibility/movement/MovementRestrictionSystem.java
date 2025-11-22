@@ -96,9 +96,21 @@ public class MovementRestrictionSystem extends InitializableSystem {
      * Correct player pose to match allowed poses.
      */
     public void correctPlayerPose(Player player) {
-        // Force disable flying (unless creative mode)
-        if (player.isFlying() && player.getGameMode() != net.minestom.server.entity.GameMode.CREATIVE) {
+        // Check if player is in custom spectator mode (via tag)
+        boolean isCustomSpectator = Boolean.TRUE.equals(player.getTag(
+                net.minestom.server.tag.Tag.Boolean("spectator_mode")));
+        
+        // Force disable flying (unless creative, spectator mode, or custom spectator tag)
+        if (player.isFlying() && player.getGameMode() != net.minestom.server.entity.GameMode.CREATIVE 
+                && player.getGameMode() != net.minestom.server.entity.GameMode.SPECTATOR
+                && !isCustomSpectator) {
             player.setFlying(false);
+        }
+        
+        // Force enable flying for custom spectators
+        if (isCustomSpectator && !player.isFlying()) {
+            player.setAllowFlying(true);
+            player.setFlying(true);
         }
 
         // Ensure pose is allowed

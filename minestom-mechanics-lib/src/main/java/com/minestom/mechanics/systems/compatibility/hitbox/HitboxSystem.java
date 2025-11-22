@@ -100,6 +100,11 @@ public class HitboxSystem extends InitializableSystem {
         Player player = event.getPlayer();
         enforceHitbox(player);
 
+        // Skip collision checks for spectators (they can noclip)
+        if (isSpectator(player)) {
+            return; // Spectators can move freely
+        }
+
         Pos oldPos = player.getPosition();
         Pos newPos = event.getNewPosition();
 
@@ -141,6 +146,26 @@ public class HitboxSystem extends InitializableSystem {
     }
 
     // ===========================
+    // SPECTATOR MODE CHECK
+    // ===========================
+    
+    /**
+     * Check if a player is in spectator mode (for 1.7 clients emulating spectator mode).
+     * Uses reflection to avoid dependency on test server code.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean isSpectator(Player player) {
+        try {
+            var spectatorTag = Class.forName("com.test.minestom.commands.SpectatorCommand")
+                    .getField("SPECTATOR_MODE").get(null);
+            return Boolean.TRUE.equals(player.getTag((net.minestom.server.tag.Tag<Boolean>) spectatorTag));
+        } catch (Exception e) {
+            // SpectatorCommand not available, player is not a spectator
+            return false;
+        }
+    }
+    
+    // ===========================
     // PRECISE COLLISION CHECKING
     // ===========================
 
@@ -153,6 +178,11 @@ public class HitboxSystem extends InitializableSystem {
     public boolean isPositionValid(Player player, Pos pos) {
         var instance = player.getInstance();
         if (instance == null) return true;
+
+        // Skip collision checks for spectators (they can noclip)
+        if (isSpectator(player)) {
+            return true; // Spectators can pass through blocks
+        }
 
         // Calculate block range to check (player hitbox extends 0.3 blocks horizontally, 1.8 up)
         double halfWidth = config.width() / 2;

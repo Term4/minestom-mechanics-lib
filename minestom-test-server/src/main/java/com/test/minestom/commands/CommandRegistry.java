@@ -4,6 +4,7 @@ import com.test.minestom.commands.combat.BlockingCommand;
 import com.test.minestom.commands.combat.BlockingConfigCommand;
 import com.test.minestom.commands.combat.KnockbackCommand;
 import com.test.minestom.commands.debug.MemCheckCommand;
+import com.test.minestom.commands.SpectatorCommand;
 import com.test.minestom.gui.views.BlockingSettingsGui;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.util.LogUtil;
@@ -156,17 +157,14 @@ public class CommandRegistry {
     }
 
     private static void registerUtilityCommands() {
-        // Add utility commands here
-        // Example:
-        /*
+        // Spectator mode command
         COMMAND_LIST.add(new CommandInfo(
-            new HelpCommand(),
-            CommandCategory.UTILITY,
-            "Display help information",
-            true,
-            "help", "?"
+                new SpectatorCommand(),
+                CommandCategory.UTILITY,
+                "Toggle spectator mode (invisible, zero hitbox)",
+                true,
+                "sp", "spectator"
         ));
-        */
     }
 
     private static void registerAllCommands() {

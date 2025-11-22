@@ -179,7 +179,13 @@ public abstract class CustomEntityProjectile extends Entity {
         // Allow hitting the shooter (self-hits are allowed)
         if (!(entity instanceof LivingEntity livingEntity)) return false;
         if (entity instanceof Player player) {
+            // Don't hit players in spectator mode (GameMode or custom spectator tag)
             if (player.getGameMode() == GameMode.SPECTATOR) return false;
+            
+            // Check for custom spectator mode tag (used by test server spectator command)
+            boolean isSpectator = Boolean.TRUE.equals(player.getTag(net.minestom.server.tag.Tag.Boolean("spectator_mode")));
+            if (isSpectator) return false;
+            
             // Don't hit dead players (they have no hitbox)
             // If player has health > 0, they're alive and can be hit regardless of tag state
             // Only block hits if they have the IS_DEAD tag AND health <= 0
