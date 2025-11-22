@@ -2,7 +2,6 @@ package com.minestom.mechanics.systems.projectile.components;
 
 import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
-import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
 import com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
 import com.minestom.mechanics.systems.projectile.utils.VelocityCalculator;
@@ -23,33 +22,52 @@ public class ProjectileCreator {
     private static final LogUtil.SystemLogger log = LogUtil.system("ProjectileCreator");
 
     /**
-     * Spawn a throwable projectile with default spawn position calculation
+     * Spawn a projectile with default spawn position and power.
+     * Uses default throwable power (1.5) for non-arrow projectiles.
      *
      * @param projectile The projectile entity to spawn
-     * @param player The throwing player
+     * @param player The throwing/shooting player
      * @param sourceItem The item that created this projectile (for tags)
      * @param velocityConfig The velocity configuration
      */
     public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
                       ProjectileVelocityConfig velocityConfig) {
         Pos spawnPos = ProjectileSpawnCalculator.calculateSpawnPosition(player);
-        spawn(projectile, player, sourceItem, velocityConfig, spawnPos);
+        spawn(projectile, player, sourceItem, velocityConfig, ProjectileConstants.MISC_PROJECTILE_POWER, spawnPos);
     }
 
     /**
-     * Spawn a throwable projectile with custom spawn position
+     * Spawn a projectile with custom spawn position and default power.
+     * Uses default throwable power (1.5) for non-arrow projectiles.
      *
      * @param projectile The projectile entity to spawn
-     * @param player The throwing player
+     * @param player The throwing/shooting player
      * @param sourceItem The item that created this projectile (for tags)
      * @param velocityConfig The velocity configuration
      * @param spawnPos The spawn position
      */
     public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
                       ProjectileVelocityConfig velocityConfig, Pos spawnPos) {
-        // 1. Calculate velocity
-        Vec velocity = VelocityCalculator.calculateThrowableVelocity(
-                player, sourceItem, projectile, velocityConfig, shouldInheritPlayerMomentum()
+        spawn(projectile, player, sourceItem, velocityConfig, ProjectileConstants.MISC_PROJECTILE_POWER, spawnPos);
+    }
+
+    /**
+     * Spawn a projectile with full control over power and spawn position.
+     * This is the unified spawn method for all projectile types.
+     * For arrows, pass power (0.0 to 1.0). For throwables, use MISC_PROJECTILE_POWER (1.5).
+     *
+     * @param projectile The projectile entity to spawn
+     * @param player The throwing/shooting player
+     * @param sourceItem The item that created this projectile (for tags)
+     * @param velocityConfig The velocity configuration
+     * @param power The projectile power (0.0-1.0 for arrows, 1.5 for throwables)
+     * @param spawnPos The spawn position
+     */
+    public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
+                      ProjectileVelocityConfig velocityConfig, double power, Pos spawnPos) {
+        // 1. Calculate velocity with power
+        Vec velocity = VelocityCalculator.calculateProjectileVelocity(
+                player, sourceItem, projectile, velocityConfig, power, shouldInheritPlayerMomentum()
         );
 
         // 2. Apply velocity and tags
@@ -63,49 +81,8 @@ public class ProjectileCreator {
         projectile.setInstance(Objects.requireNonNull(player.getInstance()),
                 spawnPos.withView(direction[0], direction[1])); // [yaw, pitch]
 
-        log.debug("Spawned {} for {} at {} with velocity {}",
-                projectile.getEntityType(), player.getUsername(), spawnPos, velocity);
-    }
-
-    /**
-     * Spawn arrow with bow-specific logic (power multiplier, height offset)
-     *
-     * @param projectile The arrow entity
-     * @param player The shooting player
-     * @param bowStack The bow item
-     * @param velocityConfig The base velocity config
-     * @param power The bow power (0.0 to 1.0)
-     */
-    public void spawnArrow(CustomEntityProjectile projectile, Player player, ItemStack bowStack,
-                           ProjectileVelocityConfig velocityConfig, double power) {
-        // Calculate spawn position (arrows spawn slightly below eye)
-        Pos eyePos = EyeHeightSystem.getInstance()
-                .getEyePosition(player);
-        Pos spawnPos = eyePos.add(0D, -ProjectileConstants.ARROW_SPAWN_HEIGHT_OFFSET, 0D);
-
-        // FIX: Use calculateProjectileVelocity with power parameter instead of pre-multiplying!
-        Vec velocity = VelocityCalculator.calculateProjectileVelocity(
-                player,
-                bowStack,
-                projectile,
-                velocityConfig,
-                power,  // Pass power directly - don't pre-multiply config!
-                shouldInheritPlayerMomentum()
-        );
-
-        // Apply velocity and tags
-        projectile.setVelocity(velocity);
-        ProjectileTagRegistry.copyAllProjectileTags(bowStack, projectile);
-
-        // FIX: Calculate direction from velocity vector (not player yaw/pitch!)
-        float[] direction = ProjectileCreator.calculateDirectionFromVelocity(velocity);
-
-        // Spawn with correct direction
-        projectile.setInstance(Objects.requireNonNull(player.getInstance()),
-                spawnPos.withView(direction[0], direction[1])); // [yaw, pitch]
-
-        log.debug("Spawned arrow for {} with power {:.2f}, velocity {}",
-                player.getUsername(), power, velocity);
+        log.debug("Spawned {} for {} at {} with power {:.2f}, velocity {}",
+                projectile.getEntityType(), player.getUsername(), spawnPos, power, velocity);
     }
 
     /**

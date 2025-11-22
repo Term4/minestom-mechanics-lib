@@ -64,6 +64,23 @@ public class ProjectileConstants {
     public static final double MISC_PROJECTILE_POWER = 1.5;
     
     // ===========================
+    // ARROW CONSTANTS
+    // ===========================
+    
+    /**
+     * Base damage for arrows before velocity and enchantment modifiers.
+     * Used in damage calculation: damage = velocity * baseDamage
+     */
+    public static final double ARROW_BASE_DAMAGE = 2.0;
+    
+    /**
+     * Ticks to wait before an arrow can be picked up after being shot.
+     * Prevents immediate pickup (vanilla 1.8 behavior).
+     * 20 ticks = 1 second
+     */
+    public static final int ARROW_PICKUP_DELAY_TICKS = 20;
+    
+    // ===========================
     // FISHING BOBBER CONSTANTS
     // ===========================
     

@@ -7,12 +7,13 @@ import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPres
 import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.systems.projectile.entities.AbstractArrow;
 import com.minestom.mechanics.systems.projectile.entities.Arrow;
-import com.minestom.mechanics.systems.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
+import com.minestom.mechanics.systems.projectile.utils.ProjectileSpawnCalculator;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.coordinate.Pos;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
@@ -42,11 +43,9 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
 
     // Components
     private final ProjectileCreator creator;
-    private final ProjectileSoundHandler soundHandler;
 
     private BowFeature() {
         this.creator = new ProjectileCreator();
-        this.soundHandler = new ProjectileSoundHandler();
     }
 
     public static BowFeature initialize() {
@@ -132,11 +131,12 @@ public class BowFeature extends InitializableSystem implements ProjectileFeature
         arrow.setUseKnockbackHandler(true);
         arrow.setKnockbackConfig(getArrowKnockbackConfig());
 
-        // Spawn using unified creator
-        creator.spawnArrow(arrow, player, bowStack, getArrowVelocityConfig(), power);
+        // Spawn using unified creator with arrow-specific spawn position
+        ProjectileVelocityConfig velocityConfig = getArrowVelocityConfig();
+        Pos spawnPos = ProjectileSpawnCalculator.calculateArrowSpawnPosition(player);
+        creator.spawn(arrow, player, bowStack, velocityConfig, power, spawnPos);
 
-        // Play sound & consume
-        soundHandler.playBowShootSound(player, power);
+        // Consume arrow
         consumeArrow(player, arrowResult, infinite);
     }
 

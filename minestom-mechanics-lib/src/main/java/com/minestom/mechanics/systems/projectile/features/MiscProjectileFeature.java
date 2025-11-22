@@ -7,7 +7,6 @@ import com.minestom.mechanics.systems.projectile.entities.ThrownEnderpearl;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileData;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
-import com.minestom.mechanics.systems.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileRegistry;
 import com.minestom.mechanics.InitializableSystem;
@@ -21,8 +20,7 @@ import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
-// TODO: Generalize velocity + rest into basic projectile system,
-//  ALSO find a way to make them invisible with a tag
+// TODO: Find a way to make them invisible with a tag
 //  ALSO add lookweight like we have in kbsystem, ALSO FIX THE DAMN LOOK DIRECTION!!!
 
 /**
@@ -35,11 +33,9 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
 
     // Unified components
     private final ProjectileCreator creator;
-    private final ProjectileSoundHandler soundHandler;
 
     private MiscProjectileFeature() {
         this.creator = new ProjectileCreator();
-        this.soundHandler = new ProjectileSoundHandler();
     }
 
     public static MiscProjectileFeature initialize() {
@@ -93,14 +89,11 @@ public class MiscProjectileFeature extends InitializableSystem implements Projec
         // 3. Configure from ProjectileData
         configureFromData(projectile, data);
 
-        // 4. Play sound
-        soundHandler.playThrowSound(player, material);
-
-        // 5. Spawn using unified creator
+        // 4. Spawn using unified creator
         ProjectileVelocityConfig velocityConfig = data.getVelocityConfig();
         creator.spawn(projectile, player, stack, velocityConfig);
 
-        // 6. Consume item
+        // 5. Consume item
         if (player.getGameMode() != GameMode.CREATIVE) {
             player.setItemInHand(hand, stack.withAmount(stack.amount() - 1));
         }

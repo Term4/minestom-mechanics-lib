@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
+import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import net.minestom.server.ServerFlag;
@@ -21,20 +22,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-// TODO: Actually this seems good thus far. Might repeat some methods from earlier classes though
-
 /**
  * IMPROVED arrow with proper water physics and better damage/knockback
  */
 public abstract class AbstractArrow extends CustomEntityProjectile {
-	// TODO: Move arrow base damage to a constants class
-    private static final double ARROW_BASE_DAMAGE = 2.0;
 
 	protected int pickupDelay;
 	protected int stuckTime;
 	protected PickupMode pickupMode = PickupMode.DISALLOWED;
 	protected int ticks;
-	private double baseDamage = ARROW_BASE_DAMAGE;
+	private double baseDamage = ProjectileConstants.ARROW_BASE_DAMAGE;
 	private int knockback;
 	
 	// Knockback configuration - now uses the main KnockbackHandler
@@ -56,8 +53,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		}
 
 		// ✅ FIX: Prevent immediate pickup (vanilla 1.8 behavior)
-        // TODO: This delay seems long potentially. Should also be in a constants class
-		pickupDelay = 20; // 1 second delay before arrow can be picked up
+		pickupDelay = ProjectileConstants.ARROW_PICKUP_DELAY_TICKS;
 
 		// Initialize with default arrow knockback config
         this.knockbackConfig = ProjectileKnockbackPresets.ARROW;

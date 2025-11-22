@@ -3,7 +3,6 @@ package com.minestom.mechanics.systems.projectile.features;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
-import com.minestom.mechanics.systems.projectile.components.ProjectileSoundHandler;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 import com.minestom.mechanics.systems.projectile.entities.FishingBobber;
@@ -51,11 +50,9 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
 
     // Configuration and components
     private ProjectileVelocityConfig config;
-    private final ProjectileSoundHandler soundHandler;
 
     private FishingRodFeature() {
         this.config = ProjectileVelocityPresets.FISHING_ROD;
-        this.soundHandler = new ProjectileSoundHandler();
     }
 
     // ===========================
@@ -104,11 +101,9 @@ public class FishingRodFeature extends InitializableSystem implements Projectile
         if (hasActiveBobber(player)) {
             // Retrieve existing bobber
             retrieveBobber(player);
-            soundHandler.playFishingRetrieveSound(player);
         } else {
             // Cast new bobber
             castBobber(player);
-            soundHandler.playFishingCastSound(player);
         }
     }
 

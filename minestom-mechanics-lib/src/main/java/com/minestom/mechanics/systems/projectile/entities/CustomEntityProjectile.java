@@ -56,6 +56,8 @@ public abstract class CustomEntityProjectile extends Entity {
     // Physics state
     protected boolean noClip = false;
     protected Vec collisionDirection = null;
+    // Store velocity direction at moment of collision for rotation preservation
+    protected Vec stuckVelocityDirection = null;
     
     // Track previous physics result for better collision
     private PhysicsResult previousPhysicsResult = null;
@@ -292,6 +294,7 @@ public abstract class CustomEntityProjectile extends Entity {
         if (isStuck() && shouldUnstuck()) {
             EventDispatcher.call(new ProjectileUncollideEvent(this));
             collisionDirection = null;
+            stuckVelocityDirection = null;
             setNoGravity(false);
             onUnstuck();
         }
@@ -366,6 +369,11 @@ public abstract class CustomEntityProjectile extends Entity {
                 var event = new ProjectileCollideWithBlockEvent(this, physicsResult.newPosition().withCoord(collidedPosition), block);
                 EventDispatcher.call(event);
                 if (!event.isCancelled()) {
+                    // Store velocity direction before zeroing it out (for rotation preservation)
+                    if (velocity.lengthSquared() > 0.0001) {
+                        this.stuckVelocityDirection = velocity.normalize();
+                    }
+                    
                     setNoGravity(true);
                     setVelocity(Vec.ZERO);
                     this.collisionDirection = collisionDirection;
@@ -392,20 +400,32 @@ public abstract class CustomEntityProjectile extends Entity {
             float yaw = position.yaw();
             float pitch = position.pitch();
             
-            if (!noClip && velocity.lengthSquared() > 0.0001) {
-                // Calculate direction from velocity (matches calculateDirectionFromVelocity logic)
-                // Use velocity direction for consistent rotation matching flight path
-                double horizontalLength = Math.sqrt(velocity.x() * velocity.x() + velocity.z() * velocity.z());
-                
-                // Calculate pitch (vertical angle) - matches old implementation: atan2(dy, sqrt(dx² + dz²))
-                pitch = (float) Math.toDegrees(Math.atan2(velocity.y(), horizontalLength));
-                
-                // Calculate yaw (horizontal angle) - matches old implementation: atan2(dx, dz)
-                yaw = (float) Math.toDegrees(Math.atan2(velocity.x(), velocity.z()));
-                
-                // Smooth rotation for better visuals
-                yaw = lerp(prevYaw, yaw);
-                pitch = lerp(prevPitch, pitch);
+            if (!noClip) {
+                if (isStuck() && stuckVelocityDirection != null) {
+                    // When stuck, use the velocity direction from when collision occurred
+                    // This preserves the arrow's orientation from its flight path
+                    double horizontalLength = Math.sqrt(stuckVelocityDirection.x() * stuckVelocityDirection.x() + stuckVelocityDirection.z() * stuckVelocityDirection.z());
+                    
+                    // Calculate pitch from stored velocity direction
+                    pitch = (float) Math.toDegrees(Math.atan2(stuckVelocityDirection.y(), horizontalLength));
+                    
+                    // Calculate yaw from stored velocity direction
+                    yaw = (float) Math.toDegrees(Math.atan2(stuckVelocityDirection.x(), stuckVelocityDirection.z()));
+                } else if (velocity.lengthSquared() > 0.0001) {
+                    // Calculate direction from velocity (matches calculateDirectionFromVelocity logic)
+                    // Use velocity direction for consistent rotation matching flight path
+                    double horizontalLength = Math.sqrt(velocity.x() * velocity.x() + velocity.z() * velocity.z());
+                    
+                    // Calculate pitch (vertical angle) - matches old implementation: atan2(dy, sqrt(dx² + dz²))
+                    pitch = (float) Math.toDegrees(Math.atan2(velocity.y(), horizontalLength));
+                    
+                    // Calculate yaw (horizontal angle) - matches old implementation: atan2(dx, dz)
+                    yaw = (float) Math.toDegrees(Math.atan2(velocity.x(), velocity.z()));
+                    
+                    // Smooth rotation for better visuals
+                    yaw = lerp(prevYaw, yaw);
+                    pitch = lerp(prevPitch, pitch);
+                }
             }
             
             this.prevYaw = yaw;

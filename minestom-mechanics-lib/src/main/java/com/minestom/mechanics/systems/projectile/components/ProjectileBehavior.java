@@ -3,11 +3,6 @@ package com.minestom.mechanics.systems.projectile.components;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;
 
-// TODO: This is what I was talking about earlier with a general
-//  projectile class, that handles onhit, onstuck, etc. OR ignores them.
-//  this interface isn't used really though, sooo...
-//  Still unsure if I should use an interface here or an abstract class.
-
 // TODO: Add 'Look direction' knockback (where the direction a player is looking upon
 //  being hit with a projectile determines the direction they take the knockback in)
 //  Should have attacker based, victim based, and an onlyself (only works for attacker
@@ -15,7 +10,15 @@ import net.minestom.server.entity.Entity;
 
 /**
  * Interface for defining projectile behavior patterns.
- * ✅ ABSTRACTION: Provides consistent behavior interface for all projectile types.
+ * 
+ * NOTE: This interface is currently unused but reserved for future use.
+ * It could be useful for implementing a strategy pattern to separate behavior
+ * logic from entity implementation, allowing for swappable/configurable behaviors.
+ * 
+ * Currently, projectile behavior is implemented directly in entity classes
+ * (e.g., AbstractArrow.onHit(), Snowball.onHit(), etc.). This interface could
+ * be used in the future if behavior patterns need to be made more flexible or
+ * configurable without subclassing.
  */
 public interface ProjectileBehavior {
     
