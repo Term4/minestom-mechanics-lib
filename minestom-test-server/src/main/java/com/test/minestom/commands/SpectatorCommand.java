@@ -24,6 +24,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.packet.server.play.BlockChangePacket;
+import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.scoreboard.Team;
 import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.network.packet.server.play.TeamsPacket;
@@ -152,7 +153,7 @@ public class SpectatorCommand extends Command {
             }
         });
         
-        // Hide ghost block entities from newly spawned players
+        // Hide ghost block entities and spectators from newly spawned players
         handler.addListener(PlayerSpawnEvent.class, event -> {
             Player newPlayer = event.getPlayer();
             if (Boolean.TRUE.equals(newPlayer.getTag(SPECTATOR_MODE))) {
@@ -165,6 +166,13 @@ public class SpectatorCommand extends Command {
                     if (entity != null && !entity.isRemoved()) {
                         newPlayer.sendPacket(new DestroyEntitiesPacket(entity.getEntityId()));
                     }
+                }
+            }
+            
+            // Hide all spectators from this new player
+            for (Player spectator : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
+                if (Boolean.TRUE.equals(spectator.getTag(SPECTATOR_MODE)) && spectator != newPlayer) {
+                    newPlayer.sendPacket(new DestroyEntitiesPacket(spectator.getEntityId()));
                 }
             }
         });
@@ -204,6 +212,19 @@ public class SpectatorCommand extends Command {
                 // Ensure bounding box stays zero (may be reset by other systems)
                 if (!player.getBoundingBox().equals(ZERO_BOX)) {
                     player.setBoundingBox(ZERO_BOX);
+                }
+                
+                // Hide spectator from all other players (not just invisible, but completely hidden)
+                // This ensures they stay hidden even if other systems try to show them
+                Instance instance = player.getInstance();
+                if (instance != null) {
+                    for (Player otherPlayer : instance.getPlayers()) {
+                        if (otherPlayer != player && !Boolean.TRUE.equals(otherPlayer.getTag(SPECTATOR_MODE))) {
+                            // Continuously hide the spectator from non-spectators
+                            // This prevents them from appearing if other systems spawn them
+                            otherPlayer.sendPacket(new DestroyEntitiesPacket(player.getEntityId()));
+                        }
+                    }
                 }
                 
                 // Force enable flying if disabled
@@ -489,6 +510,17 @@ public class SpectatorCommand extends Command {
             player.sendPacketToViewers(player.getMetadataPacket());
         }
         
+        // Hide spectator from all other players using DestroyEntitiesPacket
+        // This makes them completely invisible (not just invisible metadata)
+        Instance instance = player.getInstance();
+        if (instance != null) {
+            for (Player otherPlayer : instance.getPlayers()) {
+                if (otherPlayer != player && !Boolean.TRUE.equals(otherPlayer.getTag(SPECTATOR_MODE))) {
+                    otherPlayer.sendPacket(new DestroyEntitiesPacket(player.getEntityId()));
+                }
+            }
+        }
+        
         // Add player to spectator team for collision control
         if (spectatorTeam != null) {
             spectatorTeam.addMember(player.getUsername());
@@ -573,6 +605,33 @@ public class SpectatorCommand extends Command {
             livingMeta.setCustomNameVisible(true);
             // Send metadata update to all viewers
             player.sendPacketToViewers(player.getMetadataPacket());
+        }
+        
+        // Restore spectator visibility to all other players
+        // Send spawn packet to make them visible again
+        Instance instance = player.getInstance();
+        if (instance != null) {
+            Pos pos = player.getPosition();
+            Vec velocity = player.getVelocity();
+            Vec velocityPerTick = velocity.div(net.minestom.server.ServerFlag.SERVER_TICKS_PER_SECOND);
+            
+            SpawnEntityPacket spawnPacket = new SpawnEntityPacket(
+                    player.getEntityId(),
+                    player.getUuid(),
+                    player.getEntityType(),
+                    pos,
+                    pos.yaw(),
+                    0, // data (not used for players)
+                    velocityPerTick
+            );
+            
+            // Send spawn packet to all players in the instance
+            for (Player otherPlayer : instance.getPlayers()) {
+                if (otherPlayer != player) {
+                    otherPlayer.sendPacket(spawnPacket);
+                    otherPlayer.sendPacket(player.getMetadataPacket());
+                }
+            }
         }
         
         // Remove all ghost block entities and restore blocks
