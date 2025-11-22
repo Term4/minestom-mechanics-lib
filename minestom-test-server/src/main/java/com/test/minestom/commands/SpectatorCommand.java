@@ -13,6 +13,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
 import net.minestom.server.entity.metadata.other.FallingBlockMeta;
 import net.minestom.server.event.entity.EntityTickEvent;
+import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerMoveEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
@@ -127,6 +128,11 @@ public class SpectatorCommand extends Command {
             entity.setNoGravity(true);
             entity.setVelocity(Vec.ZERO);
             
+            // Ensure bounding box stays zero to prevent interference with block placement
+            if (!entity.getBoundingBox().equals(ZERO_BOX)) {
+                entity.setBoundingBox(ZERO_BOX);
+            }
+            
             // Hide entity from all players except the owner
             Player owner = null;
             for (Player p : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
@@ -163,10 +169,43 @@ public class SpectatorCommand extends Command {
             }
         });
         
+        // Allow placing blocks inside spectators - run at HIGH priority to override other cancellations
+        handler.addListener(PlayerBlockPlaceEvent.class, event -> {
+            Instance instance = event.getPlayer().getInstance();
+            if (instance == null) return;
+            
+            // Check if there's a spectator near the placement position
+            net.minestom.server.coordinate.BlockVec placePos = event.getBlockPosition();
+            Pos placePosCenter = new Pos(placePos.x() + 0.5, placePos.y() + 0.5, placePos.z() + 0.5);
+            
+            for (Player spectator : instance.getPlayers()) {
+                if (Boolean.TRUE.equals(spectator.getTag(SPECTATOR_MODE))) {
+                    Pos spectatorPos = spectator.getPosition();
+                    // Check if block is being placed near spectator (within 1.5 blocks)
+                    double distance = Math.sqrt(
+                        Math.pow(placePosCenter.x() - spectatorPos.x(), 2) +
+                        Math.pow(placePosCenter.y() - spectatorPos.y(), 2) +
+                        Math.pow(placePosCenter.z() - spectatorPos.z(), 2)
+                    );
+                    // If very close to spectator, ensure event is not cancelled
+                    // Spectators have zero bounding box so blocks can be placed inside them
+                    if (distance < 1.5) {
+                        event.setCancelled(false);
+                        return;
+                    }
+                }
+            }
+        });
+        
         // Ensure spectators stay in flying mode and nametag stays hidden
         handler.addListener(PlayerTickEvent.class, event -> {
             Player player = event.getPlayer();
             if (Boolean.TRUE.equals(player.getTag(SPECTATOR_MODE))) {
+                // Ensure bounding box stays zero (may be reset by other systems)
+                if (!player.getBoundingBox().equals(ZERO_BOX)) {
+                    player.setBoundingBox(ZERO_BOX);
+                }
+                
                 // Force enable flying if disabled
                 if (!player.isFlying()) {
                     player.setAllowFlying(true);
@@ -299,6 +338,9 @@ public class SpectatorCommand extends Command {
                             // Disable gravity and set velocity to zero to prevent falling
                             fallingBlock.setNoGravity(true);
                             fallingBlock.setVelocity(Vec.ZERO);
+                            
+                            // Set bounding box to zero so entities don't interfere with block placement
+                            fallingBlock.setBoundingBox(ZERO_BOX);
                             
                             // Position falling block - X and Z centered, Y at block bottom
                             // Falling blocks render with their origin at the bottom of the block
