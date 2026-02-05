@@ -13,10 +13,10 @@ import net.minestom.server.registry.RegistryKey;
  * Cactus damage type implementation.
  * Modifies cactus damage based on configuration.
  */
-public class CactusDamageType extends AbstractDamageType {
+public class Cactus extends AbstractDamageType {
     private static final LogUtil.SystemLogger log = LogUtil.system("CactusDamageType");
     
-    public CactusDamageType(HealthConfig config) {
+    public Cactus(HealthConfig config) {
         super(config, "CACTUS", HealthSystem.CACTUS_DAMAGE);
     }
     

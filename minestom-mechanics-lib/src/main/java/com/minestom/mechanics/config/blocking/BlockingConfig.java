@@ -6,12 +6,10 @@ import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
 /**
  * BlockingConfig - Configuration for the blocking system.
- * ✅ REFACTORED: All defaults and validation use constants
  */
 public class BlockingConfig {
     private boolean enabled = true;
 
-    // ✅ REFACTORED: Using constants for defaults
     private double damageReduction = DEFAULT_BLOCKING_DAMAGE_REDUCTION;
     private double knockbackHorizontalMultiplier = DEFAULT_BLOCKING_KB_HORIZONTAL;
     private double knockbackVerticalMultiplier = DEFAULT_BLOCKING_KB_VERTICAL;
@@ -35,7 +33,6 @@ public class BlockingConfig {
 
         /**
          * Set damage reduction with validation.
-         * ✅ REFACTORED: Using constants for validation
          */
         public Builder damageReduction(double reduction) {
             if (reduction < MIN_BLOCKING_REDUCTION || reduction > MAX_BLOCKING_REDUCTION) {
@@ -50,7 +47,6 @@ public class BlockingConfig {
 
         /**
          * Set knockback multipliers with validation.
-         * ✅ REFACTORED: Using constants for validation
          */
         public Builder knockbackHorizontalMultiplier(double multiplier) {
             if (multiplier < MIN_BLOCKING_REDUCTION || multiplier > MAX_BLOCKING_REDUCTION) {
@@ -129,7 +125,6 @@ public class BlockingConfig {
 
     /**
      * Set damage reduction with validation at runtime.
-     * ✅ REFACTORED: Using constants for validation
      */
     public void setDamageReduction(double damageReduction) {
         if (damageReduction < MIN_BLOCKING_REDUCTION || damageReduction > MAX_BLOCKING_REDUCTION) {

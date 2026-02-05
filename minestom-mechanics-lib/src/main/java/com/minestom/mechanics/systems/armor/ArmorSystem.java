@@ -67,7 +67,6 @@ public class ArmorSystem extends InitializableSystem {
     /**
      * Calculate damage after armor reduction.
      * Uses vanilla Minecraft formula with constants from CombatConstants.
-     * ✅ REFACTORED: All magic numbers replaced with named constants
      */
     public float calculateDamageAfterArmor(Player player, float damage,
                                            RegistryKey<DamageType> damageType) {
@@ -106,7 +105,6 @@ public class ArmorSystem extends InitializableSystem {
 
     /**
      * Get total armor points from equipped armor.
-     * ✅ REFACTORED: All armor values use constants
      */
     public int getArmorPoints(Player player) {
         int total = 0;
@@ -121,7 +119,6 @@ public class ArmorSystem extends InitializableSystem {
 
     /**
      * Get armor value for a single item.
-     * ✅ REFACTORED: Using switch with constants from CombatConstants
      */
     private int getArmorValue(ItemStack item) {
         if (item.isAir()) return 0;

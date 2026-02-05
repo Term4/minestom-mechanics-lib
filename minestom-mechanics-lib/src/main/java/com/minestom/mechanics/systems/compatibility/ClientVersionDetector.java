@@ -4,42 +4,47 @@ import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerPluginMessageEvent;
-import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 
-import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-// TODO: This doesn't actually detect their PROTOCOL version, just their client
-//  Not a bad thing to have, but in the future I want to have a velocity level plugin
-//  that can detect the actual protocol version, and use a plugin messager channel
-//  to send that here. Should be an optional feature though, not a requirement.
 
 // TODO: Also move this to player package
 
 /**
- * Detects client version through observable behavior patterns.
- *
- * Detection Methods:
- * 1. Brand string (minecraft:brand channel)
- * 2. Settings packet analysis
- * 3. Behavioral heuristics (animation persistence)
- *
- * NO Velocity plugin messaging required!
+ * Detects client version for version-aware behavior (e.g. legacy 1.8 vs modern).
+ * Version is determined only from the Velocity protocol forwarder – plugin message on
+ * {@value #PROTOCOL_VERSION_CHANNEL} (UUID + VarInt protocol version). When no protocol
+ * version has been received (e.g. not behind proxy or message not yet sent),
+ * {@link #getClientVersion(Player)} returns {@link ClientVersion#UNKNOWN}.
  */
 public class ClientVersionDetector {
+
+    /** Plugin message channel used by Velocity protocol forwarder (mechanics:protocol_version). */
+    public static final String PROTOCOL_VERSION_CHANNEL = "mechanics:protocol_version";
+
+    /** Protocol version below this is treated as legacy (1.8.x = 47; 1.9 = 107). */
+    private static final int LEGACY_PROTOCOL_THRESHOLD = 107;
+
+    /** Protocol number → game version string for logging (supported range: 1.7.10, 1.8.x, 1.21.x). */
+    private static final Map<Integer, String> PROTOCOL_TO_GAME_VERSION = new TreeMap<>();
+
+    static {
+        PROTOCOL_TO_GAME_VERSION.put(5, "1.7.10");
+        PROTOCOL_TO_GAME_VERSION.put(47, "1.8.x");
+        PROTOCOL_TO_GAME_VERSION.put(767, "1.21");
+        PROTOCOL_TO_GAME_VERSION.put(768, "1.21.1");
+        PROTOCOL_TO_GAME_VERSION.put(769, "1.21.2");
+        PROTOCOL_TO_GAME_VERSION.put(770, "1.21.3");
+    }
 
     private static ClientVersionDetector instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("ClientVersionDetector");
 
-    // Client version tracking
-    private final Map<UUID, ClientVersion> detectedVersions = new ConcurrentHashMap<>();
-    private final Map<UUID, String> clientBrands = new ConcurrentHashMap<>();
-
-    // Animation persistence tracking for heuristic detection
-    private final Map<UUID, AnimationTracker> animationTrackers = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> proxyProtocolVersions = new ConcurrentHashMap<>();
 
     private ClientVersionDetector() {}
 
@@ -54,210 +59,110 @@ public class ClientVersionDetector {
     private void initialize() {
         var handler = MinecraftServer.getGlobalEventHandler();
 
-        // Listen for brand messages
         handler.addListener(PlayerPluginMessageEvent.class, event -> {
-            String identifier = event.getIdentifier();
-
-            // Handle both legacy and modern brand channels
-            if (identifier.equals("minecraft:brand") || identifier.equals("MC|Brand")) {
-                handleBrandMessage(event.getPlayer(), event.getMessage());
+            if (event.getIdentifier().equals(PROTOCOL_VERSION_CHANNEL)) {
+                handleProtocolVersionMessage(event.getPlayer(), event.getMessage());
             }
         });
 
-        // Initialize tracking on spawn
-        handler.addListener(PlayerSpawnEvent.class, event -> {
-            if (event.isFirstSpawn()) {
-                UUID uuid = event.getPlayer().getUuid();
-                animationTrackers.put(uuid, new AnimationTracker());
-            }
-        });
-
-        // Cleanup on disconnect
-        handler.addListener(PlayerDisconnectEvent.class, event -> {
-            UUID uuid = event.getPlayer().getUuid();
-            detectedVersions.remove(uuid);
-            clientBrands.remove(uuid);
-            animationTrackers.remove(uuid);
-        });
+        handler.addListener(PlayerDisconnectEvent.class, event ->
+                proxyProtocolVersions.remove(event.getPlayer().getUuid()));
 
         log.debug("Client version detector initialized");
     }
 
     /**
-     * Parse brand string to detect version
+     * Handle protocol version from Velocity protocol forwarder.
+     * Payload: 16 bytes UUID (MSB first) + VarInt protocol version (e.g. 47 = 1.8.x, 107 = 1.9+).
+     * Only the proxy should send this; accept only when UUID matches the player (consistency check).
      */
-    private void handleBrandMessage(Player player, byte[] data) {
+    private void handleProtocolVersionMessage(Player player, byte[] data) {
+        if (data == null || data.length < 17) { // 16 UUID + at least 1 byte VarInt
+            log.debug("Invalid protocol version message from {}: payload too short", player.getUsername());
+            return;
+        }
         try {
-            // Read VarInt length (skip it)
-            int index = 0;
-            int length = 0;
-            int shift = 0;
-            byte b;
-            do {
-                b = data[index++];
-                length |= (b & 0x7F) << shift;
-                shift += 7;
-            } while ((b & 0x80) != 0);
-
-            // Read brand string
-            String brand = new String(data, index, Math.min(length, data.length - index),
-                    StandardCharsets.UTF_8);
-
-            clientBrands.put(player.getUuid(), brand);
-
-            // Attempt detection from brand
-            ClientVersion detected = detectFromBrand(brand);
-            if (detected != ClientVersion.UNKNOWN) {
-                detectedVersions.put(player.getUuid(), detected);
-                log.info("{} detected as {} (brand: '{}')",
-                        player.getUsername(), detected, brand);
-            } else {
-                log.debug("{} has brand '{}' - will use heuristic detection",
-                        player.getUsername(), brand);
+            long msb = ByteBuffer.wrap(data, 0, 8).getLong();
+            long lsb = ByteBuffer.wrap(data, 8, 8).getLong();
+            UUID payloadUuid = new UUID(msb, lsb);
+            if (!payloadUuid.equals(player.getUuid())) {
+                log.warn("Protocol version message UUID mismatch for {} – ignoring (possible spoof)", player.getUsername());
+                log.warn("Payload ID: " +  payloadUuid + " | Player ID: " +  player.getUuid());
+                return;
             }
-
+            int[] result = readVarInt(data, 16);
+            int protocolVersion = result[0];
+            proxyProtocolVersions.put(player.getUuid(), protocolVersion);
+            ClientVersion version = protocolVersion < LEGACY_PROTOCOL_THRESHOLD ? ClientVersion.LEGACY : ClientVersion.MODERN;
+            String versionLabel = protocolVersionToGameVersion(protocolVersion);
+            log.info("{} protocol version from proxy: {} ({}) – {}", player.getUsername(), protocolVersion, version, versionLabel);
         } catch (Exception e) {
-            log.warn("Failed to parse brand message from {}: {}",
-                    player.getUsername(), e.getMessage());
+            log.warn("Failed to parse protocol version message from {}: {}", player.getUsername(), e.getMessage());
         }
     }
 
-    /**
-     * Detect version from brand string
-     */
-    private ClientVersion detectFromBrand(String brand) {
-        if (brand == null) return ClientVersion.UNKNOWN;
+    /** Returns human-readable game version for a protocol number (e.g. 47 → "1.8.x"), or "protocol N" if unknown. */
+    private static String protocolVersionToGameVersion(int protocolVersion) {
+        String known = PROTOCOL_TO_GAME_VERSION.get(protocolVersion);
+        return known != null ? known : "protocol " + protocolVersion;
+    }
 
-        String lower = brand.toLowerCase();
-
-        // Known legacy clients
-        if (lower.contains("labymod 3") || lower.contains("labymod3")) {
-            return ClientVersion.LEGACY; // LabyMod 3 is 1.8.9
-        }
-        if (lower.contains("lunarclient")) {
-            if (lower.contains("1.8") || lower.contains(":v1.") || lower.contains(":v2.")) {
-                return ClientVersion.LEGACY;  // This will catch Term4!
-            }
-            return ClientVersion.LEGACY;  // Default for Lunar
-        }
-        if (lower.contains("pvplounge") || lower.contains("kohi")) {
-            return ClientVersion.LEGACY;
-        }
-        if (lower.contains("forge") || lower.contains("1.8.9") || lower.contains("1.7.10") || lower.contains("vanilla")) {
-            return ClientVersion.LEGACY;
-        }
-
-        // Known modern clients
-        if (lower.contains("fabric") || lower.contains("quilt")) {
-            // Modded clients - usually modern
-            return ClientVersion.MODERN;
-        }
-        if (lower.contains("labymod 4") || lower.contains("labymod4")) {
-            return ClientVersion.MODERN;
-        }
-
-        // Generic "vanilla" doesn't tell us much
-        return ClientVersion.UNKNOWN;
+    /** Reads a VarInt from {@code data} starting at {@code offset}. Returns [value, nextOffset]. */
+    private static int[] readVarInt(byte[] data, int offset) {
+        int value = 0;
+        int shift = 0;
+        byte b;
+        do {
+            if (offset >= data.length) throw new IllegalArgumentException("VarInt extends past buffer");
+            b = data[offset++];
+            value |= (b & 0x7F) << shift;
+            shift += 7;
+        } while ((b & 0x80) != 0);
+        return new int[]{ value, offset };
     }
 
     /**
-     * Get client version for a player
+     * Get client version for a player. Only protocol version from the proxy is used.
+     * Returns {@link ClientVersion#UNKNOWN} if no protocol version has been received.
      */
     public ClientVersion getClientVersion(Player player) {
-        ClientVersion detected = detectedVersions.get(player.getUuid());
-
-        if (detected != null && detected != ClientVersion.UNKNOWN) {
-            return detected;
+        Integer protocol = proxyProtocolVersions.get(player.getUuid());
+        if (protocol == null) {
+            return ClientVersion.UNKNOWN;
         }
-
-        // Fall back to heuristic if not detected from brand
-        return getHeuristicVersion(player);
+        return protocol < LEGACY_PROTOCOL_THRESHOLD ? ClientVersion.LEGACY : ClientVersion.MODERN;
     }
 
     /**
-     * Heuristic detection based on behavior
+     * Raw protocol version when provided by the proxy (Velocity protocol forwarder).
+     * e.g. 47 = 1.8.x, 107 = 1.9. Returns null if not behind proxy or not yet received.
      */
-    private ClientVersion getHeuristicVersion(Player player) {
-        AnimationTracker tracker = animationTrackers.get(player.getUuid());
-        if (tracker == null) return ClientVersion.UNKNOWN;
-
-        // If we have enough data, make a decision
-        if (tracker.samples >= 10) {
-            // If animation breaks frequently during movement → legacy client
-            double breakRate = (double) tracker.breaksWhileMoving / tracker.samples;
-
-            if (breakRate > 0.3) {
-                log.info("{} detected as LEGACY via heuristic (break rate: {:.1f}%)",
-                        player.getUsername(), breakRate * 100);
-                return ClientVersion.LEGACY;
-            } else if (breakRate < 0.1) {
-                log.info("{} detected as MODERN via heuristic (break rate: {:.1f}%)",
-                        player.getUsername(), breakRate * 100);
-                return ClientVersion.MODERN;
-            }
-        }
-
-        // Default to modern to avoid packet spam for unknown clients
-        return ClientVersion.MODERN;
+    public Integer getProtocolVersion(Player player) {
+        return proxyProtocolVersions.get(player.getUuid());
     }
 
     /**
-     * Report animation state for heuristic learning
-     */
-    public void reportAnimationState(Player player, boolean animating, boolean moving) {
-        AnimationTracker tracker = animationTrackers.get(player.getUuid());
-        if (tracker == null) return;
-
-        // Track if animation broke while moving (indicates legacy client)
-        if (!animating && moving && tracker.wasAnimating) {
-            tracker.breaksWhileMoving++;
-        }
-
-        tracker.wasAnimating = animating;
-        tracker.samples++;
-    }
-
-    /**
-     * Check if player needs frequent animation updates
+     * Whether the player needs frequent animation updates (legacy clients only).
+     * False when version is unknown (no protocol from proxy).
      */
     public boolean needsFrequentUpdates(Player player) {
         return getClientVersion(player) == ClientVersion.LEGACY;
     }
 
-    /**
-     * Get client brand string
-     */
-    public String getClientBrand(Player player) {
-        return clientBrands.get(player.getUuid());
-    }
-
-    // ===========================
-    // INNER CLASSES
-    // ===========================
-
     public enum ClientVersion {
-        LEGACY,   // 1.8.9 and similar - needs constant updates
-        MODERN,   // 1.9+ - maintains animations automatically
-        UNKNOWN   // Not yet detected
-    }
-
-    private static class AnimationTracker {
-        int samples = 0;
-        int breaksWhileMoving = 0;
-        boolean wasAnimating = false;
+        LEGACY,   // protocol < 107 (e.g. 1.7.10, 1.8.x)
+        MODERN,   // protocol >= 107 (e.g. 1.21.x)
+        UNKNOWN   // No protocol version received from proxy
     }
 
     /**
-     * Get detection statistics
+     * Statistics for players with a known protocol version from the proxy.
      */
     public String getStatistics() {
-        int total = detectedVersions.size();
-        long legacy = detectedVersions.values().stream()
-                .filter(v -> v == ClientVersion.LEGACY).count();
-        long modern = detectedVersions.values().stream()
-                .filter(v -> v == ClientVersion.MODERN).count();
-
-        return String.format("Clients: %d total (%d legacy, %d modern)",
-                total, legacy, modern);
+        int total = proxyProtocolVersions.size();
+        long legacy = proxyProtocolVersions.values().stream()
+                .filter(p -> p < LEGACY_PROTOCOL_THRESHOLD).count();
+        long modern = total - legacy;
+        return String.format("Clients: %d total (%d legacy, %d modern)", total, legacy, modern);
     }
 }

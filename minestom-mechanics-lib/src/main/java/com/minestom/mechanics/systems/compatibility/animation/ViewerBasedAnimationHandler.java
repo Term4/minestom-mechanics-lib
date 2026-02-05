@@ -12,14 +12,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-// TODO: Make sure this isn't causing issues and is done smoothly and efficiently
-//  ALSO could probably be renamed. This is only really necessary when working with older versions anyways,
-//  so if your server only supports like 1.21 or something, you're probably fine.
-//  Also make sure it's being used properly, and potentially move this to a different package?
-//  It IS a utility package though, so it might be fine here
-
-// TODO: Also move this to player package
-
 /**
  * Version-based animation handler.
  *
@@ -27,9 +19,7 @@ import java.util.function.Predicate;
  * - Modern clients (1.9+): Handle animations via game state → NEVER send metadata packets
  * - Legacy clients (1.8.9): Need metadata packets → send every tick
  *
- * This prevents:
- * - Stuttering on modern clients (no conflicting packets)
- * - Animation breaking on legacy clients (constant updates)
+ * This prevents animation breaking on legacy clients (constant updates)
  */
 public class ViewerBasedAnimationHandler {
 
@@ -80,7 +70,7 @@ public class ViewerBasedAnimationHandler {
             // Initial state: send to legacy clients only
             // Modern clients will handle via game mechanics
             ClientVersionDetector detector = ClientVersionDetector.getInstance();
-            sendToLegacyViewersAndSelf(player, detector);
+            sendToLegacyViewers(player, detector);
 
             log.debug("{} started animation: {}", player.getUsername(), animationId);
         }
@@ -94,7 +84,7 @@ public class ViewerBasedAnimationHandler {
             // Final state: send to legacy clients only
             // Modern clients will handle via game mechanics
             ClientVersionDetector detector = ClientVersionDetector.getInstance();
-            sendToLegacyViewersAndSelf(player, detector);
+            sendToLegacyViewers(player, detector);
 
             log.debug("{} stopped animation: {}", player.getUsername(), state.animationId);
         }
@@ -117,12 +107,12 @@ public class ViewerBasedAnimationHandler {
             if (stateChanged) {
                 // STATE CHANGE: Only send to legacy viewers
                 // Modern clients handle state changes automatically via game mechanics
-                sendToLegacyViewersAndSelf(player, detector);
+                sendToLegacyViewers(player, detector);
                 state.lastActive = currentlyActive;
 
             } else if (currentlyActive) {
                 // ANIMATION ACTIVE: Update self + legacy viewers only
-                sendToLegacyViewersAndSelf(player, detector);
+                sendToLegacyViewers(player, detector);
             }
         }
     }
@@ -132,16 +122,10 @@ public class ViewerBasedAnimationHandler {
     // ===========================
 
     /**
-     * Send metadata to legacy clients only (both self and viewers).
-     * Modern clients handle animations via game state, not metadata packets.
+     * Send metadata to legacy clients only
      */
-    private void sendToLegacyViewersAndSelf(Player player, ClientVersionDetector detector) {
+    private void sendToLegacyViewers(Player player, ClientVersionDetector detector) {
         var packet = player.getMetadataPacket();
-
-        // Send to self if legacy
-        if (detector.getClientVersion(player) == ClientVersionDetector.ClientVersion.LEGACY) {
-            player.sendPacket(packet);
-        }
 
         // Send to legacy viewers
         for (Player viewer : player.getViewers()) {
@@ -149,32 +133,6 @@ public class ViewerBasedAnimationHandler {
                 viewer.sendPacket(packet);
             }
         }
-    }
-
-    // ===========================
-    // STATISTICS
-    // ===========================
-
-    public String getStatistics() {
-        StringBuilder stats = new StringBuilder();
-        stats.append("Active Animations: ").append(activeAnimations.size()).append("\n");
-
-        ClientVersionDetector detector = ClientVersionDetector.getInstance();
-        int totalLegacy = 0;
-        int totalModern = 0;
-
-        for (Player player : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
-            if (detector.getClientVersion(player) == ClientVersionDetector.ClientVersion.LEGACY) {
-                totalLegacy++;
-            } else {
-                totalModern++;
-            }
-        }
-
-        stats.append("Legacy Clients: ").append(totalLegacy).append(" (receive packets)\n");
-        stats.append("Modern Clients: ").append(totalModern).append(" (no packets - handle via game state)\n");
-
-        return stats.toString();
     }
 
     // ===========================

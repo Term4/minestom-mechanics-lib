@@ -88,11 +88,4 @@ public record GameplayConfig(
     public EyeHeightConfig getEyeHeight() { return eyeHeight; }
     public MovementConfig getMovement() { return movement; }
     public HitboxConfig getHitbox() { return hitbox; }
-
-    // For backwards compatibility with PlayerCollisionConfig
-    public PlayerCollisionConfig getPlayerCollision() {
-        return playerCollisionEnabled ?
-                PlayerCollisionConfig.defaultConfig() :
-                PlayerCollisionConfig.noCollisions();
-    }
 }

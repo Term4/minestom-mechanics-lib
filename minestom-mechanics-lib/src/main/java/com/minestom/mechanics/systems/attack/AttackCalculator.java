@@ -36,7 +36,7 @@ public class AttackCalculator {
         Material material = weapon.material();
 
         // TODO: this seems extremely inefficient. There has got to be a better
-        //  way to do this lmao.
+        //  way to do this lmao (registry?)
 
         // Swords
         if (material == Material.WOODEN_SWORD) return DAMAGE_WOODEN_SWORD;

@@ -4,6 +4,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
 // TODO: COULD be necessary to run this whenever a 1.8 client picks something up?
+// TODO: Have this ONLY apply if the client is a legacy client
 
 /**
  * Utility class for inventory operations.

@@ -16,9 +16,6 @@ public final class MechanicsConstants {
     // TIMING CONSTANTS
     // ===========================
 
-    /** Attack deduplication timeout in milliseconds */
-    public static final long ATTACK_DEDUPE_MS = 50;
-
     /** Server ticks per second */
     public static final int TICKS_PER_SECOND = 20;
 

@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.validation.hits;
 
+import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
 import com.minestom.mechanics.util.LogUtil;
@@ -31,50 +32,44 @@ public class AttackPacketValidator {
 
     /**
      * Validates reach for client-initiated attacks (attack packets).
-     * Uses benefit of the doubt with LIMIT expansion for lag compensation:
-     * 1. Check basic reach first (quick rejection of obvious cheats)
-     * 2. Apply LIMIT expansion for benefit of the doubt
-     * 3. Log precise data for analytics
+     * Modern clients: use LIMIT expansion for lag compensation. Legacy: exact hitbox only (no expansion).
      *
      * @param attacker Player attacking
      * @param victim Entity being attacked
      * @return true if hit is valid, false if impossibly far
      */
     public boolean isReachValid(Player attacker, LivingEntity victim) {
-        // CAPTURE positions at this exact moment
         Pos attackerEye = EyeHeightSystem.getInstance().getEyePosition(attacker);
         Pos victimPos = victim.getPosition();
 
-        // Quick horizontal distance check first
         double dx = victimPos.x() - attackerEye.x();
         double dz = victimPos.z() - attackerEye.z();
         double horizontalDist = Math.sqrt(dx * dx + dz * dz);
-        
+
         double maxReach = hitDetectionConfig.attackPacketReach();
-        double limitExpansion = hitDetectionConfig.hitboxExpansionLimit();
-        
-        // Quick check: if horizontal distance alone exceeds max reach + expansion, reject immediately
-        if (horizontalDist > maxReach + limitExpansion) {
+        // Only modern clients get hitbox expansion for attack packet validation
+        double expansion = isModernAttacker(attacker) ? hitDetectionConfig.hitboxExpansionLimit() : 0.0;
+
+        if (horizontalDist > maxReach + expansion) {
             logRejection(attacker, victim, attackerEye, horizontalDist, maxReach);
             return false;
         }
 
-        // Detailed validation with benefit of the doubt
-        // Check if the attack would hit with LIMIT expansion (for lag compensation)
         double victimCenterY = victimPos.y() + (PLAYER_HEIGHT / 2.0);
         Pos victimCenter = victimPos.withY(victimCenterY);
-        
-        // Calculate distance from eye to edge of expanded hitbox
-        // This gives benefit of the doubt by considering the closest point on the expanded hitbox
-        double effectiveDistance = calculateEffectiveDistance(attackerEye, victimCenter, limitExpansion);
-        
+        double effectiveDistance = calculateEffectiveDistance(attackerEye, victimCenter, expansion);
+
         if (effectiveDistance > maxReach) {
-            // Too far even with benefit of the doubt - reject
             logRejection(attacker, victim, attackerEye, effectiveDistance, maxReach);
             return false;
         }
 
-        return true; // Valid hit
+        return true;
+    }
+
+    private static boolean isModernAttacker(Player attacker) {
+        return ClientVersionDetector.getInstance().getClientVersion(attacker)
+                == ClientVersionDetector.ClientVersion.MODERN;
     }
     
     /**

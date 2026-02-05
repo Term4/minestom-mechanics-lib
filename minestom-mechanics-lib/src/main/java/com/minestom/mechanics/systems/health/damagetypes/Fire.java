@@ -13,10 +13,10 @@ import net.minestom.server.registry.RegistryKey;
  * Fire damage type implementation.
  * Modifies fire damage based on configuration.
  */
-public class FireDamageType extends AbstractDamageType {
+public class Fire extends AbstractDamageType {
     private static final LogUtil.SystemLogger log = LogUtil.system("FireDamageType");
     
-    public FireDamageType(HealthConfig config) {
+    public Fire(HealthConfig config) {
         super(config, "FIRE", HealthSystem.FIRE_DAMAGE);
     }
     

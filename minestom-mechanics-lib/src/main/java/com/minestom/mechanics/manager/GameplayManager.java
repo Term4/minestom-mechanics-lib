@@ -71,7 +71,7 @@ public class GameplayManager extends AbstractManager<GameplayManager> {
 
             // Initialize player collision system
             log.debug("Initializing PlayerCollisionSystem...");
-            playerCollisionSystem = PlayerCollisionSystem.initialize(config.getPlayerCollision());
+            playerCollisionSystem = PlayerCollisionSystem.initialize(config.playerCollisionEnabled());
             registerSystem(playerCollisionSystem, "PlayerCollisionSystem");
         });
     }

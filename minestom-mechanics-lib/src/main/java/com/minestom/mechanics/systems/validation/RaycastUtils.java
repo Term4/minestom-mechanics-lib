@@ -1,10 +1,6 @@
 package com.minestom.mechanics.systems.validation;
 
-// TODO: Bring other math / physics intensive classes over to this package?
-//  ALSO this is a very long class. Moving some of the math out will certainly help.
-
 import com.minestom.mechanics.config.ServerConfig;
-import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -14,8 +10,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 
 /**
- * Consolidated raycasting utilities for both block and entity intersection detection.
- * ✅ CONSOLIDATED: Merged BlockRaycast + RayIntersection into single utility class.
+ * Raycasting utilities for block and entity intersection (block raycast, voxel traversal, ray-AABB).
  */
 public class RaycastUtils {
 
@@ -39,9 +34,10 @@ public class RaycastUtils {
     // BLOCK RAYCASTING
     // ===========================
 
-    // TODO: Could remove this method, and have the following isLookingAtBlock
-    //  method use a defualt of maxreach with the same gamemode check as below if
-    //  the reach isn't provided. Is that cleaner? Idk
+    private static boolean isSolidBlock(Block block) {
+        return !block.isAir() && block.isSolid();
+    }
+
     /**
      * Check if player is looking at a solid block within reach.
      * Uses gamemode-appropriate reach distances.
@@ -64,8 +60,6 @@ public class RaycastUtils {
     }
 
 
-    // TODO: This could be used to check if a players ability to hit a player is obstructed by a block?
-    //  Could be useful for hit detection, but not 100% sure
     /**
      * Check if ray intersects a solid block within specified distance.
      *
@@ -84,10 +78,7 @@ public class RaycastUtils {
         Point current = origin;
 
         for (int i = 0; i < steps; i++) {
-            Block block = instance.getBlock(current);
-
-            // Check if block is solid (not air, not passable)
-            if (!block.isAir() && block.isSolid()) {
+            if (isSolidBlock(instance.getBlock(current))) {
                 return true;
             }
 
@@ -97,44 +88,83 @@ public class RaycastUtils {
         return false;
     }
 
-    // TODO: this is cool, idk what I'd use it for but I do like it. Don't know if it works unfortunately
-    //  UPDATE: COULD USE FOR OBSTRUCTION DETECTION FOR CUSTOM HIT DETECTION!!!
     /**
-     * Find the first solid block along a ray.
-     * Returns null if no block found within distance.
+     * Find the first solid block along a ray using voxel (block-by-block) traversal.
+     * Visits every block the ray passes through so corners and edges are not missed.
+     * Used for swing obstruction detection.
      *
-     * @param instance World instance
-     * @param origin Ray origin
-     * @param direction Ray direction (normalized)
+     * @param instance   World instance
+     * @param origin     Ray origin (e.g. eye position)
+     * @param direction  Ray direction (will be normalized)
      * @param maxDistance Maximum distance to check
-     * @return Block position if found, null otherwise
+     * @return Position of first solid block, or null if none within maxDistance
      */
-    public Pos findBlockAlongRay(Instance instance, Pos origin, Vec direction, double maxDistance) {
-        Vec normalizedDir = direction.normalize();
-        double stepSize = worldConfig.blockRaycastStep();
-        int steps = (int) (maxDistance / stepSize);
-        Vec stepVec = normalizedDir.mul(stepSize);
+    public Pos findFirstSolidBlockAlongRayVoxel(Instance instance, Pos origin, Vec direction, double maxDistance) {
+        Vec d = direction.normalize();
+        double ox = origin.x(), oy = origin.y(), oz = origin.z();
+        double dx = d.x(), dy = d.y(), dz = d.z();
 
-        Point current = origin;
+        int bx = (int) Math.floor(ox);
+        int by = (int) Math.floor(oy);
+        int bz = (int) Math.floor(oz);
 
-        for (int i = 0; i < steps; i++) {
-            Block block = instance.getBlock(current);
+        int stepX = dx > 1e-9 ? 1 : (dx < -1e-9 ? -1 : 0);
+        int stepY = dy > 1e-9 ? 1 : (dy < -1e-9 ? -1 : 0);
+        int stepZ = dz > 1e-9 ? 1 : (dz < -1e-9 ? -1 : 0);
 
-            if (!block.isAir() && block.isSolid()) {
-                return new Pos(current.x(), current.y(), current.z(), 0, 0);
+        double tDeltaX = (Math.abs(dx) >= 1e-9) ? (1.0 / Math.abs(dx)) : Double.MAX_VALUE;
+        double tDeltaY = (Math.abs(dy) >= 1e-9) ? (1.0 / Math.abs(dy)) : Double.MAX_VALUE;
+        double tDeltaZ = (Math.abs(dz) >= 1e-9) ? (1.0 / Math.abs(dz)) : Double.MAX_VALUE;
+
+        double tMaxX = stepX > 0 ? (bx + 1 - ox) / dx : (stepX < 0 ? (bx - ox) / dx : Double.MAX_VALUE);
+        double tMaxY = stepY > 0 ? (by + 1 - oy) / dy : (stepY < 0 ? (by - oy) / dy : Double.MAX_VALUE);
+        double tMaxZ = stepZ > 0 ? (bz + 1 - oz) / dz : (stepZ < 0 ? (bz - oz) / dz : Double.MAX_VALUE);
+
+        int maxSteps = 1000;
+        for (int i = 0; i < maxSteps; i++) {
+            Point cellPoint = new Pos(bx + 0.5, by + 0.5, bz + 0.5, 0, 0);
+            if (isSolidBlock(instance.getBlock(cellPoint))) {
+                return new Pos(bx, by, bz, 0, 0);
             }
 
-            current = current.add(stepVec);
-        }
+            double tNext = Math.min(Math.min(tMaxX, tMaxY), tMaxZ);
+            if (tNext > maxDistance) {
+                return null;
+            }
 
+            if (tNext == tMaxX) {
+                bx += stepX;
+                tMaxX += tDeltaX;
+            } else if (tNext == tMaxY) {
+                by += stepY;
+                tMaxY += tDeltaY;
+            } else {
+                bz += stepZ;
+                tMaxZ += tDeltaZ;
+            }
+        }
         return null;
     }
-
-    // TODO: very math intensive. Should move outside of this class
 
     // ===========================
     // AABB RAYCASTING
     // ===========================
+
+    private static final double RAY_EPSILON = 1e-9;
+
+    /** One axis of the slab test: updates tMinTMax[0] and tMinTMax[1]. Returns false if ray misses the slab. */
+    private static boolean intersectSlab(double originComp, double dirComp, double boxLo, double boxHi, double[] tMinTMax) {
+        if (Math.abs(dirComp) > RAY_EPSILON) {
+            double t1 = (boxLo - originComp) / dirComp;
+            double t2 = (boxHi - originComp) / dirComp;
+            double tEnter = Math.min(t1, t2);
+            double tExit = Math.max(t1, t2);
+            tMinTMax[0] = Math.max(tMinTMax[0], tEnter);
+            tMinTMax[1] = Math.min(tMinTMax[1], tExit);
+            return tMinTMax[0] <= tMinTMax[1];
+        }
+        return originComp >= boxLo && originComp <= boxHi;
+    }
 
     /**
      * Performs ray-AABB intersection test with distance calculation.
@@ -150,91 +180,22 @@ public class RaycastUtils {
                                            Vec boxMin, Vec boxMax,
                                            double maxDistance) {
         Vec dir = direction.normalize();
+        double[] tMinTMax = new double[]{0.0, maxDistance};
 
-        // Slab method for ray-AABB intersection
-        double tMin = 0.0;
-        double tMax = maxDistance;
+        if (!intersectSlab(origin.x(), dir.x(), boxMin.x(), boxMax.x(), tMinTMax)) return null;
+        if (!intersectSlab(origin.y(), dir.y(), boxMin.y(), boxMax.y(), tMinTMax)) return null;
+        if (!intersectSlab(origin.z(), dir.z(), boxMin.z(), boxMax.z(), tMinTMax)) return null;
 
-        // X axis slab
-        if (Math.abs(dir.x()) > 1e-9) {
-            double t1 = (boxMin.x() - origin.x()) / dir.x();
-            double t2 = (boxMax.x() - origin.x()) / dir.x();
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (origin.x() < boxMin.x() || origin.x() > boxMax.x()) {
-            return null;
-        }
+        double tMin = tMinTMax[0];
+        double tMax = tMinTMax[1];
+        if (tMin > tMax || tMax < 0) return null;
 
-        // Y axis slab
-        if (Math.abs(dir.y()) > 1e-9) {
-            double t1 = (boxMin.y() - origin.y()) / dir.y();
-            double t2 = (boxMax.y() - origin.y()) / dir.y();
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (origin.y() < boxMin.y() || origin.y() > boxMax.y()) {
-            return null;
-        }
-
-        // Z axis slab
-        if (Math.abs(dir.z()) > 1e-9) {
-            double t1 = (boxMin.z() - origin.z()) / dir.z();
-            double t2 = (boxMax.z() - origin.z()) / dir.z();
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (origin.z() < boxMin.z() || origin.z() > boxMax.z()) {
-            return null;
-        }
-
-        // Check validity
-        if (tMin > tMax || tMax < 0) {
-            return null;
-        }
-
-        // Handle ray starting inside box (avoid zero distance)
         double hitDistance = (tMin < 0) ? 0.001 : tMin;
-
-        if (hitDistance > maxDistance) {
-            return null;
-        }
+        if (hitDistance > maxDistance) return null;
 
         Vec hitPoint = origin.asVec().add(dir.mul(hitDistance));
         return new RayHitResult(hitPoint, hitDistance);
     }
-
-
-    // TODO: A decent chunk of the logic in the following two methods is shared.
-    //  Could simplify by consolidating, adding a check for if expanded hitboxes are enabled,
-    //  as well as an optional arg to use them or ignore them? Could be overkill though.
-    /**
-     * Convenience method for raycasting to an entity hitbox.
-     * Automatically calculates world-space AABB bounds from entity position and hitbox.
-     *
-     * @param origin Ray origin (typically eye position)
-     * @param direction Ray direction (will be normalized)
-     * @param entityPos Entity position (at feet)
-     * @param hitbox Entity's bounding box (relative to position)
-     * @param maxDistance Maximum ray distance to check
-     * @return RayHitResult containing hit point and distance, or null if no hit
-     */
-    public static RayHitResult raycastToHitbox(Pos origin, Vec direction,
-                                               Pos entityPos, BoundingBox hitbox,
-                                               double maxDistance) {
-        // Calculate world-space AABB bounds (entity position is at feet)
-        Vec boxMin = new Vec(
-                entityPos.x() + hitbox.minX(),
-                entityPos.y() + hitbox.minY(),
-                entityPos.z() + hitbox.minZ()
-        );
-
-        Vec boxMax = new Vec(
-                entityPos.x() + hitbox.maxX(),
-                entityPos.y() + hitbox.maxY(),
-                entityPos.z() + hitbox.maxZ()
-        );
-
-        return raycastAABB(origin, direction, boxMin, boxMax, maxDistance);
-    }
-
     /**
      * Performs ray-AABB intersection test with hitbox expansion.
      * This is a convenience method for hit detection with expansion values.

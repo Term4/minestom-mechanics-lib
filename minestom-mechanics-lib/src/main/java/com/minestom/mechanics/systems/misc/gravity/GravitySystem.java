@@ -14,6 +14,7 @@ import net.minestom.server.network.packet.server.play.ExplosionPacket;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.tag.Tag;
+import net.minestom.server.utils.WeightedList;
 
 import java.util.List;
 
@@ -25,6 +26,10 @@ public class GravitySystem extends InitializableSystem {
 
     private static GravitySystem instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("GravitySystem");
+
+    /** Empty block particles for invisible ExplosionPacket (gravity application). */
+    private static final WeightedList<ExplosionPacket.BlockParticleInfo> EMPTY_BLOCK_PARTICLES =
+            new WeightedList<>(List.of());
 
     // ===========================
     // TAGS
@@ -147,7 +152,7 @@ public class GravitySystem extends InitializableSystem {
                     new Vec(0, explosionVy, 0),  // Velocity vector (positive = upward to counteract)
                     Particle.BLOCK_MARKER,  // Particle type (minimal visibility)
                     SoundEvent.INTENTIONALLY_EMPTY,  // Silent (may not work for 1.8)
-                    List.of()  // Empty affected blocks list
+                    EMPTY_BLOCK_PARTICLES
             ));
             
             // Update position tracking
@@ -231,9 +236,8 @@ public class GravitySystem extends InitializableSystem {
 
         // 🔍 DEBUG: Log every 20 ticks
         if (player.getAliveTicks() % 20 == 0) {
-            double fallDistance = getFallDistance(player);
-            log.debug("Player: {} | fallDist: {:.4f} | estimatedVy: {:.4f} | smoothedVy: {:.4f} | newVy: {:.4f} | gravityMult: {:.4f} | actualGravity: {:.4f}",
-                    player.getUsername(), fallDistance, estimatedVy, smoothedVy, newVy, customGravity, actualGravity);
+            log.debug("Player: {} | estimatedVy: {:.4f} | smoothedVy: {:.4f} | newVy: {:.4f} | gravityMult: {:.4f} | actualGravity: {:.4f}",
+                    player.getUsername(), estimatedVy, smoothedVy, newVy, customGravity, actualGravity);
         }
 
         // Scale the velocity for explosion packet
@@ -254,22 +258,11 @@ public class GravitySystem extends InitializableSystem {
                 new Vec(0, explosionVy, 0),  // Velocity vector (negative = downward)
                 Particle.BLOCK_MARKER,  // Particle type (minimal visibility)
                 SoundEvent.INTENTIONALLY_EMPTY,  // Silent (may not work for 1.8)
-                List.of()  // Empty affected blocks list
+                EMPTY_BLOCK_PARTICLES
         ));
 
         // Update position tracking
         player.setTag(GRAVITY_LAST_POS, currentPos);
-    }
-
-    /**
-     * Get fall distance from HealthSystem (if available)
-     */
-    private double getFallDistance(Player player) {
-        try {
-            return HealthSystem.getInstance().getFallDistance(player);
-        } catch (IllegalStateException e) {
-            return 0.0;
-        }
     }
 
     /**

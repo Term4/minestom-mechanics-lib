@@ -3,10 +3,10 @@ package com.minestom.mechanics.systems.health;
 import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.manager.ArmorManager;
 import com.minestom.mechanics.manager.MechanicsManager;
-import com.minestom.mechanics.systems.health.damagetypes.CactusDamageType;
+import com.minestom.mechanics.systems.health.damagetypes.Cactus;
 import com.minestom.mechanics.systems.health.damagetypes.DamageTypeRegistry;
-import com.minestom.mechanics.systems.health.damagetypes.FallDamageType;
-import com.minestom.mechanics.systems.health.damagetypes.FireDamageType;
+import com.minestom.mechanics.systems.health.damagetypes.FallDamage;
+import com.minestom.mechanics.systems.health.damagetypes.Fire;
 import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagSerializer;
 import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.InitializableSystem;
@@ -37,9 +37,9 @@ public class HealthSystem extends InitializableSystem {
     // Component references
     private final Invulnerability invulnerability;
     private final DamageTypeRegistry damageTypeRegistry;
-    private final FallDamageType fallDamageType;
-    private final FireDamageType fireDamageType;
-    private final CactusDamageType cactusDamageType;
+    private final FallDamage fallDamage;
+    private final Fire fire;
+    private final Cactus cactus;
 
     // Configuration
     private HealthConfig config;
@@ -80,14 +80,14 @@ public class HealthSystem extends InitializableSystem {
         this.damageTypeRegistry = new DamageTypeRegistry();
         
         // Initialize damage types
-        this.fallDamageType = new FallDamageType(config);
-        this.fireDamageType = new FireDamageType(config);
-        this.cactusDamageType = new CactusDamageType(config);
+        this.fallDamage = new FallDamage(config);
+        this.fire = new Fire(config);
+        this.cactus = new Cactus(config);
         
         // Register damage types
-        damageTypeRegistry.register(fallDamageType);
-        damageTypeRegistry.register(fireDamageType);
-        damageTypeRegistry.register(cactusDamageType);
+        damageTypeRegistry.register(fallDamage);
+        damageTypeRegistry.register(fire);
+        damageTypeRegistry.register(cactus);
     }
 
     // ===========================
@@ -125,17 +125,17 @@ public class HealthSystem extends InitializableSystem {
 
         // Player tick events for fall damage tracking
         handler.addListener(PlayerTickEvent.class, event -> {
-            fallDamageType.trackFallDamage(event.getPlayer());
+            fallDamage.trackFallDamage(event.getPlayer());
         });
         
         // Player death events - reset fall distance (death handling is in PlayerDeathHandler)
         handler.addListener(PlayerDeathEvent.class, event -> {
-            fallDamageType.resetFallDistance(event.getPlayer());
+            fallDamage.resetFallDistance(event.getPlayer());
         });
         
         // Player spawn events - reset fall distance
         handler.addListener(PlayerSpawnEvent.class, event -> {
-            fallDamageType.resetFallDistance(event.getPlayer());
+            fallDamage.resetFallDistance(event.getPlayer());
         });
 
         // Entity damage events
@@ -262,14 +262,14 @@ public class HealthSystem extends InitializableSystem {
      * Get fall distance for a player
      */
     public double getFallDistance(Player player) {
-        return fallDamageType.getFallDistance(player);
+        return fallDamage.getFallDistance(player);
     }
 
     /**
      * Reset fall distance for a player
      */
     public void resetFallDistance(Player player) {
-        fallDamageType.resetFallDistance(player);
+        fallDamage.resetFallDistance(player);
     }
 
     /**

@@ -84,16 +84,10 @@ public class HitDetection extends InitializableSystem {
         Pos attackerEye = EyeHeightSystem.getInstance().getEyePosition(attacker);
         Pos victimPos = victim.getPosition();
         double maxReach = hitDetectionConfig.attackPacketReach();
-
-        // Use the player's actual look direction for accurate ray casting
-        // This ensures different look angles (head, middle, feet) produce different distances
         Vec lookDirection = attackerEye.direction();
 
         ServerSideDetector.HitSnapshot snapshot = serverSideDetector.calculatePreciseDistance(
-                attackerEye,
-                lookDirection,
-                victimPos,
-                maxReach
+                attacker, attackerEye, lookDirection, victimPos, maxReach
         );
 
         // Store snapshot for AttackFeature to use
@@ -117,19 +111,13 @@ public class HitDetection extends InitializableSystem {
         LivingEntity target = serverSideDetector.findTargetFromSwing(attacker);
         
         if (target != null) {
-            // Store precise snapshot for server-side hits too
             Pos attackerEye = EyeHeightSystem.getInstance().getEyePosition(attacker);
             Pos victimPos = target.getPosition();
             double maxReach = hitDetectionConfig.serverSideReach();
-
-            // Use the player's actual look direction for accurate ray casting
             Vec lookDirection = attackerEye.direction();
 
             ServerSideDetector.HitSnapshot snapshot = serverSideDetector.calculatePreciseDistance(
-                    attackerEye,
-                    lookDirection,
-                    victimPos,
-                    maxReach
+                    attacker, attackerEye, lookDirection, victimPos, maxReach
             );
 
             hitSnapshotTracker.storeHitSnapshot(target, snapshot);

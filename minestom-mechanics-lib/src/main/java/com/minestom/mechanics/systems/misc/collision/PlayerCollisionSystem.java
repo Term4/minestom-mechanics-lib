@@ -1,6 +1,5 @@
 package com.minestom.mechanics.systems.misc.collision;
 
-import com.minestom.mechanics.config.gameplay.PlayerCollisionConfig;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
@@ -20,25 +19,23 @@ import net.minestom.server.network.packet.server.play.TeamsPacket;
 public class PlayerCollisionSystem extends InitializableSystem {
     private static PlayerCollisionSystem instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("PlayerCollisionSystem");
-    
-    private PlayerCollisionConfig config;
+
     private boolean enabled = true;
-    
+
     // Team for collision control
     private Team collisionTeam;
-    
-    private PlayerCollisionSystem(PlayerCollisionConfig config) {
-        this.config = config;
-        this.enabled = config.enabled();
+
+    private PlayerCollisionSystem(boolean enabled) {
+        this.enabled = enabled;
     }
-    
-    public static PlayerCollisionSystem initialize(PlayerCollisionConfig config) {
+
+    public static PlayerCollisionSystem initialize(boolean enabled) {
         if (instance != null && instance.isInitialized()) {
             LogUtil.logAlreadyInitialized("PlayerCollisionSystem");
             return instance;
         }
-        
-        instance = new PlayerCollisionSystem(config);
+
+        instance = new PlayerCollisionSystem(enabled);
         instance.initializeTeam();
         instance.registerListeners();
         instance.markInitialized();
@@ -127,18 +124,9 @@ public class PlayerCollisionSystem extends InitializableSystem {
     }
     
     /**
-     * Update configuration
+     * Update configuration at runtime.
      */
-    public void updateConfig(PlayerCollisionConfig newConfig) {
-        this.config = newConfig;
-        this.enabled = newConfig.enabled();
-        log.info("PlayerCollisionSystem config updated (collisions: {})", enabled ? "enabled" : "disabled");
-    }
-    
-    /**
-     * Get current configuration
-     */
-    public PlayerCollisionConfig getConfig() {
-        return config;
+    public void updateConfig(boolean enabled) {
+        setEnabled(enabled);
     }
 }

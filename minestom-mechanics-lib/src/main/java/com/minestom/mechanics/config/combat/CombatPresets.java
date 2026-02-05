@@ -13,11 +13,7 @@ public final class CombatPresets {
     private CombatPresets() {} // Utility class
 
     /**
-     * MinemanClub combat mode - fast combo PvP.
-     * - No attack cooldown (1.8 style)
-     * - Minemen knockback profile
-     * - Sprint crits enabled
-     * - Reduced blocking effectiveness
+     * MinemanClub
      */
     public static final CombatConfig MINEMEN = new CombatConfig(
             // Attack
@@ -31,10 +27,7 @@ public final class CombatPresets {
     );
 
     /**
-     * Vanilla 1.8 combat mode - classic PvP.
-     * - No attack cooldown
-     * - Vanilla knockback
-     * - Standard blocking
+     * Vanilla 1.8
      */
     public static final CombatConfig VANILLA = new CombatConfig(
             // Attack
@@ -49,9 +42,7 @@ public final class CombatPresets {
     );
 
     /**
-     * Hypixel-style combat mode.
-     * - Fast combat with Hypixel knockback
-     * - Moderate blocking effectiveness
+     * Hypixel
      */
     public static final CombatConfig HYPIXEL = new CombatConfig(
             // Attack
@@ -62,28 +53,5 @@ public final class CombatPresets {
             true, false, 5,
             // Blocking
             true,0.5, 0.95, 0.95, true, true
-    );
-
-    /**
-     * Standard/balanced combat mode.
-     * Good default for most servers - same as VANILLA.
-     */
-    public static final CombatConfig STANDARD = VANILLA;
-
-    /**
-     * No-combo mode for anticheat-heavy servers.
-     * - Higher blocking effectiveness
-     * - Less aggressive knockback
-     * - Strict sprint mechanics
-     */
-    public static final CombatConfig ANTICHEAT_SAFE = new CombatConfig(
-            // Attack
-            true, CRITICAL_HIT_MULTIPLIER, false,
-            // Knockback
-            KnockbackPresets.vanilla18(),
-            // Sprint window
-            false, false, 3,
-            // Blocking
-            true,0.5, 0.05, 0.05, true, true
     );
 }

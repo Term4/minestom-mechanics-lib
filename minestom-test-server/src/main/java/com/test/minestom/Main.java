@@ -210,7 +210,6 @@ public class Main {
 
                 giveStarterKit(player);
 
-                // ✅ Force inventory sync for all clients (fixes 1.8 invisibility bug)
                 LegacyInventoryUtil.forceInventorySyncDelayed(player, 5);
                 // TODO: make this scheduler based on ping?
 
@@ -229,7 +228,7 @@ public class Main {
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
                  */
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
-                //GravitySystem.setGravity(player, 0.167);
+                // GravitySystem.setGravity(player, 0.167);
                 player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
             }
         });

@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.validation.hits;
 
+import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.hitbox.HitboxExpansion;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.systems.validation.RaycastUtils;
@@ -11,6 +12,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.instance.Instance;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.PLAYER_HEIGHT;
 
@@ -37,7 +39,7 @@ public class ServerSideDetector {
 
     /**
      * Performs server-side raycasting to find entity the player is aiming at.
-     * Uses precise PRIMARY hitbox (server has authoritative positions).
+     * Modern clients: use expanded hitbox (primary). Legacy: exact hitbox only (no expansion).
      *
      * @param attacker Player swinging
      * @return Target entity, or null if none found
@@ -52,30 +54,42 @@ public class ServerSideDetector {
             return null;
         }
 
-        return findClosestEntityTarget(attacker, eyePos, normalizedDir);
+        Vec expansion = isModernAttacker(attacker) ? hitboxExpansion.getPrimary() : Vec.ZERO;
+        return findClosestEntityTarget(attacker, eyePos, normalizedDir, expansion);
     }
 
     /**
      * Find the closest entity target within reach.
+     * Only returns entities that are not obstructed by a solid block between eye and hit point.
+     * @param expansion Hitbox expansion (use Vec.ZERO for legacy clients).
      */
-    private LivingEntity findClosestEntityTarget(Player attacker, Pos eyePos, Vec direction) {
+    private LivingEntity findClosestEntityTarget(Player attacker, Pos eyePos, Vec direction, Vec expansion) {
+        Instance instance = attacker.getInstance();
+        if (instance == null) {
+            return null;
+        }
+
         double maxReach = hitDetectionConfig.serverSideReach();
         LivingEntity closestTarget = null;
         double closestDistance = Double.MAX_VALUE;
 
-        for (Entity entity : attacker.getInstance().getEntities()) {
+        for (Entity entity : instance.getEntities()) {
             if (!(entity instanceof LivingEntity livingEntity) || entity == attacker) {
                 continue;
             }
 
-            // Use PRIMARY hitbox for server-side detection (most accurate)
             RayHitResult result = RaycastUtils.raycastToHitbox(
                     eyePos, direction, livingEntity.getPosition(),
-                    hitboxExpansion.getPrimary(), maxReach
+                    expansion, maxReach
             );
 
             if (result != null) {
                 double distance = result.getDistance();
+                // Obstruction: reject hit if any solid block is between eye and hit point (voxel traversal so corners are not missed)
+                double obstructionCheckDistance = Math.max(1e-6, distance - 0.01);
+                if (raycastUtils.findFirstSolidBlockAlongRayVoxel(instance, eyePos, direction, obstructionCheckDistance) != null) {
+                    continue; // Block in the way, skip this entity
+                }
                 if (distance < closestDistance) {
                     closestDistance = distance;
                     closestTarget = livingEntity;
@@ -97,63 +111,49 @@ public class ServerSideDetector {
 
     /**
      * Calculate precise ray distance using captured positions.
-     * This is separate from validation to avoid performance impact.
+     * Modern clients: use primary/limit expansion. Legacy: exact hitbox only.
      */
-    public HitSnapshot calculatePreciseDistance(Pos eyePos, Vec direction,
-                                               Pos victimPos, double maxReach) {
-        // Use the player's actual look direction for ray casting
-        // This ensures different look angles produce different distances
+    public HitSnapshot calculatePreciseDistance(Player attacker, Pos eyePos, Vec direction,
+                                                Pos victimPos, double maxReach) {
         Vec rayDirection = direction.normalize();
+        Vec primary = isModernAttacker(attacker) ? hitboxExpansion.getPrimary() : Vec.ZERO;
+        Vec limit = isModernAttacker(attacker) ? hitboxExpansion.getLimit() : Vec.ZERO;
 
-        // Try PRIMARY raycast
         RayHitResult primaryResult = RaycastUtils.raycastToHitbox(
-                eyePos, rayDirection, victimPos,
-                hitboxExpansion.getPrimary(), maxReach
+                eyePos, rayDirection, victimPos, primary, maxReach
         );
 
         if (primaryResult != null) {
-            // Use the actual hit point for accurate distance calculation
             Vec hitPoint = primaryResult.getHitPoint();
             double actualDistance = eyePos.distance(hitPoint);
-            
             return new HitSnapshot(
-                    actualDistance, // Use actual distance to hit point, not ray distance
-                    ValidationTier.PRIMARY,
-                    eyePos,
-                    victimPos
+                    actualDistance, ValidationTier.PRIMARY, eyePos, victimPos
             );
         }
 
-        // Try LIMIT raycast
         RayHitResult limitResult = RaycastUtils.raycastToHitbox(
-                eyePos, rayDirection, victimPos,
-                hitboxExpansion.getLimit(), maxReach
+                eyePos, rayDirection, victimPos, limit, maxReach
         );
 
         if (limitResult != null) {
-            // Use the actual hit point for accurate distance calculation
             Vec hitPoint = limitResult.getHitPoint();
             double actualDistance = eyePos.distance(hitPoint);
-            
             return new HitSnapshot(
-                    actualDistance, // Use actual distance to hit point, not ray distance
-                    ValidationTier.LIMIT,
-                    eyePos,
-                    victimPos
+                    actualDistance, ValidationTier.LIMIT, eyePos, victimPos
             );
         }
 
-        // Ray missed, use precise 3D distance (this should be rare now)
         double victimCenterY = victimPos.y() + (PLAYER_HEIGHT / 2.0);
         Pos victimCenter = victimPos.withY(victimCenterY);
         double preciseDistance = eyePos.distance(victimCenter);
-
         return new HitSnapshot(
-                preciseDistance,
-                ValidationTier.FALLBACK,
-                eyePos,
-                victimPos
+                preciseDistance, ValidationTier.FALLBACK, eyePos, victimPos
         );
+    }
+
+    private static boolean isModernAttacker(Player attacker) {
+        return ClientVersionDetector.getInstance().getClientVersion(attacker)
+                == ClientVersionDetector.ClientVersion.MODERN;
     }
 
     // ===========================

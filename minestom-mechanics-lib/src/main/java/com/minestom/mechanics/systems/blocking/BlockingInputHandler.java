@@ -8,7 +8,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.*;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.network.packet.client.play.ClientPlayerDiggingPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 
 /**
@@ -74,10 +74,10 @@ public class BlockingInputHandler {
             if (isSword(mainHand) && !blockingSystem.isBlocking(player)) {
                 blockingSystem.startBlocking(player);
             }
-        } else if (event.getPacket() instanceof ClientPlayerDiggingPacket digging) {
+        } else if (event.getPacket() instanceof ClientPlayerActionPacket digging) {
             log.debug(player.getUsername() + " Sent " + digging.status());
 
-            if (digging.status() == ClientPlayerDiggingPacket.Status.UPDATE_ITEM_STATE && 
+            if (digging.status() == ClientPlayerActionPacket.Status.UPDATE_ITEM_STATE &&
                 blockingSystem.isBlocking(player)) {
                 blockingSystem.stopBlocking(player);
             }

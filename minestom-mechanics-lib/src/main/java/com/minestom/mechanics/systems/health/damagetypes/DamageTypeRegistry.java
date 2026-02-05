@@ -56,13 +56,13 @@ public class DamageTypeRegistry {
      */
     public void processEntityDamageEvent(EntityDamageEvent event) {
         for (AbstractDamageType damageType : damageTypes) {
-            if (damageType instanceof FallDamageType) {
+            if (damageType instanceof FallDamage) {
                 // Fall damage is handled separately via PlayerTickEvent
                 continue;
             }
-            if (damageType instanceof FireDamageType fireDamage) {
+            if (damageType instanceof Fire fireDamage) {
                 fireDamage.modifyFireDamage(event);
-            } else if (damageType instanceof CactusDamageType cactusDamage) {
+            } else if (damageType instanceof Cactus cactusDamage) {
                 cactusDamage.modifyCactusDamage(event);
             }
             if (event.isCancelled()) {

@@ -18,14 +18,14 @@ import static com.minestom.mechanics.config.constants.CombatConstants.SAFE_FALL_
  * Fall damage type implementation.
  * Tracks and applies fall damage to players.
  */
-public class FallDamageType extends AbstractDamageType {
+public class FallDamage extends AbstractDamageType {
     private static final LogUtil.SystemLogger log = LogUtil.system("FallDamageType");
     
     private static final Tag<Double> FALL_DISTANCE = Tag.Double("fall_distance").defaultValue(0.0);
     private static final Tag<Boolean> WAS_ON_GROUND = Tag.Boolean("was_on_ground").defaultValue(true);
     private static final Tag<Double> LAST_Y_POS = Tag.Double("last_y_pos").defaultValue(0.0);
     
-    public FallDamageType(HealthConfig config) {
+    public FallDamage(HealthConfig config) {
         super(config, "FALL", HealthSystem.FALL_DAMAGE);
     }
     
