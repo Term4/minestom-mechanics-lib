@@ -11,7 +11,7 @@ import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileCalculator;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
+import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.ServerFlag;
@@ -204,7 +204,7 @@ public class Bow extends InitializableSystem implements ProjectileFeature {
 
     private void startDrawing(Player player) {
         drawingBows.put(player.getUuid(), true);
-        ViewerBasedAnimationHandler.getInstance().registerAnimation(
+        LegacyAnimationFix.getInstance().registerAnimation(
                 player, "bow_drawing", this::isDrawingBow
         );
         log.debug("{} started drawing bow", player.getUsername());
@@ -212,7 +212,7 @@ public class Bow extends InitializableSystem implements ProjectileFeature {
 
     private void stopDrawing(Player player) {
         drawingBows.remove(player.getUuid());
-        ViewerBasedAnimationHandler.getInstance().unregisterAnimation(player);
+        LegacyAnimationFix.getInstance().unregisterAnimation(player);
         log.debug("{} stopped drawing bow", player.getUsername());
     }
 

@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+// TODO: Check out preexisting damage type registry in minestom
+
 /**
  * Registry for managing all damage types.
  * Allows registration and processing of damage types.

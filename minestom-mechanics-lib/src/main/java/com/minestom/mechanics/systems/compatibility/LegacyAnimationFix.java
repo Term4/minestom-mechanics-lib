@@ -1,6 +1,5 @@
-package com.minestom.mechanics.systems.compatibility.animation;
+package com.minestom.mechanics.systems.compatibility;
 
-import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -21,18 +20,18 @@ import java.util.function.Predicate;
  *
  * This prevents animation breaking on legacy clients (constant updates)
  */
-public class ViewerBasedAnimationHandler {
+public class LegacyAnimationFix {
 
-    private static ViewerBasedAnimationHandler instance;
+    private static LegacyAnimationFix instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("ViewerAnimation");
 
     private final Map<UUID, AnimationState> activeAnimations = new ConcurrentHashMap<>();
 
-    private ViewerBasedAnimationHandler() {}
+    private LegacyAnimationFix() {}
 
-    public static ViewerBasedAnimationHandler getInstance() {
+    public static LegacyAnimationFix getInstance() {
         if (instance == null) {
-            instance = new ViewerBasedAnimationHandler();
+            instance = new LegacyAnimationFix();
             instance.initialize();
         }
         return instance;

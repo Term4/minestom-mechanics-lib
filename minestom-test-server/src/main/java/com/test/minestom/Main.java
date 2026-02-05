@@ -9,8 +9,8 @@ import com.minestom.mechanics.systems.blocking.BlockingState;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.LegacyInventoryUtil;
-import com.minestom.mechanics.systems.compatibility.ModernClientOptimizer;
-import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
+import com.minestom.mechanics.systems.compatibility.ModernStutterFix;
+import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.misc.gravity.GravitySystem;
 import com.minestom.mechanics.systems.player.PlayerCleanupManager;
@@ -164,10 +164,10 @@ public class Main {
         GravitySystem.initialize();
 
         ClientVersionDetector.getInstance();
-        ViewerBasedAnimationHandler.getInstance();
+        LegacyAnimationFix.getInstance();
         EntityVisibilityTest.register();
 
-        ModernClientOptimizer.getInstance();
+        ModernStutterFix.getInstance();
 
         // Initialize commands (depends on all systems being initialized first!)
         CommandRegistry.initialize();

@@ -115,7 +115,7 @@ public class MovementRestrictionSystem extends InitializableSystem {
 
         // Ensure pose is allowed
         EntityPose pose = player.getPose();
-        if (!isPoseAllowed(pose)) {
+        /*if (!isPoseAllowed(pose)) {
             player.setPose(EntityPose.STANDING);
 
             // Force sync to viewers
@@ -123,7 +123,7 @@ public class MovementRestrictionSystem extends InitializableSystem {
 
             log.debug("{} corrected from pose {} to STANDING",
                     player.getUsername(), pose);
-        }
+        }*/
 
         // If in water, apply water physics if swimming not allowed
         if (isInWater(player) && !config.allowSwimming()) {

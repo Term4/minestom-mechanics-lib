@@ -14,6 +14,8 @@ import net.minestom.server.tag.Tag;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.SAFE_FALL_DISTANCE;
 
+// TODO: Make this momentum based in the Y direction, with a special case for elytra flying
+
 /**
  * Fall damage type implementation.
  * Tracks and applies fall damage to players.

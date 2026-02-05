@@ -3,7 +3,7 @@ package com.minestom.mechanics.systems.blocking;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
-import com.minestom.mechanics.systems.compatibility.animation.ViewerBasedAnimationHandler;
+import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
@@ -11,6 +11,8 @@ import net.minestom.server.tag.Tag;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+// TODO: Completely remove the shield indicator option
 
 /**
  * Manages blocking state for players - tracks who's blocking and handles state transitions.
@@ -55,7 +57,7 @@ public class BlockingState {
         player.setTag(ORIGINAL_OFFHAND, player.getItemInOffHand());
 
         // Register animation
-        ViewerBasedAnimationHandler.getInstance().registerAnimation(
+        LegacyAnimationFix.getInstance().registerAnimation(
                 player,
                 "blocking",
                 this::isBlocking
@@ -70,10 +72,7 @@ public class BlockingState {
     public void stopBlocking(Player player) {
         if (!isBlocking(player)) return;
 
-        // TODO: either rename or find a different solution than
-        //  "ViewerBasedAnimationHandler"
-
-        ViewerBasedAnimationHandler.getInstance().unregisterAnimation(player);
+        LegacyAnimationFix.getInstance().unregisterAnimation(player);
 
         UUID uuid = player.getUuid();
         player.setTag(BLOCKING, false);
