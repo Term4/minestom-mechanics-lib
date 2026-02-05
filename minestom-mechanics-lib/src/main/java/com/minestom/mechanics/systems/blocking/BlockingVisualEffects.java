@@ -5,10 +5,8 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
-import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.timer.Task;
@@ -24,18 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
-// TODO: Would be nice if we could play the shield blocking by sending a use item packet
-//  on a per viewer basis. Something to look into, but nothing to worry too much about
-//  also considering adding additional visual effects for blocking. Unsure as to what
-//  as of now, but it could be a cool cosmetics system maybe
-
-// TODO: Could be a desync glitch?
-//  CONDITIONS: Viewer (& attacker) - 1.21.10, Victim - 1.8.9
-//  Attacker was hitting victim while victim held block
-//  attacker saw victim stop blocking
-//  victim AND server still thought victim was blocking
 /**
- * Handles visual effects for blocking - shield display, particles, animations.
+ * Handles visual effects for blocking - particles, animations.
  * Focused responsibility: Visual effects only.
  */
 public class BlockingVisualEffects {
@@ -47,39 +35,6 @@ public class BlockingVisualEffects {
     public BlockingVisualEffects(CombatConfig config, BlockingState stateManager) {
         this.config = config;
         this.stateManager = stateManager;
-    }
-
-    /**
-     * Update blocking visuals for a player
-     */
-    public void updateBlockingVisuals(Player blockingPlayer, boolean blocking) {
-        BlockingPreferences selfPrefs = blockingPlayer.getTag(BlockingState.PREFERENCES);
-        ItemStack original = blockingPlayer.getTag(BlockingState.ORIGINAL_OFFHAND);
-        if (original == null) original = ItemStack.AIR;
-
-        // Update for other viewers
-        for (Player viewer : blockingPlayer.getViewers()) {
-            BlockingPreferences viewerPrefs = viewer.getTag(BlockingState.PREFERENCES);
-
-            ItemStack toShow = blocking && viewerPrefs != null && viewerPrefs.showShieldOnOthers
-                    ? ItemStack.of(Material.SHIELD)
-                    : original;
-
-            viewer.sendPacket(new EntityEquipmentPacket(
-                    blockingPlayer.getEntityId(),
-                    Map.of(EquipmentSlot.OFF_HAND, toShow)
-            ));
-        }
-
-        // Update for self
-        ItemStack selfOffhand = blocking && selfPrefs != null && selfPrefs.showShieldOnSelf
-                ? ItemStack.of(Material.SHIELD)
-                : original;
-
-        blockingPlayer.sendPacket(new EntityEquipmentPacket(
-                blockingPlayer.getEntityId(),
-                Map.of(EquipmentSlot.OFF_HAND, selfOffhand)
-        ));
     }
 
     /**

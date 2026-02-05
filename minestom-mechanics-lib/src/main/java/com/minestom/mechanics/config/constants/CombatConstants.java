@@ -206,6 +206,15 @@ public final class CombatConstants {
     /** Particle effect update interval in milliseconds */
     public static final long PARTICLE_UPDATE_INTERVAL_MS = 100;
 
+    /** Movement speed multiplier for legacy clients when blocking with a non-sword blockable item (e.g. stick, future blockable potions). 0.3 = 30% speed. */
+    public static final double LEGACY_BLOCKING_SPEED_MULTIPLIER = 0.3;
+
+    /**
+     * Max duration (ms) for legacy clients blocking with a non-sword blockable item.
+     * Legacy clients do not send "release use item" for non-usables (e.g. stick), so we auto-stop after this to avoid permanent slowdown.
+     */
+    public static final long LEGACY_NON_SWORD_BLOCKING_MAX_DURATION_MS = 2_500L;
+
     /** Default particle Y offset (at player eye level) */
     public static final double PARTICLE_Y_OFFSET = 1.0;
 

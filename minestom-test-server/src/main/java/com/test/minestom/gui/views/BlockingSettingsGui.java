@@ -42,17 +42,6 @@ public class BlockingSettingsGui {
                 .setBorder(Material.GRAY_STAINED_GLASS_PANE)
 
                 // Row 2: Visual settings for others
-                .setItem(10, createToggleItem(
-                        Material.SHIELD,
-                        "Show Shield on Others",
-                        "See shields when other players block",
-                        finalPrefs.showShieldOnOthers
-                ), ctx -> {
-                    finalPrefs.showShieldOnOthers = !finalPrefs.showShieldOnOthers;
-                    playClickSound(ctx.getPlayer());
-                    open(ctx.getPlayer());
-                })
-
                 .setItem(12, createToggleItem(
                         Material.BLAZE_POWDER,
                         "Show Particles on Others",
@@ -96,17 +85,6 @@ public class BlockingSettingsGui {
                 })
 
                 // Row 3: Visual settings for self
-                .setItem(19, createToggleItem(
-                        Material.GOLDEN_CHESTPLATE,
-                        "Show Shield on Self",
-                        "See shield when you block",
-                        finalPrefs.showShieldOnSelf
-                ), ctx -> {
-                    finalPrefs.showShieldOnSelf = !finalPrefs.showShieldOnSelf;
-                    playClickSound(ctx.getPlayer());
-                    open(ctx.getPlayer());
-                })
-
                 .setItem(21, createToggleItem(
                         Material.GLOWSTONE_DUST,
                         "Show Particles on Self",
@@ -182,19 +160,19 @@ public class BlockingSettingsGui {
     }
 
     private static net.minestom.server.item.ItemStack createInfoItem() {
-        double damageReduction = blockingSystem != null ? blockingSystem.getDamageReduction() : 0.5;
-        double hKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackHorizontalReduction() : 0.95;
-        double vKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackVerticalReduction() : 0.95;
+        double damageReduction = blockingSystem != null ? blockingSystem.getDamageReduction(null) : 0.5;
+        double hKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackHorizontalReduction(null) : 0.6;
+        double vKnockbackReduction = blockingSystem != null ? blockingSystem.getKnockbackVerticalReduction(null) : 0.6;
 
         return GuiBuilder.infoItem(
                 Material.BOOK,
                 "Info",
                 "Blocking System Settings",
                 "",
-                "• Right-click with sword to block",
-                String.format("• %.0f%% damage reduction", damageReduction * 100),
-                String.format("• %.0f%% horizontal KB reduction", hKnockbackReduction * 100),
-                String.format("• %.0f%% vertical KB reduction", vKnockbackReduction * 100),
+                "• Right-click with blockable item to block",
+                String.format("• %.0f%% damage reduction (default)", damageReduction * 100),
+                String.format("• %.0f%% horizontal KB reduction (default)", hKnockbackReduction * 100),
+                String.format("• %.0f%% vertical KB reduction (default)", vKnockbackReduction * 100),
                 "",
                 "Your preferences are saved automatically"
         );

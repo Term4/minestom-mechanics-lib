@@ -5,7 +5,9 @@ import com.minestom.mechanics.config.gameplay.DamageConfig;
 import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.config.gameplay.GameplayPresets;
 import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.systems.blocking.BlockableItem;
 import com.minestom.mechanics.systems.blocking.BlockingState;
+import com.minestom.mechanics.systems.blocking.tags.BlockableTagValue;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.LegacyInventoryUtil;
@@ -34,14 +36,10 @@ import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.InstanceManager;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.component.DataComponents;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.item.component.BlocksAttacks;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
-
-import java.util.List;
 
 import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.healthMult;
 import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.kbMult;
@@ -245,7 +243,6 @@ public class Main {
 
             // Force aggressive cleanup
             player.removeTag(BlockingState.BLOCKING);
-            player.removeTag(BlockingState.ORIGINAL_OFFHAND);
             player.removeTag(BlockingState.PREFERENCES);
 
             MinecraftServer.LOGGER.info("Cleaned up all data for: {}", player.getUsername());
@@ -260,8 +257,11 @@ public class Main {
         var inventory = player.getInventory();
 
         // Weapons
-        inventory.setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD).with(DataComponents.BLOCKS_ATTACKS, new BlocksAttacks(0, 0, List.of(), new BlocksAttacks.ItemDamageFunction(0, 0, 0), null, null, null)));
-        inventory.setItemStack(1, ItemStack.of(Material.BOW));
+        inventory.setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD));
+        inventory.setItemStack(1, BlockableItem.withBlockable(
+                ItemStack.of(Material.BOW),
+                BlockableTagValue.blockable(false, 0.5, 0.5, 0.5)  // 50% damage reduction, 50% knockback reduction
+        ));
         inventory.setItemStack(2, ItemStack.of(Material.FISHING_ROD));
         inventory.setItemStack(3, ItemStack.of(Material.SNOWBALL, 64));
         inventory.setItemStack(4, ItemStack.of(Material.EGG, 64));
@@ -269,7 +269,10 @@ public class Main {
         inventory.setItemStack(9, ItemStack.of(Material.ARROW, 64));
 
         // Test Items
-        player.getInventory().addItemStack(TestItems.knockbackStick());
+        player.getInventory().addItemStack(BlockableItem.withBlockable(
+                TestItems.knockbackStick(),
+                BlockableTagValue.blockable(true, 0.25, 0.25, 0.25)  // 25% damage reduction, 75% knockback reduction
+        ));
         player.getInventory().addItemStack(TestItems.knockbackEgg().withAmount(16));
         player.getInventory().addItemStack(TestItems.skySnowball().withAmount(16));
         player.getInventory().addItemStack(TestItems.grappleKnockbackSnowball().withAmount(16));

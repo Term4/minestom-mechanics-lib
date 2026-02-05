@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.attack;
 
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
@@ -85,6 +86,11 @@ public class AttackFeature extends InitializableSystem {
         if (!(event.getEntity() instanceof Player attacker)) return;
         if (!(event.getTarget() instanceof LivingEntity victim)) return;
 
+        if (isBlocking(attacker)) {
+            BlockingSystem.getInstance().stopBlocking(attacker);
+            return;
+        }
+
         HitDetection hitDetection = HitDetection.getInstance();
         if (!hitDetection.isReachValid(attacker, victim)) return;
 
@@ -99,6 +105,11 @@ public class AttackFeature extends InitializableSystem {
         Player attacker = event.getPlayer();
         if (ClientVersionDetector.getInstance().getClientVersion(attacker) != ClientVersionDetector.ClientVersion.MODERN) {
             return; // Legacy/unknown: hits only via attack packets
+        }
+
+        if (isBlocking(attacker)) {
+            BlockingSystem.getInstance().stopBlocking(attacker);
+            return;
         }
 
         ItemStack mainHand = attacker.getItemInMainHand();
@@ -116,6 +127,14 @@ public class AttackFeature extends InitializableSystem {
         if (!hitDetection.isReachValid(attacker, target)) return;
 
         processAttack(attacker, target);
+    }
+
+    private boolean isBlocking(Player player) {
+        try {
+            return BlockingSystem.getInstance().isBlocking(player);
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     /**

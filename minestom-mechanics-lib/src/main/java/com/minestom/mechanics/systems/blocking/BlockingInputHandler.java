@@ -7,7 +7,6 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.*;
 import net.minestom.server.item.ItemStack;
-import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 
@@ -53,8 +52,6 @@ public class BlockingInputHandler {
         Player player = event.getPlayer();
         if (player.getTag(BlockingState.PREFERENCES) == null) {
             BlockingPreferences prefs = new BlockingPreferences();
-            prefs.showShieldOnSelf = true;
-            prefs.showShieldOnOthers = true;
             prefs.showParticlesOnSelf = true;
             prefs.showParticlesOnOthers = false;
             prefs.showActionBarOnBlock = true;
@@ -71,7 +68,8 @@ public class BlockingInputHandler {
 
         if (event.getPacket() instanceof ClientUseItemPacket) {
             ItemStack mainHand = player.getItemInMainHand();
-            if (isSword(mainHand) && !blockingSystem.isBlocking(player)) {
+            if (mainHand != null && !mainHand.isAir() && mainHand.getTag(BlockingSystem.BLOCKABLE) != null
+                    && !blockingSystem.isBlocking(player)) {
                 blockingSystem.startBlocking(player);
             }
         } else if (event.getPacket() instanceof ClientPlayerActionPacket digging) {
@@ -104,20 +102,5 @@ public class BlockingInputHandler {
 
     private void handlePlayerDisconnect(PlayerDisconnectEvent event) {
         blockingSystem.cleanup(event.getPlayer());
-    }
-
-    // TODO: Find a better way to tell if an item is a sword. This is pathetic lmao
-    /**
-     * Check if an item is a sword that can be used for blocking
-     */
-    private boolean isSword(ItemStack stack) {
-        if (stack == null || stack.isAir()) return false;
-        Material mat = stack.material();
-        return mat == Material.WOODEN_SWORD ||
-                mat == Material.STONE_SWORD ||
-                mat == Material.IRON_SWORD ||
-                mat == Material.GOLDEN_SWORD ||
-                mat == Material.DIAMOND_SWORD ||
-                mat == Material.NETHERITE_SWORD;
     }
 }

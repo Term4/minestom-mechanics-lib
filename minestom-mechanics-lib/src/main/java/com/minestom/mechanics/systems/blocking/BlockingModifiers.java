@@ -48,8 +48,8 @@ public class BlockingModifiers {
         Damage damage = event.getDamage();
         float originalAmount = damage.getAmount();
 
-        // Apply damage reduction
-        double currentReduction = blockingSystem.getDamageReduction();
+        // Apply damage reduction (resolve from victim's blockable item or config)
+        double currentReduction = blockingSystem.getDamageReduction(victim);
         float reducedAmount = originalAmount * (float)(1.0 - currentReduction);
         damage.setAmount(reducedAmount);
 

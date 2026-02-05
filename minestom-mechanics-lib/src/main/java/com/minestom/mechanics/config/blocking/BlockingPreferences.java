@@ -18,7 +18,6 @@ import static com.minestom.mechanics.config.constants.CombatConstants.DEFAULT_BL
 public class BlockingPreferences {
 
     // Visual preferences for OTHER players blocking
-    public boolean showShieldOnOthers = true;
     public boolean showParticlesOnOthers = false;
     public ParticleType particleType = ParticleType.CRIT;
 
@@ -28,7 +27,6 @@ public class BlockingPreferences {
     // Note: PARTICLE_RADIUS is now in CombatConstants
 
     // Visual preferences for SELF when blocking
-    public boolean showShieldOnSelf = true;
     public boolean showParticlesOnSelf = false;
 
     // Notification preferences

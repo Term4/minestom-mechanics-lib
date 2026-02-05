@@ -5,14 +5,11 @@ import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import net.minestom.server.entity.Player;
-import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-// TODO: Completely remove the shield indicator option
 
 /**
  * Manages blocking state for players - tracks who's blocking and handles state transitions.
@@ -23,7 +20,6 @@ public class BlockingState {
 
     // Core tags
     public static final Tag<Boolean> BLOCKING = Tag.Boolean("blocking").defaultValue(false);
-    public static final Tag<ItemStack> ORIGINAL_OFFHAND = Tag.ItemStack("original_offhand");
     public static final Tag<BlockingPreferences> PREFERENCES = Tag.Transient("blocking_prefs");
 
     // TODO: do we need to keep a map of all the blocking players if we have them tagged as blocking?
@@ -54,7 +50,6 @@ public class BlockingState {
         UUID uuid = player.getUuid();
         player.setTag(BLOCKING, true);
         blockingPlayers.put(uuid, true);
-        player.setTag(ORIGINAL_OFFHAND, player.getItemInOffHand());
 
         // Register animation
         LegacyAnimationFix.getInstance().registerAnimation(
@@ -77,7 +72,6 @@ public class BlockingState {
         UUID uuid = player.getUuid();
         player.setTag(BLOCKING, false);
         blockingPlayers.remove(uuid);
-        player.removeTag(ORIGINAL_OFFHAND);
 
         log.debug("{} stopped blocking", player.getUsername());
     }
@@ -108,7 +102,6 @@ public class BlockingState {
         blockingPlayers.remove(uuid);
         
         player.removeTag(BLOCKING);
-        player.removeTag(ORIGINAL_OFFHAND);
         player.removeTag(PREFERENCES);
 
         log.debug("Cleaned up blocking state for: {}", player.getUsername());

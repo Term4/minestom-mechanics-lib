@@ -11,6 +11,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+// TODO: Maybe modify how we currently maintain blocking state visual sync across versions?
+//  Instead of just listening to tick events (very intensive), we could listen to move events?
+//  If not, we could also run a plugin proxy side for it, but it might be slightly more complicated
+//  and less user friendly
+
 /**
  * Version-based animation handler.
  *

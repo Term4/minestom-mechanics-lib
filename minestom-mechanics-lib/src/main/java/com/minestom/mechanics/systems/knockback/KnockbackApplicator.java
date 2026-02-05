@@ -89,14 +89,13 @@ public class KnockbackApplicator {
         KnockbackSystem.KnockbackStrength strength = new KnockbackSystem.KnockbackStrength(horizontal, vertical);
 
 
-        // TODO: Generalize this!! Not JUST blocking (do the same with damage)
-        // Apply blocking reduction
+        // Apply blocking reduction (resolve from victim's blockable item or config)
         if (victim instanceof Player player) {
             try {
                 BlockingSystem blocking = BlockingSystem.getInstance();
                 if (blocking.isBlocking(player)) {
-                    horizontal *= (1.0 - blocking.getKnockbackHorizontalReduction());
-                    vertical *= (1.0 - blocking.getKnockbackVerticalReduction());
+                    horizontal *= (1.0 - blocking.getKnockbackHorizontalReduction(player));
+                    vertical *= (1.0 - blocking.getKnockbackVerticalReduction(player));
                     strength = new KnockbackSystem.KnockbackStrength(horizontal, vertical);
                 }
             } catch (IllegalStateException e) {

@@ -189,15 +189,15 @@ public class BlockingConfigCommand extends Command {
 
         player.sendMessage(Component.empty());
 
-        // Damage reduction
+        // Damage reduction (null = config default)
         player.sendMessage(labelValue("Damage Reduction",
-                String.format("%.0f%%", blocking.getDamageReduction() * 100)));
+                String.format("%.0f%%", blocking.getDamageReduction(null) * 100)));
 
-        // Knockback reduction
+        // Knockback reduction (null = config default)
         player.sendMessage(labelValue("Horizontal KB Reduction",
-                String.format("%.0f%%", blocking.getKnockbackHorizontalReduction() * 100)));
+                String.format("%.0f%%", blocking.getKnockbackHorizontalReduction(null) * 100)));
         player.sendMessage(labelValue("Vertical KB Reduction",
-                String.format("%.0f%%", blocking.getKnockbackVerticalReduction() * 100)));
+                String.format("%.0f%%", blocking.getKnockbackVerticalReduction(null) * 100)));
 
         player.sendMessage(Component.empty());
 
