@@ -31,6 +31,11 @@ public class Cactus extends AbstractDamageType {
     }
     
     @Override
+    protected boolean getDefaultBlockable() {
+        return config.cactusDamageBlockable();
+    }
+    
+    @Override
     public boolean shouldHandle(HealthEvent event) {
         // Cactus damage is handled via EntityDamageEvent, not HealthEvent
         return false;

@@ -117,10 +117,16 @@ public record HealthTagWrapper(
     public static final HealthTagWrapper NO_DAMAGE = healthMult(0.0);
     
     /** Damage disabled (custom config with enabled=false) */
-    public static final HealthTagWrapper DISABLED = healthSet(new HealthTagValue(null, null, false));
+    public static final HealthTagWrapper DISABLED = healthSet(new HealthTagValue(null, null, false, null));
     
     /** Damage enabled (custom config with enabled=true) */
-    public static final HealthTagWrapper ENABLED = healthSet(new HealthTagValue(null, null, true));
+    public static final HealthTagWrapper ENABLED = healthSet(new HealthTagValue(null, null, true, null));
+    
+    /** Blocking applies to this damage type (custom config with blockable=true) */
+    public static final HealthTagWrapper BLOCKABLE = healthSet(HealthTagValue.BLOCKABLE);
+    
+    /** Blocking does not apply to this damage type (custom config with blockable=false) */
+    public static final HealthTagWrapper NOT_BLOCKABLE = healthSet(HealthTagValue.NOT_BLOCKABLE);
     
     // ===========================
     // ConfigTagWrapper INTERFACE

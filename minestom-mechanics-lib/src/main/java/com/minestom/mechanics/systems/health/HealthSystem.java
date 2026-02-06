@@ -155,7 +155,6 @@ public class HealthSystem extends InitializableSystem {
                 // Mark this entity as processed in this tick
                 lastProcessedTick.put(victimId, currentTick);
                 
-                // ✅ FIXED: Disable all damage for creative mode players
                 if (victim instanceof Player player && player.getGameMode() == net.minestom.server.entity.GameMode.CREATIVE) {
                     event.setCancelled(true);
                     log.debug("Blocked damage for creative player: {}", player.getUsername());
@@ -221,7 +220,6 @@ public class HealthSystem extends InitializableSystem {
                     getEntityName(victim), config.getInvulnerabilityTicks(), damageAmount);
                 invulnerability.setInvulnerable(victim, damageAmount);
                 
-                // ✅ CENTRALIZED: Log all damage through the base health system
                 logDamage(victim, event.getDamage(), damageAmount);
             }
             
@@ -242,13 +240,6 @@ public class HealthSystem extends InitializableSystem {
      */
     public boolean canTakeDamage(LivingEntity entity, float incomingDamage) {
         return invulnerability.canTakeDamage(entity, incomingDamage);
-    }
-
-    /**
-     * Check if knockback should be applied
-     */
-    public boolean shouldApplyKnockback(LivingEntity entity) {
-        return invulnerability.shouldApplyKnockback(entity);
     }
 
     /**

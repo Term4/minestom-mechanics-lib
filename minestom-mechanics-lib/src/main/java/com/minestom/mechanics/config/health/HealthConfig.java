@@ -18,10 +18,13 @@ public record HealthConfig(
         // Environmental damage
         boolean fallDamageEnabled,
         float fallDamageMultiplier,
+        boolean fallDamageBlockable,
         boolean fireDamageEnabled,
         float fireDamageMultiplier,
+        boolean fireDamageBlockable,
         boolean cactusDamageEnabled,
         float cactusDamageMultiplier,
+        boolean cactusDamageBlockable,
 
         // Damage replacement system
         boolean damageReplacementEnabled,
@@ -59,8 +62,11 @@ public record HealthConfig(
 
     public boolean isFallDamageEnabled() { return fallDamageEnabled; }
     public float getFallDamageMultiplier() { return fallDamageMultiplier; }
+    public boolean isFallDamageBlockable() { return fallDamageBlockable; }
     public boolean isFireDamageEnabled() { return fireDamageEnabled; }
     public float getFireDamageMultiplier() { return fireDamageMultiplier; }
+    public boolean isFireDamageBlockable() { return fireDamageBlockable; }
+    public boolean isCactusDamageBlockable() { return cactusDamageBlockable; }
     public int getInvulnerabilityTicks() { return invulnerabilityTicks; }
     public boolean isDamageReplacementEnabled() { return damageReplacementEnabled; }
     public boolean isKnockbackOnReplacement() { return knockbackOnReplacement; }
@@ -69,8 +75,9 @@ public record HealthConfig(
     // ===== INVULNERABILITY =====
 
     public HealthConfig withInvulnerabilityTicks(int ticks) {
-        return new HealthConfig(ticks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(ticks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
@@ -78,22 +85,33 @@ public record HealthConfig(
     // ===== FALL DAMAGE =====
 
     public HealthConfig withFallDamage(boolean enabled) {
-        return new HealthConfig(invulnerabilityTicks, enabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, enabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withFallDamage(boolean enabled, float multiplier) {
-        return new HealthConfig(invulnerabilityTicks, enabled, multiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, enabled, multiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withFallDamageMultiplier(float multiplier) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, multiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, multiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
+                damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
+                regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
+    }
+
+    public HealthConfig withFallDamageBlockable(boolean blockable) {
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, blockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
@@ -101,22 +119,33 @@ public record HealthConfig(
     // ===== FIRE DAMAGE =====
 
     public HealthConfig withFireDamage(boolean enabled) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                enabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                enabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withFireDamage(boolean enabled, float multiplier) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                enabled, multiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                enabled, multiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withFireDamageMultiplier(float multiplier) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, multiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, multiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
+                damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
+                regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
+    }
+
+    public HealthConfig withFireDamageBlockable(boolean blockable) {
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, blockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
@@ -124,22 +153,33 @@ public record HealthConfig(
     // ===== CACTUS DAMAGE =====
 
     public HealthConfig withCactusDamage(boolean enabled) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, enabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                enabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withCactusDamage(boolean enabled, float multiplier) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, enabled, multiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                enabled, multiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withCactusDamageMultiplier(float multiplier) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, multiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, multiplier, cactusDamageBlockable,
+                damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
+                regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
+    }
+
+    public HealthConfig withCactusDamageBlockable(boolean blockable) {
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, blockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
@@ -147,15 +187,17 @@ public record HealthConfig(
     // ===== DAMAGE REPLACEMENT =====
 
     public HealthConfig withDamageReplacement(boolean enabled, boolean knockback) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 enabled, knockback, logReplacementDamage,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withLogReplacementDamage(boolean log) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, log,
                 regenerationEnabled, regenerationAmount, regenerationIntervalTicks);
     }
@@ -163,15 +205,17 @@ public record HealthConfig(
     // ===== REGENERATION =====
 
     public HealthConfig withRegeneration(boolean enabled) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 enabled, regenerationAmount, regenerationIntervalTicks);
     }
 
     public HealthConfig withRegeneration(boolean enabled, float amount, int intervalTicks) {
-        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, cactusDamageEnabled, cactusDamageMultiplier,
+        return new HealthConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier, fallDamageBlockable,
+                fireDamageEnabled, fireDamageMultiplier, fireDamageBlockable,
+                cactusDamageEnabled, cactusDamageMultiplier, cactusDamageBlockable,
                 damageReplacementEnabled, knockbackOnReplacement, logReplacementDamage,
                 enabled, amount, intervalTicks);
     }

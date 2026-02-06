@@ -20,6 +20,7 @@ public class HealthTagSerializer implements TagSerializer<HealthTagWrapper> {
     private static final String C_MULT_KEY = "cm";
     private static final String C_MOD_KEY = "cd";
     private static final String C_ENABLED_KEY = "ce";
+    private static final String C_BLOCKABLE_KEY = "cb";
     
     @Override
     public HealthTagWrapper read(@NotNull TagReadable reader) {
@@ -36,7 +37,8 @@ public class HealthTagSerializer implements TagSerializer<HealthTagWrapper> {
             Float cMult = reader.getTag(Tag.Float(C_MULT_KEY));
             Float cMod = reader.getTag(Tag.Float(C_MOD_KEY));
             Boolean cEnabled = reader.getTag(Tag.Boolean(C_ENABLED_KEY));
-            custom = new HealthTagValue(cMult, cMod, cEnabled);
+            Boolean cBlockable = reader.getTag(Tag.Boolean(C_BLOCKABLE_KEY));
+            custom = new HealthTagValue(cMult, cMod, cEnabled, cBlockable);
         }
         
         return new HealthTagWrapper(multiplier, modify, custom);
@@ -66,6 +68,9 @@ public class HealthTagSerializer implements TagSerializer<HealthTagWrapper> {
             }
             if (custom.enabled() != null) {
                 writer.setTag(Tag.Boolean(C_ENABLED_KEY), custom.enabled());
+            }
+            if (custom.blockable() != null) {
+                writer.setTag(Tag.Boolean(C_BLOCKABLE_KEY), custom.blockable());
             }
         }
     }

@@ -14,7 +14,7 @@ import net.minestom.server.registry.RegistryKey;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
-// TODO: This is actually pretty good
+// TODO: Rewrite to use tags, also leave a placeholder for enchants
 
 /**
  * Armor system that reduces damage based on armor points and toughness.

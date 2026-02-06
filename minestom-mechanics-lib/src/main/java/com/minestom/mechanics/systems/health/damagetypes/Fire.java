@@ -31,6 +31,11 @@ public class Fire extends AbstractDamageType {
     }
     
     @Override
+    protected boolean getDefaultBlockable() {
+        return config.fireDamageBlockable();
+    }
+    
+    @Override
     public boolean shouldHandle(HealthEvent event) {
         // Fire damage is handled via EntityDamageEvent, not HealthEvent
         // This will be called from HealthSystem when processing EntityDamageEvent

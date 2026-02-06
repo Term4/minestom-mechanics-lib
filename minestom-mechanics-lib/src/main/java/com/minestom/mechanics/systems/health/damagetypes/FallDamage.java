@@ -42,6 +42,11 @@ public class FallDamage extends AbstractDamageType {
     }
     
     @Override
+    protected boolean getDefaultBlockable() {
+        return config.fallDamageBlockable();
+    }
+    
+    @Override
     public boolean shouldHandle(HealthEvent event) {
         // Fall damage is applied directly, not through EntityDamageEvent
         // So we return false here - we handle it via PlayerTickEvent

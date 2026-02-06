@@ -26,7 +26,8 @@ import java.util.List;
 public record HealthTagValue(
         @Nullable Float multiplier,
         @Nullable Float modify,
-        @Nullable Boolean enabled
+        @Nullable Boolean enabled,
+        @Nullable Boolean blockable
 ) implements ConfigTagWrapper<HealthTagValue> {
     
     // ===========================
@@ -37,28 +38,42 @@ public record HealthTagValue(
      * Create a multiplier tag value
      */
     public static HealthTagValue healthMult(float multiplier) {
-        return new HealthTagValue(multiplier, null, null);
+        return new HealthTagValue(multiplier, null, null, null);
     }
     
     /**
      * Create a modify (additive) tag value
      */
     public static HealthTagValue healthAdd(float modify) {
-        return new HealthTagValue(null, modify, null);
+        return new HealthTagValue(null, modify, null, null);
     }
     
     /**
      * Create an enabled/disabled tag value
      */
     public static HealthTagValue healthEnabled(boolean enabled) {
-        return new HealthTagValue(null, null, enabled);
+        return new HealthTagValue(null, null, enabled, null);
+    }
+    
+    /**
+     * Create a blockable/not blockable tag value (whether blocking reduces this damage type).
+     */
+    public static HealthTagValue healthBlockable(boolean blockable) {
+        return new HealthTagValue(null, null, null, blockable);
     }
     
     /**
      * Create a combined tag value with all fields
      */
     public static HealthTagValue healthConfig(float multiplier, float modify, boolean enabled) {
-        return new HealthTagValue(multiplier, modify, enabled);
+        return new HealthTagValue(multiplier, modify, enabled, null);
+    }
+    
+    /**
+     * Create a combined tag value with all fields including blockable
+     */
+    public static HealthTagValue healthConfig(float multiplier, float modify, boolean enabled, Boolean blockable) {
+        return new HealthTagValue(multiplier, modify, enabled, blockable);
     }
     
     // ===========================
@@ -69,21 +84,28 @@ public record HealthTagValue(
      * Chain: add multiplier (returns new record)
      */
     public HealthTagValue thenMult(float multiplier) {
-        return new HealthTagValue(multiplier, this.modify, this.enabled);
+        return new HealthTagValue(multiplier, this.modify, this.enabled, this.blockable);
     }
     
     /**
      * Chain: add modify (returns new record)
      */
     public HealthTagValue thenAdd(float modify) {
-        return new HealthTagValue(this.multiplier, modify, this.enabled);
+        return new HealthTagValue(this.multiplier, modify, this.enabled, this.blockable);
     }
     
     /**
      * Chain: set enabled (returns new record)
      */
     public HealthTagValue thenEnabled(boolean enabled) {
-        return new HealthTagValue(this.multiplier, this.modify, enabled);
+        return new HealthTagValue(this.multiplier, this.modify, enabled, this.blockable);
+    }
+    
+    /**
+     * Chain: set blockable (returns new record)
+     */
+    public HealthTagValue thenBlockable(boolean blockable) {
+        return new HealthTagValue(this.multiplier, this.modify, this.enabled, blockable);
     }
     
     // ===========================
@@ -104,6 +126,12 @@ public record HealthTagValue(
     
     /** Damage enabled (default) */
     public static final HealthTagValue ENABLED = healthEnabled(true);
+    
+    /** Blocking applies to this damage type (custom preset) */
+    public static final HealthTagValue BLOCKABLE = healthBlockable(true);
+    
+    /** Blocking does not apply to this damage type (custom preset) */
+    public static final HealthTagValue NOT_BLOCKABLE = healthBlockable(false);
     
     // ===========================
     // ConfigTagWrapper INTERFACE

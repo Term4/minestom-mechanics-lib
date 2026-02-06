@@ -2,13 +2,14 @@ package com.minestom.mechanics.systems.health.damagetypes;
 
 import com.minestom.mechanics.systems.health.HealthEvent;
 import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.Player;
+import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.event.entity.EntityDamageEvent;
+import net.minestom.server.registry.RegistryKey;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-// TODO: Check out preexisting damage type registry in minestom
 
 /**
  * Registry for managing all damage types.
@@ -93,6 +94,26 @@ public class DamageTypeRegistry {
             }
         }
         return null;
+    }
+    
+    /**
+     * Check if blocking (shield/sword block) applies to the given damage type for the victim.
+     * Uses the handler's resolved tag/config for Fall, Fire, Cactus; returns true for other types (e.g. PLAYER_ATTACK).
+     */
+    public boolean isBlockingApplicable(RegistryKey<DamageType> type, Player victim) {
+        if (type.equals(DamageType.FALL)) {
+            FallDamage fallDamage = getDamageType(FallDamage.class);
+            return fallDamage != null && fallDamage.isBlockingApplicable(victim);
+        }
+        if (type.equals(DamageType.ON_FIRE) || type.equals(DamageType.IN_FIRE) || type.equals(DamageType.LAVA)) {
+            Fire fire = getDamageType(Fire.class);
+            return fire == null || fire.isBlockingApplicable(victim);
+        }
+        if (type.equals(DamageType.CACTUS)) {
+            Cactus cactus = getDamageType(Cactus.class);
+            return cactus == null || cactus.isBlockingApplicable(victim);
+        }
+        return true;
     }
 }
 

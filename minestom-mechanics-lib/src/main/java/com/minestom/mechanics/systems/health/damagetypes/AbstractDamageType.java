@@ -46,7 +46,13 @@ public abstract class AbstractDamageType extends ConfigurableSystem<HealthTagVal
             case "CACTUS" -> config.cactusDamageEnabled();
             default -> true;
         };
-        return new HealthTagValue(multiplier, null, enabled);
+        boolean blockable = switch (damageTypeName) {
+            case "FALL" -> config.fallDamageBlockable();
+            case "FIRE" -> config.fireDamageBlockable();
+            case "CACTUS" -> config.cactusDamageBlockable();
+            default -> true;
+        };
+        return new HealthTagValue(multiplier, null, enabled, blockable);
     }
     
     @Override
@@ -151,6 +157,20 @@ public abstract class AbstractDamageType extends ConfigurableSystem<HealthTagVal
     protected boolean isEnabled(LivingEntity victim) {
         return isEnabled(null, victim, null);
     }
+    
+    /**
+     * Check if blocking applies to this damage type for the victim.
+     * Resolves tag (victim, world, server default). Used by BlockingModifiers.
+     */
+    public boolean isBlockingApplicable(LivingEntity victim) {
+        HealthTagValue resolved = resolveConfig(null, victim, null);
+        return resolved.blockable() != null ? resolved.blockable() : getDefaultBlockable();
+    }
+    
+    /**
+     * Get the default blockable state from config (server default when no tag is set).
+     */
+    protected abstract boolean getDefaultBlockable();
     
     /**
      * Process a health event for this damage type

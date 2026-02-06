@@ -227,7 +227,7 @@ public class Main {
                  */
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
                 // GravitySystem.setGravity(player, 0.167);
-                player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
+                //player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
             }
         });
 

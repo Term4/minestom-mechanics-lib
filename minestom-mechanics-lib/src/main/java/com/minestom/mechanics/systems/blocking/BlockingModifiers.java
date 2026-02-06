@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.blocking;
 
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.entity.Player;
@@ -44,6 +45,16 @@ public class BlockingModifiers {
         if (!blockingSystem.isEnabled()) return;
         if (!(event.getEntity() instanceof Player victim)) return;
         if (!stateManager.isBlocking(victim)) return;
+
+        // If HealthSystem is initialized, respect per-damage-type "blocking applies" tag/config
+        try {
+            HealthSystem hs = HealthSystem.getInstance();
+            if (!hs.getDamageTypeRegistry().isBlockingApplicable(event.getDamage().getType(), victim)) {
+                return;
+            }
+        } catch (IllegalStateException ignored) {
+            // HealthSystem not initialized; blocking applies to all damage types
+        }
 
         Damage damage = event.getDamage();
         float originalAmount = damage.getAmount();
