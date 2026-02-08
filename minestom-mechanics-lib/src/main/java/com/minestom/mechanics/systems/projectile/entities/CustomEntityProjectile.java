@@ -40,8 +40,6 @@ import java.util.Collection;
  * Based on the MinestomPVP implementation with proper water physics.
  */
 public abstract class CustomEntityProjectile extends Entity {
-    // TODO: Ensure these are the correct values, maybe use constants class?
-    private static final BoundingBox POINT_BOX = new BoundingBox(0, 0, 0);
     private static final BoundingBox UNSTUCK_BOX = new BoundingBox(0.12, 0.6, 0.12);
 
     // Core projectile state
@@ -287,11 +285,11 @@ public abstract class CustomEntityProjectile extends Entity {
                 return;
             }
             
-            // Use ProjectileUtil for proper 1.8-style physics with water drag
+            // Always use block collision for our custom movement (entity hasPhysics is often false for projectiles, which would skip blocks)
             ChunkCache blockGetter = new ChunkCache(instance, currentChunk, Block.AIR);
             PhysicsResult physicsResult = ProjectileUtil.simulateMovement(
-                position, diff, POINT_BOX, instance.getWorldBorder(), blockGetter, 
-                hasPhysics, previousPhysicsResult, true
+                position, diff, getBoundingBox(), instance.getWorldBorder(), blockGetter,
+                true, previousPhysicsResult, true
             );
             this.previousPhysicsResult = physicsResult;
             

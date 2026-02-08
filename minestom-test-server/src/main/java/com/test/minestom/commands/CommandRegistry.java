@@ -165,6 +165,30 @@ public class CommandRegistry {
                 true,
                 "sp", "spectator"
         ));
+
+        // Gamemode shortcuts (no permissions)
+        COMMAND_LIST.add(new CommandInfo(
+                new GmcCommand(),
+                CommandCategory.UTILITY,
+                "Set your game mode to Creative",
+                true,
+                "gmc"
+        ));
+        COMMAND_LIST.add(new CommandInfo(
+                new GmsCommand(),
+                CommandCategory.UTILITY,
+                "Set your game mode to Survival",
+                true,
+                "gms"
+        ));
+
+        // Spawn cow at sender location
+        COMMAND_LIST.add(new CommandInfo(
+                new CowCommand(),
+                CommandCategory.UTILITY,
+                "Spawn a cow at your location",
+                true
+        ));
     }
 
     private static void registerAllCommands() {

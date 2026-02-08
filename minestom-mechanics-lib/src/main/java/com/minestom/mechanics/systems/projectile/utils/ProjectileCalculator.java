@@ -12,7 +12,8 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 
 import java.util.concurrent.ThreadLocalRandom;
-
+// TODO: Add tag / other configurable methods for projectile spawn offset + projectile spread (PER projectile + overall)
+//  + remove magic numbers
 /**
  * Unified calculator for ALL projectile types.
  * Handles both velocity calculation (with config resolution, spread, player momentum) 
@@ -324,6 +325,7 @@ public class ProjectileCalculator {
             Pos eyePos = EyeHeightSystem.getInstance().getEyePosition(player);
             eyeHeight = eyePos.y() - playerPos.y();
         } catch (IllegalStateException e) {
+            // TODO: Use EyeHeightSystem + version detection
             // EyeHeightSystem not initialized, use default
             eyeHeight = 1.62; // Default player eye height
         }
@@ -338,7 +340,7 @@ public class ProjectileCalculator {
      * @return The calculated spawn position
      */
     public static Pos calculateSpawnOffset(Player player) {
-        return calculateSpawnOffset(player, 0.3);
+        return calculateSpawnOffset(player, 0.05);
     }
 
     /**

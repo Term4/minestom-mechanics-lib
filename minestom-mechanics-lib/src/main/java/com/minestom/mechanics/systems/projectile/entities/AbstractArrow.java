@@ -2,6 +2,7 @@ package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
+import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
@@ -201,6 +202,15 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 				null, damage
 		);
 
+		boolean wasInvulnerable = false;
+		if (living instanceof Player victimPlayer && victimPlayer.getGameMode() == GameMode.CREATIVE) {
+			Invulnerability inv = Invulnerability.getInstance();
+			if (inv != null && inv.isBypassCreativeInvulnerability(this, living, null)) {
+				wasInvulnerable = living.isInvulnerable();
+				living.setInvulnerable(false);
+			}
+		}
+
 		if (living.damage(damageObj)) {
 			if (entity.getEntityType() == EntityType.ENDERMAN) return false;
 
@@ -238,6 +248,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 
 			onHurt(living);
 
+			if (wasInvulnerable) living.setInvulnerable(true);
 			return getPiercingLevel() <= 0;
 		} else {
 			// Bounce off if hit was blocked
@@ -250,10 +261,12 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 				if (pickupMode == PickupMode.ALLOWED) {
 					spawnItemAtLocation(getPickupItem());
 				}
+				if (wasInvulnerable) living.setInvulnerable(true);
 				return true;
 			}
 		}
 
+		if (wasInvulnerable) living.setInvulnerable(true);
 		return false;
 	}
 

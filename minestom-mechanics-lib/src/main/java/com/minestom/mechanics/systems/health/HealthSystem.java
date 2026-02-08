@@ -1,19 +1,21 @@
 package com.minestom.mechanics.systems.health;
 
 import com.minestom.mechanics.config.health.HealthConfig;
-import com.minestom.mechanics.manager.ArmorManager;
-import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.health.damagetypes.Cactus;
 import com.minestom.mechanics.systems.health.damagetypes.DamageTypeRegistry;
 import com.minestom.mechanics.systems.health.damagetypes.FallDamage;
 import com.minestom.mechanics.systems.health.damagetypes.Fire;
 import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagSerializer;
+import com.minestom.mechanics.systems.health.util.DamageApplicator;
 import com.minestom.mechanics.systems.health.util.Invulnerability;
+import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.player.PlayerDeathEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
@@ -36,6 +38,7 @@ public class HealthSystem extends InitializableSystem {
 
     // Component references
     private final Invulnerability invulnerability;
+    private final DamageApplicator damageApplicator;
     private final DamageTypeRegistry damageTypeRegistry;
     private final FallDamage fallDamage;
     private final Fire fire;
@@ -72,18 +75,22 @@ public class HealthSystem extends InitializableSystem {
     public static final Tag<com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper> INVULNERABILITY = 
             Tag.Structure("health_invulnerability", new InvulnerabilityTagSerializer());
 
+    /** Alias for ProjectileTagRegistry: copy invulnerability (bypass i-frame + bypass creative) from item to projectile. */
+    public static final Tag<com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper> PROJECTILE_INVULNERABILITY = INVULNERABILITY;
+
     private HealthSystem(HealthConfig config) {
         this.config = config;
         
         // Initialize components
         this.invulnerability = new Invulnerability(config);
         this.damageTypeRegistry = new DamageTypeRegistry();
-        
+        this.damageApplicator = new DamageApplicator(config, invulnerability, damageTypeRegistry);
+
         // Initialize damage types
         this.fallDamage = new FallDamage(config);
         this.fire = new Fire(config);
         this.cactus = new Cactus(config);
-        
+
         // Register damage types
         damageTypeRegistry.register(fallDamage);
         damageTypeRegistry.register(fire);
@@ -103,7 +110,9 @@ public class HealthSystem extends InitializableSystem {
         instance = new HealthSystem(config);
         instance.registerListeners();
         instance.markInitialized();
-        
+
+        ProjectileTagRegistry.register(HealthSystem.class);
+
         // Initialize player death handler
         com.minestom.mechanics.systems.player.PlayerDeathHandler.initialize();
 
@@ -123,9 +132,12 @@ public class HealthSystem extends InitializableSystem {
                 .repeat(TaskSchedule.tick(1))
                 .schedule();
 
-        // Player tick events for fall damage tracking
+        // Player tick events for fall, fire, and cactus damage tracking
         handler.addListener(PlayerTickEvent.class, event -> {
-            fallDamage.trackFallDamage(event.getPlayer());
+            var player = event.getPlayer();
+            fallDamage.trackFallDamage(player);
+            fire.trackAndApplyFireDamage(player, currentTick);
+            cactus.trackAndApplyCactusDamage(player, currentTick);
         });
         
         // Player death events - reset fall distance (death handling is in PlayerDeathHandler)
@@ -138,12 +150,12 @@ public class HealthSystem extends InitializableSystem {
             fallDamage.resetFallDistance(event.getPlayer());
         });
 
-        // Entity damage events
+        // Entity damage events: duplicate/creative checks, then DamageApplicator, then damage type modifiers
         handler.addListener(EntityDamageEvent.class, event -> {
             if (event.getEntity() instanceof LivingEntity victim) {
                 UUID victimId = victim.getUuid();
-                
-                // Check for duplicate processing in the same tick
+
+                // Duplicate processing guard (same tick)
                 Long lastProcessed = lastProcessedTick.get(victimId);
                 if (lastProcessed != null && lastProcessed == currentTick) {
                     log.debug("{} damage event rejected (duplicate in same tick): {:.1f}",
@@ -151,79 +163,25 @@ public class HealthSystem extends InitializableSystem {
                     event.setCancelled(true);
                     return;
                 }
-                
-                // Mark this entity as processed in this tick
                 lastProcessedTick.put(victimId, currentTick);
-                
+
                 if (victim instanceof Player player && player.getGameMode() == net.minestom.server.entity.GameMode.CREATIVE) {
-                    event.setCancelled(true);
-                    log.debug("Blocked damage for creative player: {}", player.getUsername());
-                    return;
-                }
-                
-                float damageAmount = event.getDamage().getAmount();
-                
-                // Always log damage attempts for debugging
-                log.debug("Damage attempt on {}: amount={}, tick={}, invulnTicks={}", 
-                    getEntityName(victim), damageAmount, currentTick, config.getInvulnerabilityTicks());
-
-                if (!invulnerability.canTakeDamage(victim, damageAmount)) {
-                    event.setCancelled(true);
-                    log.debug("Damage blocked by invulnerability for {}", getEntityName(victim));
-                    return;
-                }
-
-                // Check if this is a replacement hit
-                boolean isReplacement = invulnerability.wasLastDamageReplacement(victim);
-
-                if (isReplacement) {
-                    // For replacement hits: we need to calculate the damage difference
-                    float previousDamage = invulnerability.getLastDamageAmount(victim);
-                    float damageDifference = damageAmount - previousDamage;
-                    
-                    if (damageDifference > 0) {
-                        // Cancel the event to prevent knockback/animation
+                    Entity attacker = event.getDamage().getSource();
+                    net.minestom.server.item.ItemStack item = (attacker instanceof Player p) ? p.getItemInMainHand() : null;
+                    boolean bypass = event.getDamage().getType().equals(DamageType.PLAYER_ATTACK)
+                            ? invulnerability.isBypassCreativeInvulnerabilityMelee(attacker, victim, item)
+                            : invulnerability.isBypassCreativeInvulnerability(attacker, victim, item);
+                    if (!bypass) {
                         event.setCancelled(true);
-                        
-                        // Apply armor reduction to the damage difference if victim is a player
-                        float finalDifference = damageDifference;
-                        if (victim instanceof Player player && MechanicsManager.getInstance().getArmorManager() != null) {
-                            ArmorManager armorManager = MechanicsManager.getInstance().getArmorManager();
-                            if (armorManager.isInitialized() && armorManager.isEnabled()) {
-                                finalDifference = armorManager.calculateReducedDamage(player, damageDifference, event.getDamage().getType());
-                            }
-                        }
-                        
-                        // Apply only the difference in damage
-                        float currentHealth = victim.getHealth();
-                        float newHealth = Math.max(0, currentHealth - finalDifference);
-                        victim.setHealth(newHealth);
-                        
-                        if (config.isLogReplacementDamage()) {
-                            log.debug("{} took {} additional damage silently (replacement: {} -> {}, armor reduced: {})",
-                                    getEntityName(victim), 
-                                    String.format("%.1f", finalDifference),
-                                    String.format("%.1f", previousDamage),
-                                    String.format("%.1f", damageAmount),
-                                    String.format("%.1f", damageDifference - finalDifference));
-                        }
+                        log.debug("Blocked damage for creative player: {}", player.getUsername());
+                        return;
                     }
-
-                    // Update the tracked damage amount WITHOUT resetting invulnerability timer
-                    // Replacement hits should only update damage, not give new i-frames
-                    invulnerability.updateDamageAmount(victim, damageAmount);
-                    return;
                 }
 
-                // Normal hit - let it process naturally
-                log.debug("Setting {} as invulnerable for {} ticks after taking {} damage", 
-                    getEntityName(victim), config.getInvulnerabilityTicks(), damageAmount);
-                invulnerability.setInvulnerable(victim, damageAmount);
-                
-                logDamage(victim, event.getDamage(), damageAmount);
+                damageApplicator.handleDamage(event);
             }
-            
-            // Process damage types (fire, cactus, etc.)
+
+            // Process damage types (fire, cactus modifiers)
             damageTypeRegistry.processEntityDamageEvent(event);
         });
 
@@ -236,10 +194,14 @@ public class HealthSystem extends InitializableSystem {
     // ===========================
 
     /**
-     * Check if an entity can take damage
+     * Check if an entity is currently outside the i-frame window (would allow a normal hit).
+     * Does not account for damage-type or weapon bypass; for full flow use DamageApplicator.
      */
     public boolean canTakeDamage(LivingEntity entity, float incomingDamage) {
-        return invulnerability.canTakeDamage(entity, incomingDamage);
+        long ticksSince = invulnerability.getTicksSinceLastDamage(entity);
+        if (ticksSince < 0) return true;
+        int invulnTicks = invulnerability.getInvulnerabilityTicks(null, entity, null);
+        return ticksSince >= invulnTicks;
     }
 
     /**
@@ -415,6 +377,9 @@ public class HealthSystem extends InitializableSystem {
      * // Invulnerability configuration
      * player.setTag(HealthSystem.INVULNERABILITY, invulnSet(InvulnerabilityTagValue.invulnTicks(20)));
      * world.setTag(HealthSystem.INVULNERABILITY, REPLACEMENT_ENABLED);
+     * 
+     * // Bypass creative mode invulnerability (damage from this item/entity/world can hit creative players)
+     * sword.setTag(HealthSystem.INVULNERABILITY, invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
      * </pre>
      * 
      * Priority chain for damage types:

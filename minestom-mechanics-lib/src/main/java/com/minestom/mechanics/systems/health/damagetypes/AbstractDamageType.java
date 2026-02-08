@@ -52,7 +52,13 @@ public abstract class AbstractDamageType extends ConfigurableSystem<HealthTagVal
             case "CACTUS" -> config.cactusDamageBlockable();
             default -> true;
         };
-        return new HealthTagValue(multiplier, null, enabled, blockable);
+        boolean bypassInvulnerability = switch (damageTypeName) {
+            case "FALL" -> config.fallBypassInvulnerability();
+            case "FIRE" -> config.fireBypassInvulnerability();
+            case "CACTUS" -> config.cactusBypassInvulnerability();
+            default -> false;
+        };
+        return new HealthTagValue(multiplier, null, enabled, blockable, bypassInvulnerability);
     }
     
     @Override
@@ -166,11 +172,26 @@ public abstract class AbstractDamageType extends ConfigurableSystem<HealthTagVal
         HealthTagValue resolved = resolveConfig(null, victim, null);
         return resolved.blockable() != null ? resolved.blockable() : getDefaultBlockable();
     }
-    
+
+    /**
+     * Check if this damage type bypasses invulnerability for the victim.
+     * Resolves tag (victim, world, server default). Used by DamageApplicator.
+     * Default is false when unspecified (tag null → use config default, which is false).
+     */
+    public boolean isBypassInvulnerability(LivingEntity victim) {
+        HealthTagValue resolved = resolveConfig(null, victim, null);
+        return resolved.bypassInvulnerability() != null ? resolved.bypassInvulnerability() : getDefaultBypassInvulnerability();
+    }
+
     /**
      * Get the default blockable state from config (server default when no tag is set).
      */
     protected abstract boolean getDefaultBlockable();
+
+    /**
+     * Get the default bypass invulnerability state from config (server default when no tag is set).
+     */
+    protected abstract boolean getDefaultBypassInvulnerability();
     
     /**
      * Process a health event for this damage type

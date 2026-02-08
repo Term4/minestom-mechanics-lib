@@ -115,5 +115,25 @@ public class DamageTypeRegistry {
         }
         return true;
     }
+
+    /**
+     * Check if this damage type bypasses invulnerability for the victim.
+     * Used by DamageApplicator to skip i-frame block (e.g. cactus/fire DoT).
+     */
+    public boolean isBypassInvulnerability(RegistryKey<DamageType> type, Player victim) {
+        if (type.equals(DamageType.FALL)) {
+            FallDamage fallDamage = getDamageType(FallDamage.class);
+            return fallDamage != null && fallDamage.isBypassInvulnerability(victim);
+        }
+        if (type.equals(DamageType.ON_FIRE) || type.equals(DamageType.IN_FIRE) || type.equals(DamageType.LAVA)) {
+            Fire fire = getDamageType(Fire.class);
+            return fire != null && fire.isBypassInvulnerability(victim);
+        }
+        if (type.equals(DamageType.CACTUS)) {
+            Cactus cactus = getDamageType(Cactus.class);
+            return cactus != null && cactus.isBypassInvulnerability(victim);
+        }
+        return false;
+    }
 }
 

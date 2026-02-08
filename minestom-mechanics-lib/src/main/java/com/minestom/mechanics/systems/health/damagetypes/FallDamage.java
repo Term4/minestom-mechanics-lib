@@ -45,7 +45,12 @@ public class FallDamage extends AbstractDamageType {
     protected boolean getDefaultBlockable() {
         return config.fallDamageBlockable();
     }
-    
+
+    @Override
+    protected boolean getDefaultBypassInvulnerability() {
+        return config.fallBypassInvulnerability();
+    }
+
     @Override
     public boolean shouldHandle(HealthEvent event) {
         // Fall damage is applied directly, not through EntityDamageEvent

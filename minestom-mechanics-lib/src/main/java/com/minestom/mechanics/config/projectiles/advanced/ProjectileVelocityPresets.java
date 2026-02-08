@@ -28,7 +28,7 @@ public class ProjectileVelocityPresets {
 
     /** Default fishing rod bobber velocity (3.0 speed, medium gravity) */
     public static final ProjectileVelocityConfig FISHING_ROD =
-            new ProjectileVelocityConfig(3.0, 3.0, 1.0, 0.04, 0.92, 0.92);
+            new ProjectileVelocityConfig(5, 3.5, 1.0, 0.04, 0.92, 0.92);
 
     // ===========================
     // SPECIALIZED PRESETS

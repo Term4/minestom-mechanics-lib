@@ -2,6 +2,8 @@ package com.minestom.mechanics.config.constants;
 
 // TODO: Move this to a general constants package that contains all constants classes
 
+import net.minestom.server.ServerFlag;
+
 /**
  * Constants used throughout the projectile system.
  * Extracted magic numbers for better maintainability and easier tuning.
@@ -105,7 +107,7 @@ public class ProjectileConstants {
      * How often position synchronization packets are sent to clients.
      * 20 ticks = 1 second (matches MinestomPvP)
      */
-    public static final int POSITION_UPDATE_INTERVAL = 20;
+    public static final int POSITION_UPDATE_INTERVAL = ServerFlag.SERVER_TICKS_PER_SECOND;
     
     private ProjectileConstants() {
         // Prevent instantiation

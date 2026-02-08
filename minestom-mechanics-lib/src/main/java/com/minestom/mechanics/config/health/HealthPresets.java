@@ -19,10 +19,11 @@ public final class HealthPresets {
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER, true,  // Fall damage (blockable=false)
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER, false,   // Fire damage (blockable=true)
             true, 1.0f, false,  // Cactus damage (blockable=true)
+            false, false, false,  // Bypass invulnerability (fall, fire, cactus) — default: respect i-frames
             true, false, true,  // Damage replacement (with knockback, with logging)
             false, 0.0f, 0  // Regeneration (disabled)
     );
-    
+
     /**
      * Vanilla Minecraft configuration
      */
@@ -31,10 +32,11 @@ public final class HealthPresets {
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER, false,  // Fall damage (blockable=false)
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER, false,   // Fire damage (blockable=true)
             true, 1.0f, false,  // Cactus damage (blockable=true)
+            false, false, false,  // Bypass invulnerability (fall, fire, cactus) — default: respect i-frames
             DEFAULT_DAMAGE_REPLACEMENT, DEFAULT_KNOCKBACK_ON_REPLACEMENT, true,  // Damage replacement
             false, 0.0f, 0  // Regeneration (disabled)
     );
-    
+
     /**
      * Hypixel server configuration
      */
@@ -43,6 +45,7 @@ public final class HealthPresets {
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER, false,  // Fall damage (blockable=false)
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER, false,   // Fire damage (blockable=true)
             true, 1.0f, false,  // Cactus damage (blockable=true)
+            false, false, false,  // Bypass invulnerability (fall, fire, cactus) — default: respect i-frames
             true, false, true,  // Damage replacement (no knockback, with logging)
             false, 0.0f, 0  // Regeneration (disabled)
     );

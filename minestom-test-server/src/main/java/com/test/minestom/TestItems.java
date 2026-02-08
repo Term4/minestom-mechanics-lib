@@ -1,5 +1,8 @@
 package com.test.minestom;
 
+import com.minestom.mechanics.systems.health.HealthSystem;
+import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagValue;
+import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import net.minestom.server.item.ItemStack;
@@ -154,5 +157,60 @@ public class TestItems {
                 .withTag(ProjectileVelocity.CUSTOM, velMult(1.5))
                 .withTag(KnockbackSystem.PROJECTILE_CUSTOM,
                         kbMult(2.0, 1.5).thenAdd(0.2, 0.1));
+    }
+
+    /**
+     * Sword that bypasses invulnerability (hits ignore i-frames) and can damage creative players.
+     */
+    public static ItemStack bypassSword() {
+        return ItemStack.builder(Material.STICK)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Sword", NamedTextColor.DARK_RED, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Ignores invulnerability", NamedTextColor.GRAY),
+                        Component.text("Hits creative players", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(
+                        InvulnerabilityTagValue.bypassInvulnerability(true).thenBypassCreativeMelee(true)));
+    }
+
+    /**
+     * Bow whose arrows can hit creative players (projectile creative bypass only).
+     */
+    public static ItemStack bypassBow() {
+        return ItemStack.builder(Material.BOW)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Bow", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Arrows hit creative players", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
+    }
+
+    /**
+     * Fishing rod whose bobber can hook and damage creative players (projectile creative bypass only).
+     */
+    public static ItemStack bypassFishingRod() {
+        return ItemStack.builder(Material.FISHING_ROD)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Rod", NamedTextColor.DARK_AQUA, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Bobber hits creative players", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
+    }
+
+    /**
+     * Stack of snowballs that can damage creative players (bypass creative tag copied to projectile).
+     */
+    public static ItemStack bypassSnowballs() {
+        return ItemStack.builder(Material.SNOWBALL)
+                .amount(16)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Snowballs", NamedTextColor.DARK_AQUA, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Hits creative players", NamedTextColor.GRAY)
+                ))
+                .build()
+                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
     }
 }

@@ -12,6 +12,7 @@ import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
@@ -152,10 +153,22 @@ public class AttackFeature extends InitializableSystem {
                 attacker.getPosition(),
                 result.damage()
         );
-        
+
+        // Minestom's damage() returns false without firing EntityDamageEvent when victim.isInvulnerable()
+        // (e.g. creative players). If this melee attack bypasses creative (bypassCreativeMelee tag), temporarily clear invulnerable so damage runs.
+        boolean wasInvulnerable = victim.isInvulnerable();
+        if (wasInvulnerable && victim instanceof Player victimPlayer && victimPlayer.getGameMode() == GameMode.CREATIVE) {
+            Invulnerability inv = Invulnerability.getInstance();
+            if (inv != null && inv.isBypassCreativeInvulnerabilityMelee(attacker, victim, attacker.getItemInMainHand())) {
+                victim.setInvulnerable(false);
+            }
+        }
+
         if (!victim.damage(damage)) {
+            if (wasInvulnerable) victim.setInvulnerable(true);
             return; // Damage was cancelled or victim is invulnerable
         }
+        if (wasInvulnerable) victim.setInvulnerable(true);
         
         // Apply knockback if allowed
         if (shouldApplyKnockback(victim)) {

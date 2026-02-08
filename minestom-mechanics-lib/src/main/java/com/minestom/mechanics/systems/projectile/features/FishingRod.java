@@ -6,6 +6,7 @@ import com.minestom.mechanics.systems.projectile.components.ProjectileCreator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityPresets;
 import com.minestom.mechanics.systems.projectile.entities.FishingBobber;
+import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileCalculator;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
@@ -15,6 +16,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
+import net.minestom.server.event.player.PlayerMoveEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.item.Material;
 import net.minestom.server.tag.Tag;
@@ -83,10 +85,21 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
 
         // Handle hotbar switching - cleanup bobber if player switches away from rod
         handler.addListener(PlayerChangeHeldSlotEvent.class, event -> {
-            // Delayed check to ensure item has actually changed
             MinecraftServer.getSchedulerManager().buildTask(() -> {
                 handleSlotChange(event.getPlayer());
             }).delay(TaskSchedule.tick(1)).schedule();
+        });
+
+        // Pseudo-hook: when hit player moves (position only), re-hook bobber for one tick so client sees the line
+        handler.addListener(PlayerMoveEvent.class, event -> {
+            Player moved = event.getPlayer();
+            FishingBobber bobber = moved.getTag(FishingBobber.PSEUDO_HOOKED_BY);
+            if (bobber == null || bobber.isRemoved()) return;
+            Pos oldPos = moved.getPosition();
+            Pos newPos = event.getNewPosition();
+            if (oldPos.distanceSquared(newPos) < 1e-6) return; // ignore look-only (pitch/yaw)
+            bobber.hookVisualToPlayer(moved);
+            bobber.scheduleUnhookNextTick();
         });
 
         // Note: PlayerDeathEvent and PlayerDisconnectEvent cleanup handled by ProjectileCreator
@@ -102,11 +115,11 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
             retrieveBobber(player);
         } else {
             // Cast new bobber
-            castBobber(player);
+            castBobber(player, hand);
         }
     }
 
-    private void castBobber(Player player) {
+    private void castBobber(Player player, PlayerHand castingHand) {
         FishingBobber bobber = new FishingBobber(player, true); // Always legacy mode
 
         // Set knockback configuration from ProjectileManager
@@ -119,6 +132,14 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
             // ProjectileManager not initialized, use defaults
             bobber.setKnockbackConfig(ProjectileKnockbackPresets.FISHING_ROD);
             bobber.setKnockbackMode(ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE);
+        }
+
+        // Use the hand that cast so we copy tags from the actual rod used (main or off hand)
+        net.minestom.server.item.ItemStack rodItem = castingHand == PlayerHand.MAIN
+                ? player.getItemInMainHand()
+                : player.getItemInOffHand();
+        if (rodItem != null && rodItem.material() == Material.FISHING_ROD) {
+            ProjectileTagRegistry.copyAllProjectileTags(rodItem, bobber);
         }
 
         // Store bobber on player
@@ -161,10 +182,7 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
 
     private void retrieveBobber(Player player) {
         FishingBobber bobber = player.getTag(FISHING_BOBBER);
-        if (bobber != null) {
-            bobber.retrieve();
-            bobber.remove();
-        }
+        if (bobber != null) bobber.retrieve(); // retrieve() calls remove()
         player.removeTag(FISHING_BOBBER);
     }
 

@@ -462,6 +462,7 @@ public class MechanicsManager {
                         damageConfig.getFireDamageMultiplier(),
                         true,   // Fire damage blockable (default)
                         true, 1.0f, true,  // Cactus damage (default enabled, blockable=true)
+                        false, false, false,  // Bypass invulnerability (fall, fire, cactus)
                         damageConfig.isDamageReplacementEnabled(),
                         damageConfig.isKnockbackOnReplacement(),
                         damageConfig.isLogReplacementDamage(),

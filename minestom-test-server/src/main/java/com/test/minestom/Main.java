@@ -14,6 +14,9 @@ import com.minestom.mechanics.systems.compatibility.LegacyInventoryUtil;
 import com.minestom.mechanics.systems.compatibility.ModernStutterFix;
 import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import com.minestom.mechanics.systems.health.HealthSystem;
+import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagValue;
+import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper;
+import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.systems.misc.gravity.GravitySystem;
 import com.minestom.mechanics.systems.player.PlayerCleanupManager;
 import com.test.minestom.commands.CommandRegistry;
@@ -41,8 +44,9 @@ import net.minestom.server.item.Material;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 
-import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.healthMult;
-import static com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue.kbMult;
+import com.minestom.mechanics.systems.health.tags.HealthTagValue;
+import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.ENABLED;
+import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.healthSet;
 
 // TODO: Fix velocity 'Already connected to proxy' issue?? Possible? idk
 
@@ -227,7 +231,11 @@ public class Main {
                  */
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
                 // GravitySystem.setGravity(player, 0.167);
-                //player.setTag(HealthSystem.FALL_DAMAGE, healthMult(0));
+                // Enable fire and cactus damage via player tags (overrides server config)
+                player.setTag(HealthSystem.FIRE_DAMAGE, ENABLED);
+                // Cactus enabled but respects invulnerability (no bypass)
+                player.setTag(HealthSystem.CACTUS_DAMAGE, healthSet(HealthTagValue.healthEnabled(true).thenBypassInvulnerability(false)));
+                //player.setTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
             }
         });
 
@@ -262,10 +270,11 @@ public class Main {
                 ItemStack.of(Material.BOW),
                 BlockableTagValue.blockable(false, 0.5, 0.5, 0.5)  // 50% damage reduction, 50% knockback reduction
         ));
-        inventory.setItemStack(2, ItemStack.of(Material.FISHING_ROD));
+        inventory.setItemStack(2, TestItems.bypassFishingRod());
         inventory.setItemStack(3, ItemStack.of(Material.SNOWBALL, 64));
         inventory.setItemStack(4, ItemStack.of(Material.EGG, 64));
         inventory.setItemStack(5, ItemStack.of(Material.WHITE_WOOL, 64));
+        inventory.setItemStack(6, TestItems.bypassSword());
         inventory.setItemStack(9, ItemStack.of(Material.ARROW, 64));
 
         // Test Items
@@ -282,6 +291,8 @@ public class Main {
         player.getInventory().addItemStack(TestItems.comboEgg().withAmount(16));
         player.getInventory().setItemStack(10, TestItems.slowGrappleEgg().withAmount(64));
         player.getInventory().addItemStack(TestItems.cannonBow());
+        player.getInventory().addItemStack(TestItems.bypassBow());
+        player.getInventory().addItemStack(TestItems.bypassSnowballs());
 
         // Food
         inventory.setItemStack(8, ItemStack.of(Material.COOKED_BEEF, 64));

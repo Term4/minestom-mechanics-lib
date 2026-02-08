@@ -2,12 +2,15 @@ package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
+import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.systems.projectile.components.ProjectileBehavior;
 import com.minestom.mechanics.util.LogUtil;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
+import net.minestom.server.timer.TaskSchedule;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
@@ -15,11 +18,16 @@ import net.minestom.server.entity.*;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.entity.metadata.other.FishingHookMeta;
+import net.minestom.server.tag.Tag;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Fishing bobber entity with consolidated architecture.
- * ✅ CONSOLIDATED: Merged 4 component classes into private methods for better maintainability.
+ * Fishing bobber entity with Minement-style visual hooking.
+ * <p>
+ * When the bobber hits a player it hooks for one tick (client sees the line), then unhooks.
+ * Until the rod is retracted, when the hit player moves (position change only, not look),
+ * the bobber re-hooks for one tick and unhooks again. The move listener is registered by {@link com.minestom.mechanics.systems.projectile.features.FishingRod}.
  */
 public class FishingBobber extends CustomEntityProjectile implements ProjectileBehavior {
 
@@ -33,6 +41,10 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     // State tracking
     private State currentState = State.IN_AIR;
     private Entity hookedEntity;
+    private Vec preCollisionVelocity = Vec.ZERO;
+    private double preCollisionSpeed = 0;
+    /** Player we hit for visual-only hook (hook then unhook next tick, re-hook on their move until rod retracted). */
+    private Player pseudoHookedPlayer;
     private int stuckTime = 0;
 
     // Vision obstruction tracking
@@ -50,71 +62,142 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     // Logging
     private static final LogUtil.SystemLogger log = LogUtil.system("FishingBobber");
 
+    /** Tag on the hit player so FishingRod's PlayerMoveEvent can find this bobber for re-hook on move. */
+    public static final Tag<FishingBobber> PSEUDO_HOOKED_BY = Tag.Transient("fishingPseudoHookedBy");
+
     public FishingBobber(@Nullable Entity shooter, boolean legacy) {
         super(shooter, EntityType.FISHING_BOBBER);
         this.legacy = legacy;
         setOwnerEntity(shooter);
 
-        // Custom gravity logic: gravity is applied before movement
         this.customGravity = legacy ?
                 ProjectileConstants.FISHING_BOBBER_LEGACY_GRAVITY :
                 ProjectileConstants.FISHING_BOBBER_MODERN_GRAVITY;
 
-        // Initialize with default knockback config and mode
         this.knockbackConfig = ProjectileKnockbackPresets.FISHING_ROD;
         this.knockbackMode = ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE;
 
-        // Custom aerodynamics for fishing bobber
-        // Set gravity to 0 because we apply custom gravity in tick()
-        setAerodynamics(getAerodynamics().withGravity(0));
-        // Lower air resistance for fishing bobber feel
-        setAerodynamics(getAerodynamics().withHorizontalAirResistance(0.92).withVerticalAirResistance(0.92));
+        // Gravity applied manually in tick(); lower air resistance for bobber feel
+        setAerodynamics(getAerodynamics().withGravity(0).withHorizontalAirResistance(0.92).withVerticalAirResistance(0.92));
+
+        // Frequent absolute position sync for 1.8 client accuracy
+        setSynchronizationTicks(3);
     }
 
     @Override
     public void tick(long time) {
-        // Apply custom gravity before physics
+        Pos before = getPosition();
         velocity = velocity.add(0, -customGravity * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
         super.tick(time);
+        Pos after = getPosition();
+
+        // Log large movements — if the bobber teleports past a block server-side, it's tunneling
+        double delta = before.distance(after);
+        if (delta > 0.8) {
+            log.info("[collision] bobber moved {:.2f} blocks in one tick: {} -> {} | onGround={} | velocity={}",
+                    delta, before, after, onGround, velocity.length());
+        }
+    }
+
+    // THIS is fine
+    @Override
+    protected void movementTick() {
+        if (currentState == State.HOOKED_ENTITY) {
+            if (hookedEntity != null && isHookedEntityValid(hookedEntity, getInstance())) {
+                Pos targetPos = hookedEntity.getPosition().add(0, hookedEntity.getBoundingBox().height() * 0.8, 0);
+                teleport(targetPos);
+
+                if (!(hookedEntity instanceof Player)) {
+                    pullEntity(hookedEntity);
+                }
+            }
+            return;
+        }
+
+        preCollisionVelocity = velocity;
+        boolean wasMoving = velocity.lengthSquared() > 1.0;
+
+        super.movementTick();
+
+        if (wasMoving && (onGround || isStuck())) {
+            sendPacketToViewersAndSelf(new net.minestom.server.network.packet.server.play.EntityVelocityPacket(
+                    getEntityId(), Vec.ZERO
+            ));
+        }
     }
 
     @Override
-    protected void movementTick() {
-        // Handle fishing-specific physics before calling parent
-        if (currentState == State.HOOKED_ENTITY) {
-            // When hooked to an entity, skip normal physics and pull the entity instead
-            if (hookedEntity != null && isHookedEntityValid(hookedEntity, getInstance())) {
-                pullEntity(hookedEntity);
-            }
-            return; // Skip normal physics when hooked
+    public boolean onStuck() {
+        Vec savedCollisionDir = collisionDirection;
+        if (savedCollisionDir == null) return false;
+
+        // Ground — keep stuck, zero velocity packet handles 1.8
+        if (savedCollisionDir.y() < 0) {
+            return false;
         }
 
-        // Call parent for standard projectile physics (gravity, air resistance, water drag)
-        super.movementTick();
+        // Wall or ceiling — undo stuck, bounce
+        collisionDirection = null;
+        stuckVelocityDirection = null;
+        setNoGravity(false);
+
+        if (savedCollisionDir.y() > 0) {
+            velocity = new Vec(
+                    preCollisionVelocity.x() * 0.3,
+                    -Math.abs(preCollisionVelocity.y()) * 0.15,
+                    preCollisionVelocity.z() * 0.3
+            );
+        } else {
+            double dampen = 0.1;
+            double vx = savedCollisionDir.x() != 0 ? -preCollisionVelocity.x() * dampen : preCollisionVelocity.x() * dampen;
+            double vz = savedCollisionDir.z() != 0 ? -preCollisionVelocity.z() * dampen : preCollisionVelocity.z() * dampen;
+            velocity = new Vec(vx, preCollisionVelocity.y() * 0.8, vz);
+        }
+        setVelocity(velocity);
+        return false;
+    }
+
+    @Override
+    public void onUnstuck() {
+        if (onGround) {
+            // Re-establish stuck state — bobber rests on ground permanently.
+            // Parent already cleared collisionDirection; put it back.
+            collisionDirection = new Vec(0, -1, 0);
+            setNoGravity(true);
+            velocity = Vec.ZERO;
+            setVelocity(Vec.ZERO);
+        }
+    }
+
+    @Override
+    public void updateNewViewer(@NotNull Player player) {
+        Entity shooter = getShooter();
+        int data = shooter != null ? shooter.getEntityId() : 0;
+
+        // Send zero velocity in spawn packet — prevents 1.8 client from
+        // predicting movement and overshooting into blocks. The server's
+        // position packets drive all visual movement instead.
+        var spawnPacket = new net.minestom.server.network.packet.server.play.SpawnEntityPacket(
+                getEntityId(), getUuid(), getEntityType(), getPosition(),
+                getPosition().yaw(), data, Vec.ZERO
+        );
+
+        player.sendPacket(spawnPacket);
+        player.sendPacket(getMetadataPacket());
     }
 
     @Override
     public void update(long time) {
         if (!shouldFallAfterHit && currentState == State.IN_AIR) {
-            // Vision obstruction tracking for fall after hitting player face
             Entity shooter = getShooter();
             if (shooter instanceof Player player) {
                 Pos bobberPos = getPosition();
                 Pos eyePos = player.getPosition().add(0, player.getEyeHeight(), 0);
 
-                Vec direction = new Vec(
-                        bobberPos.x() - eyePos.x(),
-                        bobberPos.y() - eyePos.y(),
-                        bobberPos.z() - eyePos.z()
-                );
+                double distance = bobberPos.distance(eyePos);
 
-                double distance = direction.length();
-
-                if (distance < 0.5) { // Very close to face
-                    // Check if bobber hit while close to face and moving toward player
-                    if (getVelocity().length() > 0.1) {
-                        startFallSequence();
-                    }
+                if (distance < 0.5 && getVelocity().length() > 0.1) {
+                    startFallSequence();
                 }
             }
         }
@@ -122,15 +205,10 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         if (shouldFallAfterHit) {
             fallTicks++;
 
-            if (!hasAppliedFallVelocity && shouldStartFallSequence(fallTicks, 3)) {
-                // Apply fall velocity after delay
+            if (!hasAppliedFallVelocity && fallTicks >= 3) {
                 Entity shooter = getShooter();
                 if (shooter != null) {
-                    Pos bobberPos = getPosition();
-                    Pos shooterPos = shooter.getPosition();
-
-                    // Use calculateFallVelocity for better fall direction
-                    Vec fallVelocity = calculateFallVelocity(bobberPos, shooterPos);
+                    Vec fallVelocity = calculateFallVelocity(getPosition(), shooter.getPosition());
                     setVelocity(fallVelocity);
                     hasAppliedFallVelocity = true;
                     log.debug("Applied fall velocity to bobber");
@@ -138,63 +216,121 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
             }
         }
 
+        /*
         // Remove if stuck too long
         if (onGround) {
             stuckTime++;
-            if (isStuckTooLong(stuckTime, 1200)) { // 60 seconds
+            if (stuckTime >= 1200) { // 60 seconds
                 remove();
                 return;
             }
         } else {
             stuckTime = 0;
         }
+         */
     }
 
     @Override
     public boolean onHit(Entity entity) {
         if (!(entity instanceof LivingEntity)) return false;
+        if (!canHookEntity(entity, (Player) getShooter())) return false;
 
-        // Check if entity can be hooked
-        if (!canHookEntity(entity, (Player) getShooter())) {
+        // Do not hit the same player again after initial hit (when unhooked we re-hook on move; bobber must not re-apply damage)
+        if (entity == pseudoHookedPlayer) {
             return false;
         }
 
-        // TODO: Find a way to hook players and NOT have the bobber in their face
-        // For players: apply knockback and don't hook
-        if (entity instanceof Player) {
-            // Apply damage first
-            if (((LivingEntity) entity).damage(new Damage(DamageType.GENERIC, null, null, null, 0))) {
-                // Use the integrated knockback system for consistent knockback
+        // Damage/knockback for players
+        if (entity instanceof Player hitPlayer) {
+            LivingEntity living = hitPlayer;
+            boolean wasInvulnerable = false;
+            if (hitPlayer.getGameMode() == GameMode.CREATIVE) {
+                Invulnerability inv = Invulnerability.getInstance();
+                if (inv != null && inv.isBypassCreativeInvulnerability(this, living, null)) {
+                    wasInvulnerable = living.isInvulnerable();
+                    living.setInvulnerable(false);
+                }
+            }
+
+            if (living.damage(new Damage(DamageType.GENERIC, this, getShooter(), null, 0))) {
                 if (isUseKnockbackHandler()) {
                     try {
                         var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
                         KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-
-                        // Determine knockback origin based on mode
-                        Pos knockbackOrigin;
-                        if (knockbackMode == ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE) {
-                            // Knockback away from bobber position (vanilla behavior)
-                            knockbackOrigin = this.getPosition();
-                        } else {
-                            // Knockback from shooter position (like normal projectiles)
-                            knockbackOrigin = getShooter() != null ? getShooter().getPosition() : this.getPosition();
-                        }
-
-                        applicator.applyProjectileKnockback((LivingEntity) entity, this, knockbackOrigin, 0);
+                        Pos knockbackOrigin = knockbackMode == ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE
+                                ? this.getPosition()
+                                : (getShooter() != null ? getShooter().getPosition() : this.getPosition());
+                        applicator.applyProjectileKnockback(living, this, knockbackOrigin, 0);
                     } catch (Exception e) {
-                        // No knockback if applicator fails
                         log.debug("KnockbackApplicator failed, no knockback applied");
                     }
                 }
             }
-            // Don't hook players, just apply knockback
+
+            if (wasInvulnerable) living.setInvulnerable(true);
+
+            // Pseudo-hook: hook now (bobber teleports to victim this tick), then unhook next tick so we stop following.
+            // Re-hook on PlayerMoveEvent when they move; canHit excludes this player so bobber can fall when they stand still.
+            pseudoHookedPlayer = hitPlayer;
+            hitPlayer.setTag(PSEUDO_HOOKED_BY, this);
+            setHookedEntity(hitPlayer);
+            currentState = State.HOOKED_ENTITY;
+            scheduleUnhookNextTick();
             return false;
         }
 
-        // For other entities: hook them (fish, items, etc.)
+        // Hook — non-players only: stay hooked and pull until rod retracted
         setHookedEntity(entity);
+        currentState = State.HOOKED_ENTITY;
         return false;
     }
+
+    // ===========================
+    // VISUAL HOOK LIFECYCLE
+    // ===========================
+
+    /**
+     * Hook this bobber to the player visually (sets hookedEntity metadata so
+     * the client draws the line). Does NOT pull. Call {@link #scheduleUnhookNextTick()}
+     * immediately after.
+     */
+    public void hookVisualToPlayer(Player player) {
+        setHookedEntity(player);
+        currentState = State.HOOKED_ENTITY;
+    }
+
+    /**
+     * Clear the visual hook (hookedEntity + state) without clearing pseudoHookedPlayer.
+     * The bobber returns to IN_AIR visually but the pseudo-hook relationship persists.
+     * Velocity is zeroed so it doesn't shoot off; gravity will take over next tick.
+     */
+    private void clearHookedEntityVisual() {
+        setHookedEntity(null);
+        currentState = State.IN_AIR;
+        velocity = Vec.ZERO;
+        setVelocity(Vec.ZERO);
+    }
+
+    /**
+     * Schedule clearing the visual hook on the next tick so the client sees the
+     * hook for exactly one tick before it disappears.
+     */
+    public void scheduleUnhookNextTick() {
+        MinecraftServer.getSchedulerManager().buildTask(() -> {
+            if (!isRemoved()) {
+                clearHookedEntityVisual();
+            }
+        }).delay(TaskSchedule.tick(1)).schedule();
+    }
+
+    @Nullable
+    public Player getPseudoHookedPlayer() {
+        return pseudoHookedPlayer;
+    }
+
+    // ===========================
+    // ENTITY METADATA
+    // ===========================
 
     private void setHookedEntity(@Nullable Entity entity) {
         this.hookedEntity = entity;
@@ -205,9 +341,14 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         ((FishingHookMeta) getEntityMeta()).setOwnerEntity(entity);
     }
 
+    // ===========================
+    // ROD RETRACTION
+    // ===========================
+
     public int retrieve() {
         if (!(getShooter() instanceof Player)) return 0;
 
+        clearPseudoHookedPlayer();
         int durability = 0;
         if (hookedEntity != null) {
             if (!legacy) {
@@ -218,38 +359,46 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         }
 
         remove();
-
         return durability;
     }
 
-    /**
-     * Pull hooked entity towards the shooter.
-     * Configurable to allow/disallow pulling players.
-     */
+    private void clearPseudoHookedPlayer() {
+        if (pseudoHookedPlayer != null) {
+            pseudoHookedPlayer.removeTag(PSEUDO_HOOKED_BY);
+            pseudoHookedPlayer = null;
+        }
+    }
+
+    @Override
+    public void remove() {
+        clearPseudoHookedPlayer();
+        super.remove();
+    }
+
+    // ===========================
+    // PULL LOGIC
+    // ===========================
+
     private void pullEntity(Entity entity) {
         Entity shooter = getShooter();
         if (shooter == null) return;
 
-        // Check if we should pull players (configurable)
         if (entity instanceof Player) {
             var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
             var config = projectileManager.getProjectileConfig();
-
             if (!config.isFishingRodPullPlayers()) {
-                return; // Don't pull players if disabled
+                return;
             }
         }
 
-        // Calculate pull velocity towards shooter
         Pos shooterPos = shooter.getPosition();
         Pos pos = getPosition();
         Vec velocity = new Vec(
                 shooterPos.x() - pos.x(),
                 shooterPos.y() - pos.y(),
                 shooterPos.z() - pos.z()
-        ).mul(0.1);
+        ).mul(0.1).mul(ServerFlag.SERVER_TICKS_PER_SECOND);
 
-        velocity = velocity.mul(ServerFlag.SERVER_TICKS_PER_SECOND);
         entity.setVelocity(entity.getVelocity().add(velocity));
     }
 
@@ -273,36 +422,22 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         return knockbackMode;
     }
 
-    @Override
-    public void remove() {
-        // Tag cleanup is handled by FishingRodFeature.cleanup()
-        // when player disconnects/dies via ProjectileCreator
-        super.remove();
-    }
-
     // ===========================
-    // PRIVATE HELPER METHODS
+    // PRIVATE HELPERS
     // ===========================
 
     private Vec calculateFallVelocity(Pos bobberPos, Pos shooterPos) {
-        // Calculate direction away from player
         double dx = bobberPos.x() - shooterPos.x();
         double dz = bobberPos.z() - shooterPos.z();
         double distance = Math.sqrt(dx * dx + dz * dz);
 
-        if (distance > 0.01) { // Avoid division by zero
-            // Normalize and add horizontal velocity away from player
+        if (distance > 0.01) {
             double awayX = (dx / distance) * 0.8;
             double awayZ = (dz / distance) * 0.8;
             return new Vec(awayX, -0.4 * ServerFlag.SERVER_TICKS_PER_SECOND, awayZ);
         } else {
-            // Fall straight down if too close
             return new Vec(0, -0.4 * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
         }
-    }
-
-    private Vec calculateStraightFallVelocity() {
-        return new Vec(0, -0.4 * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
     }
 
     private boolean isHookedEntityValid(Entity hookedEntity, net.minestom.server.instance.Instance currentInstance) {
@@ -312,29 +447,18 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     }
 
     private boolean canHookEntity(Entity entity, Player shooter) {
-        if (entity == null) {
+        if (entity == null || entity == shooter) {
             return false;
         }
 
-        // Can't hook the shooter
-        if (entity == shooter) {
-            return false;
-        }
-
-        // Can't hook creative players
         if (entity instanceof Player player && player.getGameMode() == GameMode.CREATIVE) {
-            return false;
+            Invulnerability inv = Invulnerability.getInstance();
+            if (inv == null || !inv.isBypassCreativeInvulnerability(this, (LivingEntity) entity, null)) {
+                return false;
+            }
         }
 
         return true;
-    }
-
-    private boolean isStuckTooLong(int stuckTime, int maxStuckTime) {
-        return stuckTime >= maxStuckTime;
-    }
-
-    private boolean shouldStartFallSequence(int fallTicks, int fallDelay) {
-        return fallTicks >= fallDelay;
     }
 
     private void startFallSequence() {
@@ -344,26 +468,49 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     }
 
     // ===========================
+    // POSITION SYNC
+    // ===========================
+
+    @Override
+    protected void synchronizePosition() {
+        Pos pos = getPosition();
+        sendPacketToViewersAndSelf(new net.minestom.server.network.packet.server.play.EntityTeleportPacket(
+                getEntityId(), pos, Vec.ZERO, 0, isOnGround()
+        ));
+    }
+
+    // ===========================
+    // COLLISION
+    // ===========================
+
+    /**
+     * Exclude the pseudo-hooked player from collision so the bobber can fall through them
+     * and reach the ground when the victim isn't moving (no re-hook on move).
+     */
+    @Override
+    public boolean canHit(@NotNull Entity entity) {
+        if (entity == pseudoHookedPlayer) {
+            return false;
+        }
+        return super.canHit(entity);
+    }
+
+    // ===========================
     // PROJECTILE BEHAVIOR INTERFACE
     // ===========================
 
-    // TODO: Maybe create a general projectile interface for this kinda thing?
-    //  Then we can have a more generic projectile behavior that can be used for
-    //  all projectiles, not just fishing rods. (OnHit, OnStuck, etc)
-
     @Override
     public boolean onHit(Entity projectile, Entity hit) {
-        return onHit(hit); // Delegate to existing method
+        return onHit(hit);
     }
 
     @Override
     public boolean onBlockHit(Entity projectile, Point position) {
-        // Fishing bobbers don't typically interact with blocks
         return false;
     }
 
     @Override
     public void onExpire(Entity projectile) {
-        remove(); // Remove the bobber when it expires
+        remove();
     }
 }
