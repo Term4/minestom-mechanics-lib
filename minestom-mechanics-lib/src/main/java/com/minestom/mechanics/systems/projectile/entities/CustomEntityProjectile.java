@@ -16,6 +16,8 @@ import net.minestom.server.event.entity.projectile.ProjectileCollideWithEntityEv
 import net.minestom.server.event.entity.projectile.ProjectileUncollideEvent;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.network.packet.server.play.EntityTeleportPacket;
+import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUtils;
@@ -26,10 +28,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 
-// TODO: Potentially add a feature to prevent modern clients from sending
-//  arm swing packets when throwing projectiles? Would k
+// TODO: When I add the entity tracker system create an entry for each projectile entity!!! Necessary for proper cleanup / tracking
 
-// TODO: LOOOONNG way off, but make a couple extra projectile methods, like getting where
+// TODO: Potentially add a feature to prevent modern clients from sending
+//  arm swing packets when throwing projectiles? UNSURE if this is possible
+
+// TODO: LOOOONNG way off, but add a couple extra projectile methods to the public API, like getting where
 //  the projectile landed, the direction it ended up, etc. Could make for easier
 //  custom projectiles (think rideable pearls, etc)
 
@@ -326,6 +330,10 @@ public abstract class CustomEntityProjectile extends Entity {
             Chunk finalChunk = ChunkUtils.retrieve(instance, currentChunk, physicsResult.newPosition());
             if (!ChunkUtils.isLoaded(finalChunk)) return;
             
+            // Track whether this tick transitions from flying to stuck,
+            // so we can send an absolute teleport after yaw/pitch are computed.
+            boolean justBecameStuck = false;
+            
             if (physicsResult.hasCollision() && !isStuck()) {
                 double signumX = physicsResult.collisionX() ? Math.signum(velocity.x()) : 0;
                 double signumY = physicsResult.collisionY() ? Math.signum(velocity.y()) : 0;
@@ -346,6 +354,7 @@ public abstract class CustomEntityProjectile extends Entity {
                     setNoGravity(true);
                     setVelocity(Vec.ZERO);
                     this.collisionDirection = collisionDirection;
+                    justBecameStuck = true;
                     
                     if (onStuck()) {
                         scheduler().scheduleNextProcess(this::remove);
@@ -400,8 +409,36 @@ public abstract class CustomEntityProjectile extends Entity {
             this.prevYaw = yaw;
             this.prevPitch = pitch;
             
-            // Update position - use refreshPosition for proper sync (matches OLD implementation)
-            refreshPosition(newPosition.withView(yaw, pitch), noClip, isStuck());
+            Pos finalPos = newPosition.withView(yaw, pitch);
+            
+            // sendPackets is always false here.  During flight isStuck() was already
+            // false so nothing changes.  On the collision tick we now also pass false
+            // instead of true: refreshPosition still calls setPositionInternal (so
+            // this.position is updated — critical for shouldUnstuck), but does NOT
+            // send a relative EntityPositionAndRotationPacket.  The justBecameStuck
+            // teleport below is the sole position packet on the collision tick.
+            //
+            // Sending both a relative move AND a teleport caused 1.8 visual glitches:
+            // the relative move (from spawn to landing, encoded with 1/32 precision
+            // loss by ViaVersion) briefly placed the entity inside the block, then the
+            // teleport corrected it — visible as arrows clipping through glass then
+            // snapping back, or bobbers dipping underground then popping up.
+            refreshPosition(finalPos, noClip, false);
+            
+            // On collision, send an explicit zero-velocity + absolute teleport.
+            // This is the critical fix for 1.8 clients connected via ViaVersion:
+            // during flight no per-tick position packets are sent, so the client runs
+            // its own physics and accumulates downward velocity.  The teleport resets
+            // the client's tracked position to the exact landing point, and the
+            // zero-velocity packet cancels accumulated client-side motion so it can't
+            // dip the entity underground during interpolation.
+            if (justBecameStuck) {
+                sendPacketToViewersAndSelf(new EntityVelocityPacket(getEntityId(), Vec.ZERO));
+                sendPacketToViewersAndSelf(new EntityTeleportPacket(
+                        getEntityId(), finalPos, Vec.ZERO, 0, onGround
+                ));
+                this.lastSyncedPosition = finalPos;
+            }
         }
     }
     
@@ -428,8 +465,19 @@ public abstract class CustomEntityProjectile extends Entity {
     
     @Override
     protected void synchronizePosition() {
-        // Don't sync position when stuck to prevent client-side jitter
-        if (isStuck()) return;
+        if (isStuck()) {
+            // When stuck, send an absolute teleport to correct any client-side drift.
+            // Previously this returned early, which created a deadlock with
+            // refreshPosition's sync-tick suppression: if collision happened on the
+            // same tick as scheduled sync, NEITHER path sent a packet and the client
+            // never learned the landing position.
+            Pos pos = getPosition();
+            sendPacketToViewersAndSelf(new EntityTeleportPacket(
+                    getEntityId(), pos, Vec.ZERO, 0, isOnGround()
+            ));
+            this.lastSyncedPosition = pos;
+            return;
+        }
         super.synchronizePosition();
     }
 

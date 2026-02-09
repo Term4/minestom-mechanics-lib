@@ -13,7 +13,7 @@ import net.minestom.server.item.ItemStack;
 
 import java.util.concurrent.ThreadLocalRandom;
 // TODO: Add tag / other configurable methods for projectile spawn offset + projectile spread (PER projectile + overall)
-//  + remove magic numbers
+//  + remove magic numbers (i.e. move base spawn offset to projectile constants class)
 /**
  * Unified calculator for ALL projectile types.
  * Handles both velocity calculation (with config resolution, spread, player momentum) 
@@ -340,7 +340,7 @@ public class ProjectileCalculator {
      * @return The calculated spawn position
      */
     public static Pos calculateSpawnOffset(Player player) {
-        return calculateSpawnOffset(player, 0.05);
+        return calculateSpawnOffset(player, 0.3);
     }
 
     /**

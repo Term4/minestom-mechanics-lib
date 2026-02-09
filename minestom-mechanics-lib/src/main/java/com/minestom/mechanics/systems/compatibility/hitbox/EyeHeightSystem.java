@@ -18,6 +18,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: Keep track of what the server SHOULD use for eye height (i.e. legacy / modern / custom),
+//  Also keep track of what the client "thinks" its eye height is, i.e. legacy / modern, and if moder, then keep track of scale.
+
 /**
  * EyeHeightSystem - Enforces specific eye heights for cross-version fairness.
  * 

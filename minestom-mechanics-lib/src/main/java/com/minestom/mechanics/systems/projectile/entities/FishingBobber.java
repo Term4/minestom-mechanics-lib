@@ -22,6 +22,10 @@ import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+// TODO: Clean up AI slop
+
+// TODO: Allow multiple bobbers to be hooked to one "victim" as of now new bobbers cause old ones to unhook
+//  (maybe add a configurable "Max bobbers per player" value with a default set in projectile constants? Unsure.
 /**
  * Fishing bobber entity with Minement-style visual hooking.
  * <p>
@@ -41,8 +45,6 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     // State tracking
     private State currentState = State.IN_AIR;
     private Entity hookedEntity;
-    private Vec preCollisionVelocity = Vec.ZERO;
-    private double preCollisionSpeed = 0;
     /** Player we hit for visual-only hook (hook then unhook next tick, re-hook on their move until rod retracted). */
     private Player pseudoHookedPlayer;
     private int stuckTime = 0;
@@ -77,11 +79,8 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         this.knockbackConfig = ProjectileKnockbackPresets.FISHING_ROD;
         this.knockbackMode = ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE;
 
-        // Gravity applied manually in tick(); lower air resistance for bobber feel
         setAerodynamics(getAerodynamics().withGravity(0).withHorizontalAirResistance(0.92).withVerticalAirResistance(0.92));
-
-        // Frequent absolute position sync for 1.8 client accuracy
-        setSynchronizationTicks(3);
+        // No setSynchronizationTicks — use default
     }
 
     @Override
@@ -99,7 +98,6 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         }
     }
 
-    // THIS is fine
     @Override
     protected void movementTick() {
         if (currentState == State.HOOKED_ENTITY) {
@@ -114,58 +112,31 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
             return;
         }
 
-        preCollisionVelocity = velocity;
         boolean wasMoving = velocity.lengthSquared() > 1.0;
 
         super.movementTick();
 
         if (wasMoving && (onGround || isStuck())) {
+            // Zero velocity on landing so the 1.8 client stops predicting.
             sendPacketToViewersAndSelf(new net.minestom.server.network.packet.server.play.EntityVelocityPacket(
                     getEntityId(), Vec.ZERO
             ));
-        }
-    }
-
-    @Override
-    public boolean onStuck() {
-        Vec savedCollisionDir = collisionDirection;
-        if (savedCollisionDir == null) return false;
-
-        // Ground — keep stuck, zero velocity packet handles 1.8
-        if (savedCollisionDir.y() < 0) {
-            return false;
-        }
-
-        // Wall or ceiling — undo stuck, bounce
-        collisionDirection = null;
-        stuckVelocityDirection = null;
-        setNoGravity(false);
-
-        if (savedCollisionDir.y() > 0) {
-            velocity = new Vec(
-                    preCollisionVelocity.x() * 0.3,
-                    -Math.abs(preCollisionVelocity.y()) * 0.15,
-                    preCollisionVelocity.z() * 0.3
-            );
-        } else {
-            double dampen = 0.1;
-            double vx = savedCollisionDir.x() != 0 ? -preCollisionVelocity.x() * dampen : preCollisionVelocity.x() * dampen;
-            double vz = savedCollisionDir.z() != 0 ? -preCollisionVelocity.z() * dampen : preCollisionVelocity.z() * dampen;
-            velocity = new Vec(vx, preCollisionVelocity.y() * 0.8, vz);
-        }
-        setVelocity(velocity);
-        return false;
-    }
-
-    @Override
-    public void onUnstuck() {
-        if (onGround) {
-            // Re-establish stuck state — bobber rests on ground permanently.
-            // Parent already cleared collisionDirection; put it back.
-            collisionDirection = new Vec(0, -1, 0);
-            setNoGravity(true);
-            velocity = Vec.ZERO;
-            setVelocity(Vec.ZERO);
+        } else if (!isStuck() && !onGround) {
+            // Fix medium-cast overshoot on 1.8 clients.
+            //
+            // The server applies gravity in FishingBobber.tick() BEFORE movementTick,
+            // then sends the post-drag velocity.  On the NEXT tick, gravity is applied
+            // again before movement, so the server moves by (V_postDrag + gravity) / TPS.
+            // But the 1.8 client uses the received velocity directly for movement
+            // WITHOUT pre-applying gravity, so it moves by V_postDrag / TPS — which is
+            // 0.04 blocks/tick MORE than the server (gravity / TPS = 0.04).
+            //
+            // Pre-apply the next tick's gravity to the sent velocity so the client's
+            // per-tick displacement matches the server's exactly.
+            Vec corrected = velocity.add(0, -customGravity * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
+            sendPacketToViewersAndSelf(new net.minestom.server.network.packet.server.play.EntityVelocityPacket(
+                    getEntityId(), corrected.div(ServerFlag.SERVER_TICKS_PER_SECOND)
+            ));
         }
     }
 
@@ -216,7 +187,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
             }
         }
 
-        /*
+        /* TODO: Have this updated to RETRACT the rod after a certain time, not just remove the bobber
         // Remove if stuck too long
         if (onGround) {
             stuckTime++;
@@ -227,7 +198,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         } else {
             stuckTime = 0;
         }
-         */
+        */
     }
 
     @Override
@@ -477,6 +448,12 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         sendPacketToViewersAndSelf(new net.minestom.server.network.packet.server.play.EntityTeleportPacket(
                 getEntityId(), pos, Vec.ZERO, 0, isOnGround()
         ));
+        // Update lastSyncedPosition so that subsequent relative-move packets
+        // (from refreshPosition) compute their deltas from the correct base.
+        // Without this, lastSyncedPosition stays at the spawn position and every
+        // relative delta is wildly wrong from the 1.8 client's perspective, since
+        // the teleport above already moved the client's tracked serverPos.
+        this.lastSyncedPosition = pos;
     }
 
     // ===========================
