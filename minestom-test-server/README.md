@@ -9,7 +9,7 @@ A test server demonstrating the Minestom Mechanics Library capabilities. This se
 - **Command System**: Admin and player commands for testing
 - **GUI Integration**: Mechanics settings GUI
 - **Legacy Mechanics**: 1.8 compatibility features
-- **Client Version Detection**: Automatic optimization for different client versions
+- **Client Version Detection**: Via ViaVersion `vv:mod_details` or `vv:proxy_details` (Velocity with send-player-details); ViaVersion must be in the pipeline for version-aware behavior
 - **Projectile Testing**: Full projectile system demonstration
 - **Debug Tools**: Memory monitoring and entity visibility testing
 
@@ -79,7 +79,7 @@ TODO add updated methods for configuring mechanics
 ### Compatibility
 - 1.8 mechanics enforcement
 - Legacy movement handling
-- Client version detection
+- Client version detection (ViaVersion `vv:mod_details` / `vv:proxy_details`)
 - Modern client optimization
 
 ## Testing

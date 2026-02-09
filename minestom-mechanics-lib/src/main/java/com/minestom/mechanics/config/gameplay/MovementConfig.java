@@ -7,8 +7,7 @@ import java.util.Set;
 // TODO: Right now I feel like this is a hacky way to solve this problem.
 //  There's probably a cleaner way, check the minestom API.
 //  ALSO should probably be moved over to the player package
-//  (player package should manage OPTIONAL client version detection-
-//  -use a plugin messanger and a velocity plugin with the viaversion API)
+//  (player package should manage OPTIONAL client version detection via ViaVersion vv:mod_details)
 //  But introduce a player package, and include the bounding box, poses, version detection,
 //  preferences, maybe some others idk
 

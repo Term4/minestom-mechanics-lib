@@ -1,14 +1,15 @@
 package com.minestom.mechanics.systems.compatibility;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.PlayerPluginMessageEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 
-import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,30 +17,25 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Detects client version for version-aware behavior (e.g. legacy 1.8 vs modern).
- * Version is determined only from the Velocity protocol forwarder – plugin message on
- * {@value #PROTOCOL_VERSION_CHANNEL} (UUID + VarInt protocol version). When no protocol
- * version has been received (e.g. not behind proxy or message not yet sent),
- * {@link #getClientVersion(Player)} returns {@link ClientVersion#UNKNOWN}.
+ * Version is determined from ViaVersion – plugin messages on {@value #VIA_MOD_DETAILS_CHANNEL}
+ * (client mods) or {@value #VIA_PROXY_DETAILS_CHANNEL} (Velocity/Bungee proxy with send-player-details).
+ * Payload is JSON with {@code version} and {@code versionName}. When no protocol version has been
+ * received, {@link #getClientVersion(Player)} returns {@link ClientVersion#UNKNOWN}.
+ *
+ * @see <a href="https://github.com/ViaVersion/ViaVersion/wiki/Server-and-Player-Details-Protocol">ViaVersion Server and Player Details Protocol</a>
  */
 public class ClientVersionDetector {
 
-    /** Plugin message channel used by Velocity protocol forwarder (mechanics:protocol_version). */
-    public static final String PROTOCOL_VERSION_CHANNEL = "mechanics:protocol_version";
+    /** Plugin message channel from client mods (ViaFabric, ViaFabricPlus, ViaForge). */
+    public static final String VIA_MOD_DETAILS_CHANNEL = "vv:mod_details";
+
+    /** Plugin message channel from proxies (Velocity, BungeeCord) when send-player-details is enabled. */
+    public static final String VIA_PROXY_DETAILS_CHANNEL = "vv:proxy_details";
+
+    private static final Gson GSON = new Gson();
 
     /** Protocol version below this is treated as legacy (1.8.x = 47; 1.9 = 107). */
     private static final int LEGACY_PROTOCOL_THRESHOLD = 107;
-
-    /** Protocol number → game version string for logging (supported range: 1.7.10, 1.8.x, 1.21.x). */
-    private static final Map<Integer, String> PROTOCOL_TO_GAME_VERSION = new TreeMap<>();
-
-    static {
-        PROTOCOL_TO_GAME_VERSION.put(5, "1.7.10");
-        PROTOCOL_TO_GAME_VERSION.put(47, "1.8.x");
-        PROTOCOL_TO_GAME_VERSION.put(767, "1.21");
-        PROTOCOL_TO_GAME_VERSION.put(768, "1.21.1");
-        PROTOCOL_TO_GAME_VERSION.put(769, "1.21.2");
-        PROTOCOL_TO_GAME_VERSION.put(770, "1.21.3");
-    }
 
     private static ClientVersionDetector instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("ClientVersionDetector");
@@ -60,8 +56,9 @@ public class ClientVersionDetector {
         var handler = MinecraftServer.getGlobalEventHandler();
 
         handler.addListener(PlayerPluginMessageEvent.class, event -> {
-            if (event.getIdentifier().equals(PROTOCOL_VERSION_CHANNEL)) {
-                handleProtocolVersionMessage(event.getPlayer(), event.getMessage());
+            String channel = event.getIdentifier();
+            if (channel.equals(VIA_MOD_DETAILS_CHANNEL) || channel.equals(VIA_PROXY_DETAILS_CHANNEL)) {
+                handleViaVersionMessage(event.getPlayer(), event.getMessage());
             }
         });
 
@@ -72,57 +69,46 @@ public class ClientVersionDetector {
     }
 
     /**
-     * Handle protocol version from Velocity protocol forwarder.
-     * Payload: 16 bytes UUID (MSB first) + VarInt protocol version (e.g. 47 = 1.8.x, 107 = 1.9+).
-     * Only the proxy should send this; accept only when UUID matches the player (consistency check).
+     * Handle protocol version from ViaVersion (vv:mod_details or vv:proxy_details).
+     * Payload: JSON with {@code version} (int) and {@code versionName} (string).
      */
-    private void handleProtocolVersionMessage(Player player, byte[] data) {
-        if (data == null || data.length < 17) { // 16 UUID + at least 1 byte VarInt
-            log.debug("Invalid protocol version message from {}: payload too short", player.getUsername());
+    private void handleViaVersionMessage(Player player, byte[] data) {
+        if (data == null || data.length == 0) {
+            log.debug("Invalid ViaVersion message from {}: empty payload", player.getUsername());
             return;
         }
         try {
-            long msb = ByteBuffer.wrap(data, 0, 8).getLong();
-            long lsb = ByteBuffer.wrap(data, 8, 8).getLong();
-            UUID payloadUuid = new UUID(msb, lsb);
-            if (!payloadUuid.equals(player.getUuid())) {
-                log.warn("Protocol version message UUID mismatch for {} – ignoring (possible spoof)", player.getUsername());
-                log.warn("Payload ID: " +  payloadUuid + " | Player ID: " +  player.getUuid());
+            String json = new String(data, StandardCharsets.UTF_8);
+            JsonObject payload = GSON.fromJson(json, JsonObject.class);
+            if (payload == null || !payload.has("version")) {
+                log.debug("Invalid ViaVersion message from {}: missing version", player.getUsername());
                 return;
             }
-            int[] result = readVarInt(data, 16);
-            int protocolVersion = result[0];
+            int protocolVersion = payload.get("version").getAsInt();
+            String versionName = payload.has("versionName") ? sanitizeVersionName(payload.get("versionName").getAsString()) : null;
+
             proxyProtocolVersions.put(player.getUuid(), protocolVersion);
             ClientVersion version = protocolVersion < LEGACY_PROTOCOL_THRESHOLD ? ClientVersion.LEGACY : ClientVersion.MODERN;
-            String versionLabel = protocolVersionToGameVersion(protocolVersion);
-            log.info("{} protocol version from proxy: {} ({}) – {}", player.getUsername(), protocolVersion, version, versionLabel);
+            String label = versionName != null ? versionName : ("protocol " + protocolVersion);
+            log.debug("{} | client version: {} (protocol {}, {})", player.getUsername(), label, protocolVersion, version);
         } catch (Exception e) {
-            log.warn("Failed to parse protocol version message from {}: {}", player.getUsername(), e.getMessage());
+            log.warn("Failed to parse ViaVersion message from {}: {}", player.getUsername(), e.getMessage());
         }
     }
 
-    /** Returns human-readable game version for a protocol number (e.g. 47 → "1.8.x"), or "protocol N" if unknown. */
-    private static String protocolVersionToGameVersion(int protocolVersion) {
-        String known = PROTOCOL_TO_GAME_VERSION.get(protocolVersion);
-        return known != null ? known : "protocol " + protocolVersion;
-    }
-
-    /** Reads a VarInt from {@code data} starting at {@code offset}. Returns [value, nextOffset]. */
-    private static int[] readVarInt(byte[] data, int offset) {
-        int value = 0;
-        int shift = 0;
-        byte b;
-        do {
-            if (offset >= data.length) throw new IllegalArgumentException("VarInt extends past buffer");
-            b = data[offset++];
-            value |= (b & 0x7F) << shift;
-            shift += 7;
-        } while ((b & 0x80) != 0);
-        return new int[]{ value, offset };
+    /** Trim and strip trailing non-alphanumeric/dot characters from version name for display (e.g. "1.8.x]" -> "1.8.x"). */
+    private static String sanitizeVersionName(String versionName) {
+        if (versionName == null) return null;
+        String s = versionName.trim();
+        int end = s.length();
+        while (end > 0 && !Character.isLetterOrDigit(s.charAt(end - 1)) && s.charAt(end - 1) != '.') {
+            end--;
+        }
+        return end == s.length() ? s : s.substring(0, end);
     }
 
     /**
-     * Get client version for a player. Only protocol version from the proxy is used.
+     * Get client version for a player. Only protocol version from ViaVersion is used.
      * Returns {@link ClientVersion#UNKNOWN} if no protocol version has been received.
      */
     public ClientVersion getClientVersion(Player player) {
@@ -134,8 +120,8 @@ public class ClientVersionDetector {
     }
 
     /**
-     * Raw protocol version when provided by the proxy (Velocity protocol forwarder).
-     * e.g. 47 = 1.8.x, 107 = 1.9. Returns null if not behind proxy or not yet received.
+     * Raw protocol version when provided by ViaVersion.
+     * e.g. 47 = 1.8.x, 107 = 1.9. Returns null if ViaVersion has not sent details yet.
      */
     public Integer getProtocolVersion(Player player) {
         return proxyProtocolVersions.get(player.getUuid());
@@ -143,7 +129,7 @@ public class ClientVersionDetector {
 
     /**
      * Whether the player needs frequent animation updates (legacy clients only).
-     * False when version is unknown (no protocol from proxy).
+     * False when version is unknown (no protocol from ViaVersion).
      */
     public boolean needsFrequentUpdates(Player player) {
         return getClientVersion(player) == ClientVersion.LEGACY;
@@ -152,11 +138,11 @@ public class ClientVersionDetector {
     public enum ClientVersion {
         LEGACY,   // protocol < 107 (e.g. 1.7.10, 1.8.x)
         MODERN,   // protocol >= 107 (e.g. 1.21.x)
-        UNKNOWN   // No protocol version received from proxy
+        UNKNOWN   // No protocol version received from ViaVersion
     }
 
     /**
-     * Statistics for players with a known protocol version from the proxy.
+     * Statistics for players with a known protocol version from ViaVersion.
      */
     public String getStatistics() {
         int total = proxyProtocolVersions.size();

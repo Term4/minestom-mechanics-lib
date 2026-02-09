@@ -12,7 +12,7 @@ A production-ready mechanics library for Minestom servers, providing comprehensi
 - **Blocking System**: Complete blocking mechanics with damage reduction and visual effects
 - **Projectile Support**: Full projectile system with bow, fishing rod, and throwable items
 - **Damage System**: Environmental damage handling with invulnerability frames
-- **Client Version Detection**: Automatic detection and optimization for different client versions
+- **Client Version Detection**: Via ViaVersion channels `vv:mod_details` (client mods) or `vv:proxy_details` (Velocity/Bungee with send-player-details); requires ViaVersion in the pipeline for version-aware behavior
 - **Legacy Mechanics**: Support for older Minecraft mechanics (1.8, 1.9, etc.)
 - **GUI System**: Built-in GUI framework for mechanics settings
 - **Extensive Configuration**: Highly configurable with preset support

@@ -18,6 +18,7 @@
     <minestom.version>2026.01.08-1.21.11</minestom.version>
     <logback.version>1.5.27</logback.version>
     <fastutil.version>8.5.18</fastutil.version>
+    <gson.version>2.11.0</gson.version>
   </properties>
 
   <modules>
@@ -55,6 +56,12 @@
         <groupId>it.unimi.dsi</groupId>
         <artifactId>fastutil</artifactId>
         <version>${fastutil.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.google.code.gson</groupId>
+        <artifactId>gson</artifactId>
+        <version>${gson.version}</version>
       </dependency>
 
       <dependency>
