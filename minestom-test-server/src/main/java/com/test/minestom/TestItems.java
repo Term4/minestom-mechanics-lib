@@ -1,8 +1,9 @@
 package com.test.minestom;
 
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagValue;
-import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper;
+import com.minestom.mechanics.systems.health.damage.DamageOverride;
+import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import net.minestom.server.tag.Tag;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import net.minestom.server.item.ItemStack;
@@ -159,58 +160,72 @@ public class TestItems {
                         kbMult(2.0, 1.5).thenAdd(0.2, 0.1));
     }
 
+    // Properties override that bypasses invulnerability and creative mode
+    private static final DamageOverride BYPASS_ALL = DamageOverride.override(
+            DamageTypeProperties.ATTACK_DEFAULT.withBypassInvulnerability(true).withBypassCreative(true)
+    );
+    private static final DamageOverride BYPASS_CREATIVE = DamageOverride.override(
+            DamageTypeProperties.ATTACK_DEFAULT.withBypassCreative(true)
+    );
+
+    /** Apply a damage override tag to an item, safely skipping if the type isn't registered yet. */
+    private static ItemStack withOverride(ItemStack item, String typeId, DamageOverride override) {
+        Tag<DamageOverride> tag = HealthSystem.tag(typeId);
+        return tag != null ? item.withTag(tag, override) : item;
+    }
+
     /**
      * Sword that bypasses invulnerability (hits ignore i-frames) and can damage creative players.
+     * Override applied to "melee" damage type tag (PLAYER_ATTACK when registered).
      */
     public static ItemStack bypassSword() {
-        return ItemStack.builder(Material.STICK)
+        ItemStack base = ItemStack.builder(Material.STICK)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Sword", NamedTextColor.DARK_RED, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
                         Component.text("Ignores invulnerability", NamedTextColor.GRAY),
                         Component.text("Hits creative players", NamedTextColor.GRAY)
                 ))
-                .build()
-                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(
-                        InvulnerabilityTagValue.bypassInvulnerability(true).thenBypassCreativeMelee(true)));
+                .build();
+        return withOverride(base, "melee", BYPASS_ALL);
     }
 
     /**
      * Bow whose arrows can hit creative players (projectile creative bypass only).
      */
     public static ItemStack bypassBow() {
-        return ItemStack.builder(Material.BOW)
+        ItemStack base = ItemStack.builder(Material.BOW)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Bow", NamedTextColor.DARK_PURPLE, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
                         Component.text("Arrows hit creative players", NamedTextColor.GRAY)
                 ))
-                .build()
-                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
+                .build();
+        return withOverride(base, "arrow", BYPASS_CREATIVE);
     }
 
     /**
      * Fishing rod whose bobber can hook and damage creative players (projectile creative bypass only).
      */
     public static ItemStack bypassFishingRod() {
-        return ItemStack.builder(Material.FISHING_ROD)
+        ItemStack base = ItemStack.builder(Material.FISHING_ROD)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Rod", NamedTextColor.DARK_AQUA, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
                         Component.text("Bobber hits creative players", NamedTextColor.GRAY)
                 ))
-                .build()
-                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
+                .build();
+        return withOverride(base, "generic", BYPASS_CREATIVE);
     }
 
     /**
      * Stack of snowballs that can damage creative players (bypass creative tag copied to projectile).
      */
     public static ItemStack bypassSnowballs() {
-        return ItemStack.builder(Material.SNOWBALL)
+        ItemStack base = ItemStack.builder(Material.SNOWBALL)
                 .amount(16)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Bypass Snowballs", NamedTextColor.DARK_AQUA, TextDecoration.BOLD))
                 .set(DataComponents.LORE, List.of(
                         Component.text("Hits creative players", NamedTextColor.GRAY)
                 ))
-                .build()
-                .withTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
+                .build();
+        return withOverride(base, "thrown", BYPASS_CREATIVE);
     }
 }

@@ -455,16 +455,6 @@ public class MechanicsManager {
                 // Convert DamageConfig to HealthConfig
                 HealthConfig healthConfig = new HealthConfig(
                         damageConfig.getInvulnerabilityTicks(),
-                        damageConfig.isFallDamageEnabled(),
-                        damageConfig.getFallDamageMultiplier(),
-                        false,  // Fall damage blockable (default)
-                        damageConfig.isFireDamageEnabled(),
-                        damageConfig.getFireDamageMultiplier(),
-                        true,   // Fire damage blockable (default)
-                        true, 1.0f, true,  // Cactus damage (default enabled, blockable=true)
-                        false, false, false,  // Bypass invulnerability (fall, fire, cactus)
-                        damageConfig.isDamageReplacementEnabled(),
-                        damageConfig.isKnockbackOnReplacement(),
                         damageConfig.isLogReplacementDamage(),
                         false, 0.0f, 0  // Regeneration (disabled)
                 );

@@ -49,7 +49,7 @@ public class BlockingModifiers {
         // If HealthSystem is initialized, respect per-damage-type "blocking applies" tag/config
         try {
             HealthSystem hs = HealthSystem.getInstance();
-            if (!hs.getDamageTypeRegistry().isBlockingApplicable(event.getDamage().getType(), victim)) {
+            if (!hs.isBlockingApplicable(event.getDamage().getType(), victim)) {
                 return;
             }
         } catch (IllegalStateException ignored) {

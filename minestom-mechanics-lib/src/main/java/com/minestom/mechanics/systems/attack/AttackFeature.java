@@ -2,7 +2,8 @@ package com.minestom.mechanics.systems.attack;
 
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
-import com.minestom.mechanics.systems.health.util.Invulnerability;
+import com.minestom.mechanics.systems.health.HealthSystem;
+import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.validation.hits.HitDetection;
@@ -12,7 +13,6 @@ import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
@@ -23,7 +23,14 @@ import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.item.ItemStack;
 
-// TODO: Rename to system, move to systems...
+// TODO: Literally all this has to do is hit detection + pass an "Attack Event" to damage system
+
+// Structure: Remove attack system entirely, replace with hit detection.
+
+// Hit detection passes player attacker and player victim to damage system
+// Damage system calculates damage to victim (and to attacker if thorns?)
+// Damage system passes player attacker and player victim to knockback system
+// Knockback system determines knockback (handles sprinting buffer etc)
 
 /**
  * Main attack feature that orchestrates all attack-related components.
@@ -78,7 +85,8 @@ public class AttackFeature extends InitializableSystem {
         handler.addListener(PlayerHandAnimationEvent.class, this::handleSwing);
         
     }
-    
+
+    // Begin hit detection
     /**
      * Handles attack packets from clients (primarily 1.8).
      * Client already decided this was a hit, just validate and process.
@@ -87,6 +95,7 @@ public class AttackFeature extends InitializableSystem {
         if (!(event.getEntity() instanceof Player attacker)) return;
         if (!(event.getTarget() instanceof LivingEntity victim)) return;
 
+        // I think this is unnecessary
         if (isBlocking(attacker)) {
             BlockingSystem.getInstance().stopBlocking(attacker);
             return;
@@ -108,6 +117,7 @@ public class AttackFeature extends InitializableSystem {
             return; // Legacy/unknown: hits only via attack packets
         }
 
+        // I think this is unnecessary
         if (isBlocking(attacker)) {
             BlockingSystem.getInstance().stopBlocking(attacker);
             return;
@@ -137,7 +147,9 @@ public class AttackFeature extends InitializableSystem {
             return false;
         }
     }
+    // End hit detection
 
+    // Begin damage system
     /**
      * Core attack processing logic (used by both packet and swing handlers).
      */
@@ -154,21 +166,9 @@ public class AttackFeature extends InitializableSystem {
                 result.damage()
         );
 
-        // Minestom's damage() returns false without firing EntityDamageEvent when victim.isInvulnerable()
-        // (e.g. creative players). If this melee attack bypasses creative (bypassCreativeMelee tag), temporarily clear invulnerable so damage runs.
-        boolean wasInvulnerable = victim.isInvulnerable();
-        if (wasInvulnerable && victim instanceof Player victimPlayer && victimPlayer.getGameMode() == GameMode.CREATIVE) {
-            Invulnerability inv = Invulnerability.getInstance();
-            if (inv != null && inv.isBypassCreativeInvulnerabilityMelee(attacker, victim, attacker.getItemInMainHand())) {
-                victim.setInvulnerable(false);
-            }
-        }
-
-        if (!victim.damage(damage)) {
-            if (wasInvulnerable) victim.setInvulnerable(true);
+        if (!HealthSystem.applyDamage(victim, damage)) {
             return; // Damage was cancelled or victim is invulnerable
         }
-        if (wasInvulnerable) victim.setInvulnerable(true);
         
         // Apply knockback if allowed
         if (shouldApplyKnockback(victim)) {
@@ -192,17 +192,28 @@ public class AttackFeature extends InitializableSystem {
         float baseDamage = attackCalculator.calculateBaseDamage(attacker);
         boolean isCritical = attackCalculator.isCriticalHit(attacker);
         boolean hadSprintBonus = attacker.isSprinting() || sprintBonusCalculator.wasRecentlySprinting(attacker);
-        
         float finalDamage = attackCalculator.calculateFinalDamage(baseDamage, isCritical);
         
         return AttackResult.of(finalDamage, isCritical, hadSprintBonus);
     }
 
     private boolean shouldApplyKnockback(LivingEntity victim) {
-        Invulnerability inv = Invulnerability.getInstance();
-        return inv != null && inv.shouldApplyKnockback(victim);
+        try {
+            HealthSystem hs = HealthSystem.getInstance();
+            if (!hs.wasLastDamageReplacement(victim)) return true;
+            // Was a replacement hit — check if knockback applies for this type
+            var dt = com.minestom.mechanics.systems.health.damage.DamageType.find(DamageType.PLAYER_ATTACK);
+            DamageTypeProperties props = dt != null
+                    ? dt.resolveProperties(null, victim, null)
+                    : DamageTypeProperties.ATTACK_DEFAULT;
+            return props.knockbackOnReplacement();
+        } catch (IllegalStateException ignored) {
+            return true; // HealthSystem not initialized, allow knockback
+        }
     }
-    
+    // End damage system
+
+    // Hit detection / validation
     /**
      * Log attack details with precise ray distance from snapshot.
      */
@@ -240,7 +251,7 @@ public class AttackFeature extends InitializableSystem {
         }
     }
     
-    // TODO: Is there a better way to do this? Less hacky?
+    // TODO: Move to compatibility package
     private void removeAttackCooldown(Player player) {
         player.getAttribute(Attribute.ATTACK_SPEED).setBaseValue(1024.0);
     }

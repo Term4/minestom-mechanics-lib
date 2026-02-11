@@ -137,6 +137,7 @@ public class KnockbackCalculator {
         }
 
         // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug
+        // UPDATE: It does. add new velocity tracking, maybe using movement packets + get player location on the previous tick?
         boolean isFalling = GameplayUtils.isFalling(victim);
 
         if (isFalling) {

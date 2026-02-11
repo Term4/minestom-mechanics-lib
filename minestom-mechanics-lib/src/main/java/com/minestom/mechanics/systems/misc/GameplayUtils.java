@@ -5,8 +5,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
-// TODO: Make this more useful, or remove it...
-//  Seems unnecessary to have an entire utility class just for this (ALSO this seems more like player utils)
+// TODO: Remove this entirely, update dependencies where necessary
 
 /**
  * Consolidated gameplay utilities.

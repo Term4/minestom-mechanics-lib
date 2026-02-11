@@ -14,9 +14,7 @@ import com.minestom.mechanics.systems.compatibility.LegacyInventoryUtil;
 import com.minestom.mechanics.systems.compatibility.ModernStutterFix;
 import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagValue;
-import com.minestom.mechanics.systems.health.tags.InvulnerabilityTagWrapper;
-import com.minestom.mechanics.systems.health.util.Invulnerability;
+import com.minestom.mechanics.systems.health.damage.DamageOverride;
 import com.minestom.mechanics.systems.misc.gravity.GravitySystem;
 import com.minestom.mechanics.systems.player.PlayerCleanupManager;
 import com.test.minestom.commands.CommandRegistry;
@@ -44,9 +42,7 @@ import net.minestom.server.item.Material;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
 
-import com.minestom.mechanics.systems.health.tags.HealthTagValue;
-import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.ENABLED;
-import static com.minestom.mechanics.systems.health.tags.HealthTagWrapper.healthSet;
+// DamageOverride replaces the old HealthTagWrapper/HealthTagValue system
 
 // TODO: Fix velocity 'Already connected to proxy' issue?? Possible? idk
 
@@ -232,10 +228,10 @@ public class Main {
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
                 // GravitySystem.setGravity(player, 0.167);
                 // Enable fire and cactus damage via player tags (overrides server config)
-                player.setTag(HealthSystem.FIRE_DAMAGE, ENABLED);
-                // Cactus enabled but respects invulnerability (no bypass)
-                player.setTag(HealthSystem.CACTUS_DAMAGE, healthSet(HealthTagValue.healthEnabled(true).thenBypassInvulnerability(false)));
-                //player.setTag(HealthSystem.INVULNERABILITY, InvulnerabilityTagWrapper.invulnSet(InvulnerabilityTagValue.BYPASS_CREATIVE));
+                var fireTag = HealthSystem.tag("fire");
+                var cactusTag = HealthSystem.tag("cactus");
+                if (fireTag != null) player.setTag(fireTag, DamageOverride.mult(1.0));
+                if (cactusTag != null) player.setTag(cactusTag, DamageOverride.mult(1.0));
             }
         });
 

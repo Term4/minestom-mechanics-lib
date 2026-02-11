@@ -3,8 +3,6 @@ package com.test.minestom.commands;
 import com.test.minestom.commands.combat.BlockingCommand;
 import com.test.minestom.commands.combat.BlockingConfigCommand;
 import com.test.minestom.commands.combat.KnockbackCommand;
-import com.test.minestom.commands.debug.MemCheckCommand;
-import com.test.minestom.commands.SpectatorCommand;
 import com.test.minestom.gui.views.BlockingSettingsGui;
 import com.minestom.mechanics.manager.CombatManager;
 import com.minestom.mechanics.util.LogUtil;
@@ -306,13 +304,12 @@ public class CommandRegistry {
     }
 
     private static void registerDebugCommands() {
-        // Memory leak checker
         COMMAND_LIST.add(new CommandInfo(
-                new MemCheckCommand(),
+                new SetFireCommand(),
                 CommandCategory.DEBUG,
-                "Check for memory leaks in tracked systems",
+                "Set fire at your feet",
                 true,
-                "memcheck", "leakcheck"
+                "setfire"
         ));
     }
 

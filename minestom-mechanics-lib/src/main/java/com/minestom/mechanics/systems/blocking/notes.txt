@@ -1,0 +1,9 @@
+Update this!!!
+
+ALL this system needs to do is track blocking state, maybe blockable items as well (not even necessary)
+
+Legacy Animation Fix will still be needed
+
+Remove blocking visual effects
+
+blocking modifiers MIGHT be moved to damage / knockback systems

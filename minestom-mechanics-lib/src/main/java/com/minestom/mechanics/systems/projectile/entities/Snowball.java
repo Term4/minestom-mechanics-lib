@@ -1,12 +1,10 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
-import com.minestom.mechanics.systems.health.util.Invulnerability;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
-import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
-import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.entity.metadata.item.SnowballMeta;
@@ -31,36 +29,15 @@ public class Snowball extends CustomEntityProjectile implements ItemHoldingProje
         int damage = entity.getEntityType() == EntityType.BLAZE ? 3 : 0;
         LivingEntity living = (LivingEntity) entity;
 
-        boolean wasInvulnerable = false;
-        if (living instanceof Player victimPlayer && victimPlayer.getGameMode() == GameMode.CREATIVE) {
-            Invulnerability inv = Invulnerability.getInstance();
-            if (inv != null && inv.isBypassCreativeInvulnerability(this, living, null)) {
-                wasInvulnerable = living.isInvulnerable();
-                living.setInvulnerable(false);
-            }
-        }
-
-        // Only apply knockback if damage actually went through
-        if (living.damage(new Damage(DamageType.THROWN, this, getShooter(), null, damage))) {
+        if (HealthSystem.applyDamage(living, new Damage(DamageType.THROWN, this, getShooter(), null, damage))) {
             if (isUseKnockbackHandler()) {
                 try {
                     var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
                     KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-
-                    // ✅ Applicator resolves config from tags automatically!
-                    // Just pass 0 for enchantment level (projectiles don't have knockback enchants)
-                    applicator.applyProjectileKnockback(
-                            living,
-                            this,
-                            shooterOriginPos,
-                            0  // No knockback enchantment for projectiles
-                    );
-                } catch (Exception e) {
-                    // Fallback: no knockback if applicator fails
-                }
+                    applicator.applyProjectileKnockback(living, this, shooterOriginPos, 0);
+                } catch (Exception ignored) {}
             }
         }
-        if (wasInvulnerable) living.setInvulnerable(true);
         return true;
     }
 

@@ -1,0 +1,9 @@
+Knockback System Idea:
+
+Gets passed an entity attacker & and entity victim (optionally a "thrower" or "entitySpawner" for projectiles)
+
+Keeps track of various states (i.e. sprinting, was sprinting, etc)
+
+Calculates direction of knockback based on relative position + "look" direction (yaw / pitch / entity.direction)
+
+Calculates strength based on what's passed to it (custom value) / presets (let's have damage types use presets for each damage type, or be overridden)

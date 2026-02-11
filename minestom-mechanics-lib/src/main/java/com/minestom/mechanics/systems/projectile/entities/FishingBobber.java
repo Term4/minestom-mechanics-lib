@@ -2,7 +2,7 @@ package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
-import com.minestom.mechanics.systems.health.util.Invulnerability;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
@@ -214,16 +214,8 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         // Damage/knockback for players
         if (entity instanceof Player hitPlayer) {
             LivingEntity living = hitPlayer;
-            boolean wasInvulnerable = false;
-            if (hitPlayer.getGameMode() == GameMode.CREATIVE) {
-                Invulnerability inv = Invulnerability.getInstance();
-                if (inv != null && inv.isBypassCreativeInvulnerability(this, living, null)) {
-                    wasInvulnerable = living.isInvulnerable();
-                    living.setInvulnerable(false);
-                }
-            }
 
-            if (living.damage(new Damage(DamageType.GENERIC, this, getShooter(), null, 0))) {
+            if (HealthSystem.applyDamage(living, new Damage(DamageType.GENERIC, this, getShooter(), null, 0))) {
                 if (isUseKnockbackHandler()) {
                     try {
                         var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
@@ -237,8 +229,6 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
                     }
                 }
             }
-
-            if (wasInvulnerable) living.setInvulnerable(true);
 
             // Pseudo-hook: hook now (bobber teleports to victim this tick), then unhook next tick so we stop following.
             // Re-hook on PlayerMoveEvent when they move; canHit excludes this player so bobber can fall when they stand still.
@@ -423,10 +413,11 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         }
 
         if (entity instanceof Player player && player.getGameMode() == GameMode.CREATIVE) {
-            Invulnerability inv = Invulnerability.getInstance();
-            if (inv == null || !inv.isBypassCreativeInvulnerability(this, (LivingEntity) entity, null)) {
-                return false;
-            }
+            var dt = com.minestom.mechanics.systems.health.damage.DamageType.find(DamageType.GENERIC);
+            var props = dt != null
+                    ? dt.resolveProperties(this, (LivingEntity) entity, null)
+                    : com.minestom.mechanics.systems.health.damage.DamageTypeProperties.ATTACK_DEFAULT;
+            if (!props.bypassCreative()) return false;
         }
 
         return true;

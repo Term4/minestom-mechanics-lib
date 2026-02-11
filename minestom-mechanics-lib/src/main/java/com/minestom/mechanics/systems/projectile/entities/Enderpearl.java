@@ -1,16 +1,15 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.health.util.Invulnerability;
 import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
-import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.entity.metadata.item.ThrownEnderPearlMeta;
 import net.minestom.server.item.ItemStack;
@@ -83,31 +82,16 @@ public class Enderpearl extends CustomEntityProjectile implements ItemHoldingPro
     @Override
     public boolean onHit(Entity entity) {
         LivingEntity living = (LivingEntity) entity;
-        boolean wasInvulnerable = false;
-        if (living instanceof Player victimPlayer && victimPlayer.getGameMode() == GameMode.CREATIVE) {
-            Invulnerability inv = Invulnerability.getInstance();
-            if (inv != null && inv.isBypassCreativeInvulnerability(this, living, null)) {
-                wasInvulnerable = living.isInvulnerable();
-                living.setInvulnerable(false);
-            }
-        }
 
-        // Only apply knockback if damage actually went through
-        if (living.damage(DamageType.THROWN, 0)) {
-            // Apply knockback (disabled by default for ender pearls)
+        if (HealthSystem.applyDamage(living, new Damage(DamageType.THROWN, this, getShooter(), null, 0))) {
             if (isUseKnockbackHandler()) {
                 try {
                     var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
                     KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-
                     applicator.applyProjectileKnockback(living, this, shooterOriginPos, 0);
-                } catch (Exception e) {
-                    // Fallback: no knockback if applicator fails
-                }
+                } catch (Exception ignored) {}
             }
         }
-
-        if (wasInvulnerable) living.setInvulnerable(true);
         teleportOwner();
         return true;
     }

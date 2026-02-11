@@ -14,7 +14,11 @@ import net.minestom.server.registry.RegistryKey;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
-// TODO: Rewrite to use tags, also leave a placeholder for enchants
+// TODO: Rewrite to use tags / components, also leave a placeholder for enchants
+
+// All this should basically do is take a protection value / calculation and pass it to the damage system with the damage.
+// i.e. item has property armor = 4, item has 2 armor bars (4/2), + enchants (protection, feather falling, etc)
+// all of this gets sent to the damage system which accounts for various protection.
 
 /**
  * Armor system that reduces damage based on armor points and toughness.

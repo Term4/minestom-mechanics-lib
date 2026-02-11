@@ -9,6 +9,12 @@ import net.minestom.server.scoreboard.Team;
 import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.network.packet.server.play.TeamsPacket;
 
+// This is a relatively basic class, allowing collisions to be enabled / disabled per world / instance,
+// as well as per player (ONLY one collision team though, so for more advanced collision control, i.e.
+// players A and B can collide with each other, and players C and D can collide with each other, but players
+// A & B and players C & D cannot collide with the other team, this would require custom handling unless I think
+// of a more robust system here.
+
 // TODO: Make sure is thread / memory safe (should at least be thread safe)
 //  and move to player package when it is made
 

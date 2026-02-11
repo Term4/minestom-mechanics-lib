@@ -18,6 +18,9 @@ import net.minestom.server.utils.WeightedList;
 
 import java.util.List;
 
+// This should honestly be moved to compatibility. There would be no need for this system without
+// trying to cater to 1.8 clients (modern clients have a gravity attribute)
+
 /**
  * Gravity system using ExplosionPacket for velocity application.
  * Tracks its own position to avoid conflicts with FallDamageTracker.

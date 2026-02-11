@@ -5,6 +5,8 @@ import net.minestom.server.entity.Player;
 
 // TODO: COULD be necessary to run this whenever a 1.8 client picks something up?
 // TODO: Have this ONLY apply if the client is a legacy client
+// TODO: Update to listen to any player inventory updates, and refresh their inventory 1-2 ticks after
+// COULD also be a viaversion / proxy issue. Ask DJ for his fix
 
 /**
  * Utility class for inventory operations.
