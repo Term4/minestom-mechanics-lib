@@ -4,6 +4,7 @@ import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.manager.ArmorManager;
 import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.health.InvulnerabilityTracker;
+import com.minestom.mechanics.systems.health.damage.util.DamageCalculator;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverrideSerializer;
 import com.minestom.mechanics.util.LogUtil;
@@ -84,12 +85,6 @@ public class DamageType {
         return dt != null ? dt.getTag() : null;
     }
 
-    /** Get item override tag by id (serialized). */
-    public static Tag<DamageOverride> getItemTag(String id) {
-        DamageType dt = byId.get(id);
-        return dt != null ? dt.getItemTag() : null;
-    }
-
     /** Clear all registered types. Called on shutdown. */
     public static void clearRegistry() {
         byId.clear();
@@ -106,18 +101,18 @@ public class DamageType {
     private final String name;
     private DamageTypeProperties defaults;
     private Object config;
-    /** Serialized tag for items (persists in item NBT). */
-    private final Tag<DamageOverride> itemTag;
-    /** Transient tag for entities/worlds (runtime only, not serialized). */
+    /** Transient tag for entities/worlds. */
     private final Tag<DamageOverride> entityTag;
+    /** Serialized tag for items. */
+    private final Tag<DamageOverride> itemTag;
     private final Set<RegistryKey<?>> matchedTypes;
 
     @SafeVarargs
     public DamageType(String name, DamageTypeProperties defaults, RegistryKey<?>... matchedTypes) {
         this.name = name;
         this.defaults = defaults;
-        this.itemTag = Tag.Structure("health_" + name.toLowerCase(), new DamageOverrideSerializer());
         this.entityTag = Tag.Transient("health_" + name.toLowerCase());
+        this.itemTag = Tag.Structure("health_" + name.toLowerCase(), new DamageOverrideSerializer());
         this.matchedTypes = Set.of(matchedTypes);
     }
 
@@ -145,7 +140,7 @@ public class DamageType {
                                                    LivingEntity victim, @Nullable ItemStack item) {
         DamageOverride override;
 
-        // 1. Item (highest priority) — uses serialized tag
+        // 1. Item (highest priority) — serialized tag
         if (item != null && !item.isAir()) {
             override = item.getTag(itemTag);
             if (override != null && override.custom() != null) return override.custom();
@@ -342,9 +337,9 @@ public class DamageType {
 
     public String getName() { return name; }
     public DamageTypeProperties getDefaults() { return defaults; }
-    /** Transient tag for entities/worlds (runtime only). Use for player.setTag / world.setTag. */
+    /** Transient tag for entities/worlds. */
     public Tag<DamageOverride> getTag() { return entityTag; }
-    /** Serialized tag for items. Use for item.withTag. */
+    /** Serialized tag for items. */
     public Tag<DamageOverride> getItemTag() { return itemTag; }
     public void setDefaults(DamageTypeProperties defaults) { this.defaults = defaults; }
 

@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.SPRINTWINDOW_TRACKING_TICKS;
 
+// TODO: Nice logic, gets moved to knockback probably. Add more configurability, use tags, buffer, etc
+
 // TODO: I like this, also how it's configurable as well.
 //  Make sure it's thread and memory safe, and not to
 //  performance intensive.

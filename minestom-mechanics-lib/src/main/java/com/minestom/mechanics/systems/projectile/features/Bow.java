@@ -11,7 +11,7 @@ import com.minestom.mechanics.systems.projectile.utils.ProjectileMaterials;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileCalculator;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
-import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
+import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyAnimationFix;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.ServerFlag;

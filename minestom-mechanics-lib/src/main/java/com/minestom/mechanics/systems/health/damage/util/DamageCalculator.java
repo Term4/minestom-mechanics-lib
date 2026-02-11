@@ -1,6 +1,6 @@
-package com.minestom.mechanics.systems.health.damage;
+package com.minestom.mechanics.systems.health.damage.util;
 
-import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
+import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.item.ItemStack;
@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Calculates final damage from base amount + properties multiplier + stacked tag overrides.
- * Extracted from DamageType so it can grow independently (enchants, attributes, etc.).
  *
  * <p>Formula: {@code max(0, (baseDamage * props.multiplier * stackedMultipliers) + stackedModifiers)}</p>
  */
@@ -17,18 +16,6 @@ public final class DamageCalculator {
 
     private DamageCalculator() {}
 
-    /**
-     * Calculate final damage with all modifiers applied.
-     *
-     * @param props      resolved properties for this context
-     * @param itemTag    serialized tag for reading item overrides
-     * @param entityTag  transient tag for reading entity/world overrides
-     * @param attacker   attacker entity (nullable)
-     * @param victim     victim entity
-     * @param item       attacker's held item (nullable)
-     * @param baseDamage raw damage amount
-     * @return final damage (>= 0), or 0 if disabled
-     */
     public static float calculate(DamageTypeProperties props, Tag<DamageOverride> itemTag, Tag<DamageOverride> entityTag,
                                   @Nullable Entity attacker, LivingEntity victim,
                                   @Nullable ItemStack item, float baseDamage) {
@@ -44,29 +31,21 @@ public final class DamageCalculator {
         return Math.max(0f, damage);
     }
 
-    // ===========================
-    // TAG STACKING
-    // ===========================
-
     private static double getStackedMultiplier(Tag<DamageOverride> itemTag, Tag<DamageOverride> entityTag,
                                                @Nullable Entity attacker, LivingEntity victim,
                                                @Nullable ItemStack item) {
         double result = 1.0;
         DamageOverride override;
-        // Item (serialized tag)
         if (item != null && !item.isAir()) {
             override = item.getTag(itemTag);
             if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
         }
-        // Attacker entity (transient tag)
         if (attacker != null) {
             override = attacker.getTag(entityTag);
             if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
         }
-        // Victim entity
         override = victim.getTag(entityTag);
         if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
-        // World
         if (victim.getInstance() != null) {
             override = victim.getInstance().getTag(entityTag);
             if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;

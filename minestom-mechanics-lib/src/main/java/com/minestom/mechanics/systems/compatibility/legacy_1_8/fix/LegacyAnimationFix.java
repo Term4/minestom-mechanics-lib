@@ -1,5 +1,6 @@
-package com.minestom.mechanics.systems.compatibility;
+package com.minestom.mechanics.systems.compatibility.legacy_1_8.fix;
 
+import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -10,7 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
-
 // TODO: Maybe modify how we currently maintain blocking state visual sync across versions?
 //  Instead of just listening to tick events (very intensive), we could listen to move events?
 //  If not, we could also run a plugin proxy side for it, but it might be slightly more complicated

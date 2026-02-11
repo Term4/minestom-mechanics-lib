@@ -1,9 +1,10 @@
-Update this!!!
-
-ALL this system needs to do is track blocking state, maybe blockable items as well (not even necessary)
-
-Legacy Animation Fix will still be needed
-
-Remove blocking visual effects
+Simplify this a LOT
 
 blocking modifiers MIGHT be moved to damage / knockback systems
+
+Remove visual effects (other than animation)
+keep blockableitem
+Basically ALL this system needs to do is state tracking (give blocking tag to players currently blocking, remove it when they stop)
+    - Can use a cancellable event node to listen for THE SPECIFIC player that previously was blocking? Might be overkill
+Then obviously utilize legacy 1.8 / 1.7 animation fixer
+ALSO blocking modifiers (tags)

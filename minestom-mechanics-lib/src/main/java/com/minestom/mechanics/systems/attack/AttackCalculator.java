@@ -9,6 +9,8 @@ import net.minestom.server.item.Material;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.*;
 
+// TODO: Delete this entirely
+
 /**
  * Consolidated attack calculator that handles both damage calculation and critical hit detection.
  * ✅ CONSOLIDATED: Merged CriticalHitDetector + DamageCalculator into single class.
@@ -38,6 +40,7 @@ public class AttackCalculator {
         // TODO: this seems extremely inefficient. There has got to be a better
         //  way to do this lmao (registry?)
 
+        // TODO: Can use this, just move to damage calculator
         // Swords
         if (material == Material.WOODEN_SWORD) return DAMAGE_WOODEN_SWORD;
         if (material == Material.STONE_SWORD) return DAMAGE_STONE_SWORD;

@@ -4,7 +4,7 @@ import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
-import com.minestom.mechanics.systems.blocking.tags.BlockableTagSerializer;
+
 import com.minestom.mechanics.systems.blocking.tags.BlockableTagValue;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import net.minestom.server.MinecraftServer;
@@ -33,8 +33,9 @@ public class BlockingSystem extends InitializableSystem {
 
     private static final LogUtil.SystemLogger log = LogUtil.system("BlockingSystem");
 
-    /** Item tag: presence marks item as blockable; value holds optional damage/knockback modifiers. */
-    public static final Tag<BlockableTagValue> BLOCKABLE = Tag.Structure("blockable", new BlockableTagSerializer());
+    /** Serialized tag for items — presence marks item as blockable. */
+    public static final Tag<BlockableTagValue> BLOCKABLE =
+            Tag.Structure("blockable", new com.minestom.mechanics.systems.blocking.tags.BlockableTagSerializer());
 
     /** Applied legacy slowdown modifiers so we can remove by modifier reference. */
     private final Map<UUID, AttributeModifier> legacySlowdownModifiers = new ConcurrentHashMap<>();

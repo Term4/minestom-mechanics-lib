@@ -19,6 +19,7 @@ import static com.minestom.mechanics.config.constants.CombatConstants.*;
 // All this should basically do is take a protection value / calculation and pass it to the damage system with the damage.
 // i.e. item has property armor = 4, item has 2 armor bars (4/2), + enchants (protection, feather falling, etc)
 // all of this gets sent to the damage system which accounts for various protection.
+// Should be accessed from damage calculator
 
 /**
  * Armor system that reduces damage based on armor points and toughness.

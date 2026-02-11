@@ -69,11 +69,6 @@ public class HealthSystem extends InitializableSystem {
         return DamageType.getTag(id);
     }
 
-    /** Get the item override tag for a damage type (serialized). For item.withTag. */
-    public static Tag<DamageOverride> itemTag(String id) {
-        return DamageType.getItemTag(id);
-    }
-
     // ===========================
     // INITIALIZATION
     // ===========================

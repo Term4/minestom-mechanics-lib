@@ -1,12 +1,9 @@
 package com.minestom.mechanics.systems.blocking;
 
 import com.minestom.mechanics.systems.blocking.tags.BlockableTagValue;
-import net.minestom.server.component.DataComponents;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.item.component.BlocksAttacks;
 
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -68,21 +65,19 @@ public final class BlockableItem {
         return withSwordPreset(stack);
     }
 
-    private static final BlocksAttacks VANILLA_BLOCKS_ATTACKS = new BlocksAttacks(
-            0, 0, List.of(),
-            new BlocksAttacks.ItemDamageFunction(0, 0, 0),
-            null, null, null
-    );
+    private static final net.minestom.server.item.component.BlocksAttacks VANILLA_BLOCKS_ATTACKS =
+            new net.minestom.server.item.component.BlocksAttacks(0, 0, java.util.List.of(),
+                    new net.minestom.server.item.component.BlocksAttacks.ItemDamageFunction(0, 0, 0), null, null, null);
 
     /**
-     * Apply blockable tag and BLOCKS_ATTACKS to an item. The item can then be used to block
-     * (right-click use) and will use the given modifiers, or config defaults when null.
+     * Apply blockable tag and BLOCKS_ATTACKS to an item.
+     * Automatically adds the vanilla BLOCKS_ATTACKS component for client-side blocking animation.
      */
     public static ItemStack withBlockable(ItemStack stack, BlockableTagValue value) {
         if (stack == null || stack.isAir()) return stack;
         return stack
                 .withTag(BlockingSystem.BLOCKABLE, value)
-                .with(DataComponents.BLOCKS_ATTACKS, VANILLA_BLOCKS_ATTACKS);
+                .with(net.minestom.server.component.DataComponents.BLOCKS_ATTACKS, VANILLA_BLOCKS_ATTACKS);
     }
 
     /**

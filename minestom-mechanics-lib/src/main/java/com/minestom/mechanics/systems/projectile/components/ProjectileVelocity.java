@@ -1,9 +1,8 @@
 package com.minestom.mechanics.systems.projectile.components;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
-import com.minestom.mechanics.systems.projectile.tags.VelocityTagSerializer;
-import com.minestom.mechanics.systems.projectile.tags.VelocityTagValue;
 import com.minestom.mechanics.systems.ConfigTagWrapper;
+import com.minestom.mechanics.systems.projectile.tags.VelocityTagValue;
 import com.minestom.mechanics.ConfigurableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
@@ -22,12 +21,12 @@ import org.jetbrains.annotations.Nullable;
  * 4. World tags
  * 5. Registry/server default [LOWEST]
  *
- * Usage:
+ * Usage (items use Mechanics component):
  * <pre>
  * import static VelocityTagValue.*;
  *
- * item.withTag(ProjectileVelocity.CUSTOM, velMult(2.0))
- * item.withTag(ProjectileVelocity.CUSTOM, VEL_LASER)
+ * Mechanics.builder().velocity(velMult(2.0)).build()
+ * Mechanics.builder().velocity(VEL_LASER).build()
  * </pre>
  */
 public class ProjectileVelocity extends ConfigurableSystem<ProjectileVelocityConfig> {
@@ -68,13 +67,23 @@ public class ProjectileVelocity extends ConfigurableSystem<ProjectileVelocityCon
     // UNIFIED TAG SYSTEM
     // ===========================
 
-    public static final Tag<VelocityTagValue> CUSTOM =
-            Tag.Structure("projectile_velocity_custom", new VelocityTagSerializer());
+    /** Transient velocity tag for entities. */
+    public static final Tag<VelocityTagValue> CUSTOM = Tag.Transient("projectile_velocity_custom");
+    /** Serialized velocity tag for items. */
+    public static final Tag<VelocityTagValue> ITEM_CUSTOM =
+            Tag.Structure("projectile_velocity_custom", new com.minestom.mechanics.systems.projectile.tags.VelocityTagSerializer());
 
     @Override
     @SuppressWarnings("unchecked")
     protected Tag<ConfigTagWrapper<ProjectileVelocityConfig>> getWrapperTag(Entity attacker) {
         return (Tag<ConfigTagWrapper<ProjectileVelocityConfig>>) (Tag<?>) CUSTOM;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected ConfigTagWrapper<ProjectileVelocityConfig> getItemWrapper(@org.jetbrains.annotations.Nullable net.minestom.server.item.ItemStack item, Entity attacker) {
+        if (item == null || item.isAir()) return null;
+        return (ConfigTagWrapper<ProjectileVelocityConfig>) (ConfigTagWrapper<?>) item.getTag(ITEM_CUSTOM);
     }
 
     @Override

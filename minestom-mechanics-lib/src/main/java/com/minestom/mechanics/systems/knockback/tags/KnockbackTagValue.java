@@ -7,24 +7,18 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Combined tag value for knockback modifications - RECORD VERSION.
- * Works with Tag.Structure() for proper serialization.
+ * Knockback modification values. Used on items via Mechanics component
+ * and on entities via transient tags.
  *
- * Usage:
  * <pre>
  * import static KnockbackTagValue.*;
  *
- * // Just multiplier
- * .withTag(KnockbackSystem.CUSTOM, kbMult(2.0, 1.5))
+ * // Items (via Mechanics component)
+ * Mechanics.builder().knockback(kbMult(2.0, 1.5)).build()
+ * Mechanics.builder().knockback(kbMult(2.0, 1.5).thenAdd(0.5, 0.3)).build()
  *
- * // Just modify
- * .withTag(KnockbackSystem.CUSTOM, kbAdd(0.5, 0.3))
- *
- * // Combined (chainable)
- * .withTag(KnockbackSystem.CUSTOM, kbMult(2.0, 1.5).thenAdd(0.5, 0.3))
- *
- * // Presets
- * .withTag(KnockbackSystem.CUSTOM, KB_HEAVY)
+ * // Entities (via transient tag)
+ * player.setTag(KnockbackSystem.CUSTOM, KB_HEAVY)
  * </pre>
  */
 public record KnockbackTagValue(

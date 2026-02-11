@@ -45,7 +45,7 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
 
     /**
      * Get the wrapper tag for this system based on attacker type.
-     * Return the appropriate tag (normal or projectile).
+     * Used for entity/world tag resolution (transient tags).
      *
      * Example:
      * return isProjectileAttacker(attacker) ? PROJECTILE_CUSTOM : CUSTOM;
@@ -57,6 +57,13 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
      * Example: 6 for knockback (horizontal, vertical, sprintBonusH, sprintBonusV, airMultH, airMultV)
      */
     protected abstract int getComponentCount();
+
+    /**
+     * Read the wrapper from an item via the Mechanics component system.
+     * Subclasses override to read from the appropriate field in MechanicsData.
+     * Return null if no override is present on the item.
+     */
+    protected abstract @Nullable ConfigTagWrapper<TConfig> getItemWrapper(@Nullable ItemStack item, Entity attacker);
 
     /**
      * Check if attacker is a projectile entity
@@ -104,11 +111,9 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
         
         ConfigTagWrapper<TConfig> wrapper;
 
-        // 1. Check item FIRST (highest priority)
-        if (item != null && !item.isAir()) {
-            wrapper = item.getTag(wrapperTag);
-            if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
-        }
+        // 1. Check item FIRST (highest priority) — via Mechanics component
+        wrapper = getItemWrapper(item, attacker != null ? attacker : victim);
+        if (wrapper != null && wrapper.getCustom() != null) return wrapper.getCustom();
 
         // 2. Check attacker entity (if attacker exists)
         if (attacker != null) {
@@ -165,12 +170,10 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
         ConfigTagWrapper<TConfig> wrapper;
         List<Double> modify;
 
-        // 1. Item
-        if (item != null && !item.isAir()) {
-            wrapper = item.getTag(wrapperTag);
-            if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
-                total += modify.get(index);
-            }
+        // 1. Item — via Mechanics component
+        wrapper = getItemWrapper(item, attacker != null ? attacker : victim);
+        if (wrapper != null && (modify = wrapper.getModify()) != null && modify.size() > index) {
+            total += modify.get(index);
         }
 
         // 2. Attacker entity (if attacker exists)
@@ -233,13 +236,11 @@ public abstract class ConfigurableSystem<TConfig> extends InitializableSystem {
         ConfigTagWrapper<TConfig> wrapper;
         List<Double> mults;
 
-        // 1. Item
-        if (item != null && !item.isAir()) {
-            wrapper = item.getTag(wrapperTag);
-            if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
-                for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
-                    multipliers[i] *= mults.get(i);
-                }
+        // 1. Item — via Mechanics component
+        wrapper = getItemWrapper(item, attacker != null ? attacker : victim);
+        if (wrapper != null && (mults = wrapper.getMultiplier()) != null) {
+            for (int i = 0; i < Math.min(mults.size(), componentCount); i++) {
+                multipliers[i] *= mults.get(i);
             }
         }
 

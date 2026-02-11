@@ -2,7 +2,7 @@ package com.minestom.mechanics.manager;
 
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
-import com.minestom.mechanics.systems.compatibility.movement.MovementRestrictionSystem;
+import com.minestom.mechanics.systems.compatibility.modern_1_21.fix.MovementRestrictionSystem;
 import com.minestom.mechanics.systems.compatibility.hitbox.HitboxSystem;
 import com.minestom.mechanics.systems.misc.collision.PlayerCollisionSystem;
 

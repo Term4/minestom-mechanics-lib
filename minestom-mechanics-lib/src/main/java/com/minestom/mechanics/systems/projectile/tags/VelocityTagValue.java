@@ -7,24 +7,18 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Combined tag value for projectile velocity modifications - RECORD VERSION.
- * Works with Tag.Structure() for proper serialization.
+ * Projectile velocity modification values. Used on items via Mechanics component
+ * and on entities via transient tags.
  *
- * Usage:
  * <pre>
  * import static VelocityTagValue.*;
  *
- * // Just multiplier
- * .withTag(ProjectileVelocitySystem.CUSTOM, velMult(2.0, 1.5))
+ * // Items (via Mechanics component)
+ * Mechanics.builder().velocity(velMult(2.0, 1.5)).build()
+ * Mechanics.builder().velocity(VEL_LASER).build()
  *
- * // Just modify
- * .withTag(ProjectileVelocitySystem.CUSTOM, velAdd(0, 0, 0, 0.01, 0, 0))
- *
- * // Combined (chainable)
- * .withTag(ProjectileVelocitySystem.CUSTOM, velMult(0.5).thenAdd(0, 0, 0, 0.01, 0, 0))
- *
- * // Presets
- * .withTag(ProjectileVelocitySystem.CUSTOM, VEL_LASER)
+ * // Entities (via transient tag)
+ * projectile.setTag(ProjectileVelocity.CUSTOM, velMult(0.5))
  * </pre>
  */
 

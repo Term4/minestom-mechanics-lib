@@ -1,4 +1,4 @@
-package com.minestom.mechanics.systems.compatibility.movement;
+package com.minestom.mechanics.systems.compatibility.modern_1_21.fix;
 
 import com.minestom.mechanics.config.gameplay.MovementConfig;
 import com.minestom.mechanics.InitializableSystem;

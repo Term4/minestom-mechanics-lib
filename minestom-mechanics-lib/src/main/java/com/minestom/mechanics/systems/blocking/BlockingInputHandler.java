@@ -48,6 +48,7 @@ public class BlockingInputHandler {
         handler.addListener(PlayerDisconnectEvent.class, this::handlePlayerDisconnect);
     }
 
+    // TODO: Remove this
     private void handlePlayerSpawn(PlayerSpawnEvent event) {
         Player player = event.getPlayer();
         if (player.getTag(BlockingState.PREFERENCES) == null) {

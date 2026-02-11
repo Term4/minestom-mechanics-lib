@@ -1,7 +1,9 @@
-package com.minestom.mechanics.systems.compatibility;
+package com.minestom.mechanics.systems.compatibility.legacy_1_8.fix;
 
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
+
+// Update to use inventory packets? COULD also be the same issue that prevents commands from being tabbed on older versions
 
 // TODO: COULD be necessary to run this whenever a 1.8 client picks something up?
 // TODO: Have this ONLY apply if the client is a legacy client

@@ -1,5 +1,6 @@
-package com.minestom.mechanics.systems.compatibility;
+package com.minestom.mechanics.systems.misc;
 
+import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.EntityPose;
@@ -12,6 +13,8 @@ import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+// TODO: Clean up
 
 /**
  * Reduces stutter for modern clients by filtering self-metadata.

@@ -1,7 +1,6 @@
-package com.minestom.mechanics.systems.misc.gravity;
+package com.minestom.mechanics.systems.compatibility.legacy_1_8.feature;
 
 import com.minestom.mechanics.config.constants.LegacyGravityConstants;
-import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;

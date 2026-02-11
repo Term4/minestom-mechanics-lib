@@ -1,5 +1,0 @@
-Projectile Idea:
-
-Projectile takes an entity "thrower" or entitySpawner and spawns a projectile entity.
-
-I actually quite like how this is right now, could just use some general clean up.
