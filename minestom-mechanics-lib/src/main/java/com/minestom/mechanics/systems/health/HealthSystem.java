@@ -4,6 +4,7 @@ import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.systems.health.damage.*;
 import com.minestom.mechanics.systems.health.damage.types.*;
+import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
@@ -41,7 +42,6 @@ public class HealthSystem extends InitializableSystem {
     private static final LogUtil.SystemLogger log = LogUtil.system("HealthSystem");
 
     private final InvulnerabilityTracker invulnerability;
-    private final DamageApplicator damageApplicator;
     private HealthConfig config;
     private long currentTick = 0;
     private final Map<UUID, Long> lastProcessedTick = new ConcurrentHashMap<>();
@@ -53,16 +53,25 @@ public class HealthSystem extends InitializableSystem {
         this.invulnerability = new InvulnerabilityTracker(config);
 
         // Register built-in damage types
+        // Environmental (tick-based)
         DamageType.register(new Fall());
         DamageType.register(new Fire());
         DamageType.register(new Cactus());
-
-        this.damageApplicator = new DamageApplicator(config, invulnerability);
+        // Combat (event-only — needed for tag resolution on items/entities)
+        DamageType.register(new Melee());
+        DamageType.register(new Arrow());
+        DamageType.register(new miscProjectile());
+        DamageType.register(new Generic());
     }
 
-    /** Get the override tag for a damage type by id (e.g. "fall", "fire", "cactus"). */
+    /** Get the entity/world override tag for a damage type (transient). For player.setTag / world.setTag. */
     public static Tag<DamageOverride> tag(String id) {
         return DamageType.getTag(id);
+    }
+
+    /** Get the item override tag for a damage type (serialized). For item.withTag. */
+    public static Tag<DamageOverride> itemTag(String id) {
+        return DamageType.getItemTag(id);
     }
 
     // ===========================
@@ -97,11 +106,12 @@ public class HealthSystem extends InitializableSystem {
             if (last != null && last == currentTick) { event.setCancelled(true); return; }
             lastProcessedTick.put(id, currentTick);
 
-            damageApplicator.handleDamage(event);
-            if (!event.isCancelled()) {
-                DamageType dt = DamageType.find(event.getDamage().getType());
-                if (dt != null) dt.processDamage(event);
-            }
+            DamageType dt = DamageType.find(event.getDamage().getType());
+            DamageResult result = (dt != null)
+                    ? dt.processDamage(event, invulnerability, config)
+                    : DamageType.processUnregistered(event, invulnerability, config);
+
+            // result is available here for future knockback integration
         });
 
         // Environmental tick
@@ -141,12 +151,12 @@ public class HealthSystem extends InitializableSystem {
 
     /**
      * Apply damage through the health pipeline. Use this instead of {@code victim.damage()}
-     * to ensure creative mode is handled by DamageApplicator rather than Minestom's
+     * to ensure creative mode is handled by the damage pipeline rather than Minestom's
      * built-in invulnerable flag (which skips the event entirely).
      */
     public static boolean applyDamage(LivingEntity victim, net.minestom.server.entity.damage.Damage damage) {
         // Minestom skips the damage event for invulnerable entities (creative mode).
-        // Temporarily clear so the event fires; DamageApplicator handles the creative check.
+        // Temporarily clear so the event fires; the damage pipeline handles the creative check.
         boolean wasInvulnerable = false;
         if (victim instanceof Player p && p.getGameMode() == GameMode.CREATIVE && victim.isInvulnerable()) {
             victim.setInvulnerable(false);

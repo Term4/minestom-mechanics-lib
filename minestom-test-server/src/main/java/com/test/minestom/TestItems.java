@@ -1,7 +1,7 @@
 package com.test.minestom;
 
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.health.damage.DamageOverride;
+import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
 import net.minestom.server.tag.Tag;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
@@ -170,7 +170,7 @@ public class TestItems {
 
     /** Apply a damage override tag to an item, safely skipping if the type isn't registered yet. */
     private static ItemStack withOverride(ItemStack item, String typeId, DamageOverride override) {
-        Tag<DamageOverride> tag = HealthSystem.tag(typeId);
+        Tag<DamageOverride> tag = HealthSystem.itemTag(typeId);
         return tag != null ? item.withTag(tag, override) : item;
     }
 

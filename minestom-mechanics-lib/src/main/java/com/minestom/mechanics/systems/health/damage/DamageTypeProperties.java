@@ -1,5 +1,7 @@
 package com.minestom.mechanics.systems.health.damage;
 
+import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
+
 /**
  * Unified properties for a damage type.
  * Each {@link DamageType} carries a default set of these properties,

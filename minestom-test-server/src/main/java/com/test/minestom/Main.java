@@ -14,7 +14,7 @@ import com.minestom.mechanics.systems.compatibility.LegacyInventoryUtil;
 import com.minestom.mechanics.systems.compatibility.ModernStutterFix;
 import com.minestom.mechanics.systems.compatibility.LegacyAnimationFix;
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.health.damage.DamageOverride;
+import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.misc.gravity.GravitySystem;
 import com.minestom.mechanics.systems.player.PlayerCleanupManager;
 import com.test.minestom.commands.CommandRegistry;

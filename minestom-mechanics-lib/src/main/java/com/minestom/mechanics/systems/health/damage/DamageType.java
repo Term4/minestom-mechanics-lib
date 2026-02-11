@@ -1,6 +1,14 @@
 package com.minestom.mechanics.systems.health.damage;
 
+import com.minestom.mechanics.config.health.HealthConfig;
+import com.minestom.mechanics.manager.ArmorManager;
+import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.systems.health.InvulnerabilityTracker;
+import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
+import com.minestom.mechanics.systems.health.damage.util.DamageOverrideSerializer;
+import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.entity.EntityDamageEvent;
@@ -70,10 +78,16 @@ public class DamageType {
     /** Get tracker by id, or null. */
     public static DamageTracker getTracker(String id) { return trackersById.get(id); }
 
-    /** Get override tag by id. */
+    /** Get entity/world override tag by id (transient). */
     public static Tag<DamageOverride> getTag(String id) {
         DamageType dt = byId.get(id);
         return dt != null ? dt.getTag() : null;
+    }
+
+    /** Get item override tag by id (serialized). */
+    public static Tag<DamageOverride> getItemTag(String id) {
+        DamageType dt = byId.get(id);
+        return dt != null ? dt.getItemTag() : null;
     }
 
     /** Clear all registered types. Called on shutdown. */
@@ -92,14 +106,18 @@ public class DamageType {
     private final String name;
     private DamageTypeProperties defaults;
     private Object config;
-    private final Tag<DamageOverride> tag;
+    /** Serialized tag for items (persists in item NBT). */
+    private final Tag<DamageOverride> itemTag;
+    /** Transient tag for entities/worlds (runtime only, not serialized). */
+    private final Tag<DamageOverride> entityTag;
     private final Set<RegistryKey<?>> matchedTypes;
 
     @SafeVarargs
     public DamageType(String name, DamageTypeProperties defaults, RegistryKey<?>... matchedTypes) {
         this.name = name;
         this.defaults = defaults;
-        this.tag = Tag.Transient("health_" + name.toLowerCase());
+        this.itemTag = Tag.Structure("health_" + name.toLowerCase(), new DamageOverrideSerializer());
+        this.entityTag = Tag.Transient("health_" + name.toLowerCase());
         this.matchedTypes = Set.of(matchedTypes);
     }
 
@@ -116,26 +134,46 @@ public class DamageType {
 
     /**
      * Resolve effective properties for a damage context.
-     * Priority: Item > Attacker > Victim > World > Defaults.
+     * Priority: Item > Source > Shooter > Victim > World > Defaults.
+     *
+     * @param source  direct damage source (attacker for melee, projectile for ranged)
+     * @param shooter indirect attacker (player who shot the projectile, or null for melee)
+     * @param victim  the entity being damaged
+     * @param item    the item used (weapon/projectile item from shooter's hand)
      */
-    public DamageTypeProperties resolveProperties(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
+    public DamageTypeProperties resolveProperties(@Nullable Entity source, @Nullable Entity shooter,
+                                                   LivingEntity victim, @Nullable ItemStack item) {
         DamageOverride override;
 
+        // 1. Item (highest priority) — uses serialized tag
         if (item != null && !item.isAir()) {
-            override = item.getTag(tag);
+            override = item.getTag(itemTag);
             if (override != null && override.custom() != null) return override.custom();
         }
-        if (attacker != null) {
-            override = attacker.getTag(tag);
+        // 2. Source entity (attacker or projectile) — uses transient tag
+        if (source != null) {
+            override = source.getTag(entityTag);
             if (override != null && override.custom() != null) return override.custom();
         }
-        override = victim.getTag(tag);
+        // 3. Shooter (indirect attacker, e.g. player who shot arrow) — uses transient tag
+        if (shooter != null && shooter != source) {
+            override = shooter.getTag(entityTag);
+            if (override != null && override.custom() != null) return override.custom();
+        }
+        // 4. Victim
+        override = victim.getTag(entityTag);
         if (override != null && override.custom() != null) return override.custom();
+        // 5. World
         if (victim.getInstance() != null) {
-            override = victim.getInstance().getTag(tag);
+            override = victim.getInstance().getTag(entityTag);
             if (override != null && override.custom() != null) return override.custom();
         }
         return defaults;
+    }
+
+    /** Convenience: resolve with a single attacker (melee / environmental). */
+    public DamageTypeProperties resolveProperties(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
+        return resolveProperties(attacker, null, victim, item);
     }
 
     // ===========================
@@ -144,24 +182,20 @@ public class DamageType {
 
     /**
      * Resolve effective config for a damage context.
-     * Checks tag chain (item > attacker > victim > world) for configOverride,
-     * falls back to this type's default config.
+     * Checks tag chain for configOverride, falls back to this type's default config.
+     * Note: configOverride is NOT serialized on items (only works on entity/world transient tags).
      */
     @SuppressWarnings("unchecked")
     public <T> T resolveConfig(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
         DamageOverride override;
-        if (item != null && !item.isAir()) {
-            override = item.getTag(tag);
-            if (override != null && override.configOverride() != null) return (T) override.configOverride();
-        }
         if (attacker != null) {
-            override = attacker.getTag(tag);
+            override = attacker.getTag(entityTag);
             if (override != null && override.configOverride() != null) return (T) override.configOverride();
         }
-        override = victim.getTag(tag);
+        override = victim.getTag(entityTag);
         if (override != null && override.configOverride() != null) return (T) override.configOverride();
         if (victim.getInstance() != null) {
-            override = victim.getInstance().getTag(tag);
+            override = victim.getInstance().getTag(entityTag);
             if (override != null && override.configOverride() != null) return (T) override.configOverride();
         }
         return (T) config;
@@ -179,19 +213,9 @@ public class DamageType {
     // DAMAGE CALCULATION
     // ===========================
 
-    /**
-     * Calculate final damage with all modifiers applied.
-     * Formula: max(0, (baseDamage * props.multiplier * stackedMultipliers) + stackedModifiers)
-     */
+    /** Calculate final damage with all modifiers (delegates to {@link DamageCalculator}). */
     public float calculateDamage(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item, float baseDamage) {
-        DamageTypeProperties props = resolveProperties(attacker, victim, item);
-        if (!props.enabled()) return 0f;
-
-        double stackedMult = getStackedMultiplier(attacker, victim, item);
-        double stackedMod = getStackedModify(attacker, victim, item);
-
-        float damage = (float) ((baseDamage * props.multiplier() * stackedMult) + stackedMod);
-        return Math.max(0f, damage);
+        return DamageCalculator.calculate(resolveProperties(attacker, victim, item), itemTag, entityTag, attacker, victim, item, baseDamage);
     }
 
     public boolean isEnabled(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
@@ -203,73 +227,113 @@ public class DamageType {
     }
 
     // ===========================
-    // EVENT PROCESSING
+    // DAMAGE PIPELINE
     // ===========================
+
+    private static final LogUtil.SystemLogger log = LogUtil.system("DamageType");
 
     /**
-     * Apply damage modifiers (multiplier/modify from tag chain) to an EntityDamageEvent.
-     * Called AFTER DamageApplicator has handled i-frames/replacement.
+     * Full damage pipeline. Handles creative check, i-frames, replacement,
+     * multiplier/modify stacking, and armor reduction — all in one pass.
+     * Returns a {@link DamageResult} with full context for knockback etc.
      */
-    public void processDamage(EntityDamageEvent event) {
-        LivingEntity victim = event.getEntity();
-        Entity attacker = event.getDamage().getSource();
-        ItemStack item = (attacker instanceof Player p) ? p.getItemInMainHand() : null;
+    public DamageResult processDamage(EntityDamageEvent event, InvulnerabilityTracker invulnerability, HealthConfig config) {
+        LivingEntity victim = (LivingEntity) event.getEntity();
+        Entity source = event.getDamage().getSource();    // direct: attacker (melee) or projectile (ranged)
+        Entity shooter = event.getDamage().getAttacker();  // indirect: player who shot projectile, or null
+        float damageAmount = event.getDamage().getAmount();
+        RegistryKey<net.minestom.server.entity.damage.DamageType> mcType = event.getDamage().getType();
 
-        DamageTypeProperties props = resolveProperties(attacker, victim, item);
+        // Resolve the player and their held item
+        // For melee: source = player, shooter = null → item from source
+        // For projectiles: source = projectile, shooter = player → item from shooter
+        Player attackerPlayer = null;
+        if (shooter instanceof Player p) attackerPlayer = p;
+        else if (source instanceof Player p) attackerPlayer = p;
+        ItemStack item = attackerPlayer != null ? attackerPlayer.getItemInMainHand() : null;
+        Entity attacker = attackerPlayer != null ? attackerPlayer : source;
+
+        DamageTypeProperties props = resolveProperties(source, shooter, victim, item);
+
+        // 1. Disabled check
         if (!props.enabled()) {
             event.setCancelled(true);
-            return;
+            return DamageResult.blocked(props, attacker, victim);
         }
 
-        float original = event.getDamage().getAmount();
-        float modified = calculateDamage(attacker, victim, item, original);
-        if (modified != original) {
+        // 2. Creative mode check
+        if (victim instanceof Player player && player.getGameMode() == GameMode.CREATIVE) {
+            if (!props.bypassCreative()) {
+                event.setCancelled(true);
+                return DamageResult.blocked(props, attacker, victim);
+            }
+        }
+
+        // 3. Apply multiplier/modify stacking to damage amount
+        float modified = calculateDamage(attacker, victim, item, damageAmount);
+        if (modified != damageAmount) {
             event.getDamage().setAmount(modified);
+            damageAmount = modified;
         }
+
+        // 4. Bypass invulnerability: allow damage, skip i-frame check
+        if (props.bypassInvulnerability()) {
+            invulnerability.markDamaged(victim, damageAmount);
+            invulnerability.setLastDamageReplacement(victim, false);
+            return new DamageResult(true, false, damageAmount, props, attacker, victim);
+        }
+
+        // 5. Not in i-frames: allow damage normally
+        if (!invulnerability.isInvulnerable(victim)) {
+            invulnerability.markDamaged(victim, damageAmount);
+            invulnerability.setLastDamageReplacement(victim, false);
+            return new DamageResult(true, false, damageAmount, props, attacker, victim);
+        }
+
+        // 6. In i-frames: check if this damage type supports replacement
+        if (!props.damageReplacement()) {
+            event.setCancelled(true);
+            return DamageResult.blocked(props, attacker, victim);
+        }
+
+        // 7. Replacement: only if incoming damage > previous damage
+        float previousDamage = invulnerability.getLastDamageAmount(victim);
+        if (damageAmount <= previousDamage) {
+            event.setCancelled(true);
+            return DamageResult.blocked(props, attacker, victim);
+        }
+
+        // 8. Apply replacement damage (difference only)
+        event.setCancelled(true);
+        float damageDifference = damageAmount - previousDamage;
+        float finalDifference = damageDifference;
+
+        // Apply armor reduction if damage doesn't penetrate
+        if (!props.penetratesArmor() && victim instanceof Player player) {
+            try {
+                ArmorManager armorManager = MechanicsManager.getInstance().getArmorManager();
+                if (armorManager != null && armorManager.isInitialized() && armorManager.isEnabled()) {
+                    finalDifference = armorManager.calculateReducedDamage(player, damageDifference, mcType);
+                }
+            } catch (IllegalStateException ignored) {}
+        }
+
+        float newHealth = Math.max(0, victim.getHealth() - finalDifference);
+        victim.setHealth(newHealth);
+
+        invulnerability.updateDamageAmount(victim, damageAmount);
+        invulnerability.setLastDamageReplacement(victim, true);
+
+        return new DamageResult(true, true, finalDifference, props, attacker, victim);
     }
 
-    // ===========================
-    // MULTIPLIER / MODIFY STACKING
-    // ===========================
-
-    private double getStackedMultiplier(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
-        double result = 1.0;
-        DamageOverride override;
-        if (item != null && !item.isAir()) {
-            override = item.getTag(tag);
-            if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
-        }
-        if (attacker != null) {
-            override = attacker.getTag(tag);
-            if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
-        }
-        override = victim.getTag(tag);
-        if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
-        if (victim.getInstance() != null) {
-            override = victim.getInstance().getTag(tag);
-            if (override != null && override.multiplier() != null) for (double m : override.multiplier()) result *= m;
-        }
-        return result;
-    }
-
-    private double getStackedModify(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
-        double result = 0.0;
-        DamageOverride override;
-        if (item != null && !item.isAir()) {
-            override = item.getTag(tag);
-            if (override != null && override.modify() != null) for (double m : override.modify()) result += m;
-        }
-        if (attacker != null) {
-            override = attacker.getTag(tag);
-            if (override != null && override.modify() != null) for (double m : override.modify()) result += m;
-        }
-        override = victim.getTag(tag);
-        if (override != null && override.modify() != null) for (double m : override.modify()) result += m;
-        if (victim.getInstance() != null) {
-            override = victim.getInstance().getTag(tag);
-            if (override != null && override.modify() != null) for (double m : override.modify()) result += m;
-        }
-        return result;
+    /**
+     * Process damage for an unregistered damage type (falls back to ATTACK_DEFAULT properties).
+     */
+    public static DamageResult processUnregistered(EntityDamageEvent event, InvulnerabilityTracker invulnerability, HealthConfig config) {
+        // Create a temporary DamageType with attack defaults for the pipeline
+        DamageType fallback = new DamageType("_unregistered", DamageTypeProperties.ATTACK_DEFAULT);
+        return fallback.processDamage(event, invulnerability, config);
     }
 
     // ===========================
@@ -278,12 +342,17 @@ public class DamageType {
 
     public String getName() { return name; }
     public DamageTypeProperties getDefaults() { return defaults; }
-    public Tag<DamageOverride> getTag() { return tag; }
+    /** Transient tag for entities/worlds (runtime only). Use for player.setTag / world.setTag. */
+    public Tag<DamageOverride> getTag() { return entityTag; }
+    /** Serialized tag for items. Use for item.withTag. */
+    public Tag<DamageOverride> getItemTag() { return itemTag; }
     public void setDefaults(DamageTypeProperties defaults) { this.defaults = defaults; }
 
     @SuppressWarnings("unchecked")
     public <T> T getConfig() { return (T) config; }
     public void setConfig(Object config) { this.config = config; }
 
-    public void cleanup(LivingEntity entity) { entity.removeTag(tag); }
+    public void cleanup(LivingEntity entity) {
+        entity.removeTag(entityTag);
+    }
 }
