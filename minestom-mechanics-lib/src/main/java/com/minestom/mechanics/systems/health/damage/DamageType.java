@@ -3,6 +3,7 @@ package com.minestom.mechanics.systems.health.damage;
 import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.manager.ArmorManager;
 import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.health.InvulnerabilityTracker;
 import com.minestom.mechanics.systems.health.damage.util.DamageCalculator;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
@@ -275,6 +276,18 @@ public class DamageType {
         if (modified != damageAmount) {
             event.getDamage().setAmount(modified);
             damageAmount = modified;
+        }
+
+        // 3b. Apply blocking reduction (must run after damage is calculated; BlockingModifiers
+        //     used to listen on EntityDamageEvent but ran before this pipeline and saw amount=0)
+        if (victim instanceof Player victimPlayer && props.blockable()) {
+            try {
+                BlockingSystem blocking = BlockingSystem.getInstance();
+                if (blocking.isEnabled()) {
+                    damageAmount = blocking.applyBlockingDamageReduction(victimPlayer, damageAmount, mcType);
+                    event.getDamage().setAmount(damageAmount);
+                }
+            } catch (IllegalStateException ignored) {}
         }
 
         // 4. Bypass invulnerability: allow damage, skip i-frame check

@@ -3,6 +3,7 @@ package com.minestom.mechanics.systems.knockback;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import static com.minestom.mechanics.config.constants.CombatConstants.MIN_KNOCKBACK_DISTANCE;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
+import net.minestom.server.MinecraftServer;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -55,14 +56,8 @@ public class KnockbackApplicator {
                 ? resolved.projectileDirection()
                 : resolved.meleeDirection();
         KnockbackSystem.DegenerateFallback degenerateFallback = resolved.degenerateFallback();
-        double proximityScaleDistance = resolved.proximityScaleDistance();
         double lookWeight = resolved.lookWeight();
         double sprintLookWeight = resolved.sprintLookWeight() != null ? resolved.sprintLookWeight() : lookWeight;
-
-        KnockbackCalculator.KnockbackDirectionResult baseResult = calculator.calculateDirection(
-                dirMode, victim, attacker, source, shooterOriginPos, lookWeight,
-                degenerateFallback, proximityScaleDistance);
-        double proximityMult = baseResult.proximityMultiplier();
 
         Vec direction;
         double horizontal;
@@ -70,16 +65,15 @@ public class KnockbackApplicator {
 
         if (wasSprinting && type != KnockbackSystem.KnockbackType.PROJECTILE) {
             if (attacker instanceof Player player) player.setSprinting(false);
-            KnockbackCalculator.KnockbackDirectionResult sprintResult = calculator.calculateDirection(
-                    dirMode, victim, attacker, source, shooterOriginPos, sprintLookWeight,
-                    degenerateFallback, proximityScaleDistance);
+            Vec baseDir = calculator.calculateDirection(dirMode, victim, attacker, source, shooterOriginPos, lookWeight, degenerateFallback);
+            Vec sprintDir = calculator.calculateDirection(dirMode, victim, attacker, source, shooterOriginPos, sprintLookWeight, degenerateFallback);
             double baseH = resolved.horizontal();
             double sprintH = resolved.sprintBonusHorizontal();
-            double hVecX = baseH * baseResult.direction().x() + sprintH * sprintResult.direction().x();
-            double hVecZ = baseH * baseResult.direction().z() + sprintH * sprintResult.direction().z();
+            double hVecX = baseH * baseDir.x() + sprintH * sprintDir.x();
+            double hVecZ = baseH * baseDir.z() + sprintH * sprintDir.z();
             double len = Math.sqrt(hVecX * hVecX + hVecZ * hVecZ);
             if (len < MIN_KNOCKBACK_DISTANCE) {
-                direction = baseResult.direction();
+                direction = baseDir;
                 horizontal = baseH + sprintH;
             } else {
                 direction = new Vec(hVecX / len, 0, hVecZ / len);
@@ -87,13 +81,10 @@ public class KnockbackApplicator {
             }
             vertical = resolved.vertical() + resolved.sprintBonusVertical();
         } else {
-            direction = baseResult.direction();
+            direction = calculator.calculateDirection(dirMode, victim, attacker, source, shooterOriginPos, lookWeight, degenerateFallback);
             horizontal = resolved.horizontal();
             vertical = resolved.vertical();
         }
-
-        horizontal *= proximityMult;
-        vertical *= proximityMult;
 
         // Enchantment bonus (melee only)
         if (kbEnchantLevel > 0 && type != KnockbackSystem.KnockbackType.PROJECTILE) {

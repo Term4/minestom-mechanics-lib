@@ -129,7 +129,6 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 base.meleeDirection(),
                 base.projectileDirection(),
                 base.degenerateFallback(),
-                base.proximityScaleDistance(),
                 base.sprintLookWeight()
         );
     }
@@ -177,8 +176,6 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     public enum DegenerateFallback {
         /** Use look direction when position is degenerate. */
         LOOK,
-        /** Scale knockback strength by distance; closer = weaker. Near zero distance = near zero KB. */
-        PROXIMITY_SCALE,
         /** Random direction when degenerate (legacy). */
         RANDOM
     }

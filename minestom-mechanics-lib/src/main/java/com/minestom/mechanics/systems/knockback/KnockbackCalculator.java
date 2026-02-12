@@ -23,9 +23,6 @@ import static com.minestom.mechanics.config.constants.MechanicsConstants.MIN_FAL
  */
 public class KnockbackCalculator {
 
-    /** Result of direction calculation, including proximity-based strength multiplier. */
-    public record KnockbackDirectionResult(Vec direction, double proximityMultiplier) {}
-
     private static final LogUtil.SystemLogger log = LogUtil.system("KnockbackCalculator");
 
     private final KnockbackConfig config;
@@ -35,21 +32,19 @@ public class KnockbackCalculator {
     }
     
     /**
-     * Calculate knockback direction and proximity multiplier based on the configured mode.
+     * Calculate knockback direction based on the configured mode.
      * Position-based modes blend with attacker/shooter look via lookWeight; VICTIM_FACING blends
      * position (away-from-attacker) with victim's facing via lookWeight.
      *
      * @param lookWeight 0–1; for position modes blends with attacker/shooter look; for VICTIM_FACING blends with victim look
      * @param degenerateFallback behavior when victim and origin are very close
-     * @param proximityScaleDistance distance over which PROXIMITY_SCALE ramps from 0 to full strength (blocks)
      */
-    public KnockbackDirectionResult calculateDirection(KnockbackSystem.KnockbackDirectionMode mode, LivingEntity victim,
-                                                       @org.jetbrains.annotations.Nullable Entity attacker,
-                                                       @org.jetbrains.annotations.Nullable Entity source,
-                                                       @org.jetbrains.annotations.Nullable Pos shooterOriginPos,
-                                                       double lookWeight,
-                                                       KnockbackSystem.DegenerateFallback degenerateFallback,
-                                                       double proximityScaleDistance) {
+    public Vec calculateDirection(KnockbackSystem.KnockbackDirectionMode mode, LivingEntity victim,
+                                  @org.jetbrains.annotations.Nullable Entity attacker,
+                                  @org.jetbrains.annotations.Nullable Entity source,
+                                  @org.jetbrains.annotations.Nullable Pos shooterOriginPos,
+                                  double lookWeight,
+                                  KnockbackSystem.DegenerateFallback degenerateFallback) {
         Pos lookSource = shooterOriginPos != null ? shooterOriginPos
                 : (attacker != null ? attacker.getPosition() : null);
         Vec lookDir = lookSource != null ? directionFromLook(lookSource) : null;
@@ -62,33 +57,21 @@ public class KnockbackCalculator {
                     ? (attacker != null ? attacker : source).getPosition() : null;
         };
 
-        double distance = origin != null ? horizontalDistance(victim.getPosition(), origin) : Double.POSITIVE_INFINITY;
-        boolean degenerate = distance < MIN_KNOCKBACK_DISTANCE;
-
-        Vec base;
-        double proximityMult = 1.0;
+        boolean degenerate = origin != null && horizontalDistance(victim.getPosition(), origin) < MIN_KNOCKBACK_DISTANCE;
 
         if (mode == KnockbackSystem.KnockbackDirectionMode.VICTIM_FACING) {
             Vec victimLook = directionFromLook(victim.getPosition());
             Vec posDir = origin != null
                     ? directionFromPosRaw(victim, origin, victimLook)
                     : fallback(victimLook, degenerateFallback, victimLook);
-            base = blendDirection(posDir, victimLook, lookWeight);
-            proximityMult = degenerateFallback == KnockbackSystem.DegenerateFallback.PROXIMITY_SCALE
-                    ? Math.min(1.0, distance / Math.max(proximityScaleDistance, 1e-9)) : 1.0;
-            return new KnockbackDirectionResult(base, proximityMult);
+            return blendDirection(posDir, victimLook, lookWeight);
         }
 
         if (degenerate) {
-            Vec fallbackDir = fallback(lookDir, degenerateFallback, lookDir);
-            switch (degenerateFallback) {
-                case LOOK, RANDOM -> proximityMult = 1.0;
-                case PROXIMITY_SCALE -> proximityMult = Math.min(1.0, distance / Math.max(proximityScaleDistance, 1e-9));
-            }
-            return new KnockbackDirectionResult(fallbackDir, proximityMult);
+            return fallback(lookDir, degenerateFallback, lookDir);
         }
 
-        base = switch (mode) {
+        Vec base = switch (mode) {
             case ATTACKER_POSITION -> attacker != null
                     ? directionFromPosRaw(victim, attacker.getPosition(), lookDir)
                     : fallback(lookDir, degenerateFallback, lookDir);
@@ -101,13 +84,9 @@ public class KnockbackCalculator {
             case VICTIM_FACING -> throw new IllegalStateException("handled above");
         };
 
-        if (degenerateFallback == KnockbackSystem.DegenerateFallback.PROXIMITY_SCALE) {
-            proximityMult = Math.min(1.0, distance / Math.max(proximityScaleDistance, 1e-9));
-        }
-
-        if (lookWeight <= 0) return new KnockbackDirectionResult(base, proximityMult);
+        if (lookWeight <= 0) return base;
         Vec lookDirForBlend = lookDir != null ? lookDir : base;
-        return new KnockbackDirectionResult(blendDirection(base, lookDirForBlend, lookWeight), proximityMult);
+        return blendDirection(base, lookDirForBlend, lookWeight);
     }
 
     private double horizontalDistance(Pos a, Pos b) {
@@ -120,7 +99,6 @@ public class KnockbackCalculator {
         return switch (mode) {
             case LOOK -> preferred != null ? preferred : randomDirection();
             case RANDOM -> randomDirection();
-            case PROXIMITY_SCALE -> preferred != null ? preferred : randomDirection();
         };
     }
 

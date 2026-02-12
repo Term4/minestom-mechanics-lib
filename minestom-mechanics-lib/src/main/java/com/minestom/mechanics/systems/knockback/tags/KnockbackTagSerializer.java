@@ -29,6 +29,7 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
 
     private static KnockbackSystem.DegenerateFallback parseDegenerateFallback(String name, KnockbackSystem.DegenerateFallback defaultValue) {
         if (name == null) return defaultValue;
+        if ("PROXIMITY_SCALE".equals(name)) return defaultValue; // removed, treat as LOOK
         try {
             return KnockbackSystem.DegenerateFallback.valueOf(name);
         } catch (IllegalArgumentException e) {
@@ -48,7 +49,6 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             KnockbackSystem.KnockbackDirectionMode melee = parseDirectionMode(meleeDir, KnockbackSystem.KnockbackDirectionMode.ATTACKER_POSITION);
             KnockbackSystem.KnockbackDirectionMode proj = parseDirectionMode(projDir, KnockbackSystem.KnockbackDirectionMode.SHOOTER_ORIGIN);
             KnockbackSystem.DegenerateFallback df = parseDegenerateFallback(r.getTag(Tag.String("cdf")), KnockbackSystem.DegenerateFallback.LOOK);
-            double psd = r.getTag(Tag.Double("cpsd")) != null ? r.getTag(Tag.Double("cpsd")) : 1.0;
             Double slw = r.getTag(Tag.Double("cslw"));
 
             custom = new KnockbackConfig(
@@ -57,7 +57,7 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
                     r.getTag(Tag.Double("csv")), r.getTag(Tag.Double("cah")),
                     r.getTag(Tag.Double("cav")), r.getTag(Tag.Double("clw")),
                     r.getTag(Tag.Boolean("cmd")), r.getTag(Tag.Boolean("csn")),
-                    melee, proj, df, psd, slw
+                    melee, proj, df, slw
             );
         }
         if (mult == null && mod == null && custom == null) return null;
@@ -90,9 +90,6 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             }
             if (c.degenerateFallback() != KnockbackSystem.DegenerateFallback.LOOK) {
                 w.setTag(Tag.String("cdf"), c.degenerateFallback().name());
-            }
-            if (c.proximityScaleDistance() != 1.0) {
-                w.setTag(Tag.Double("cpsd"), c.proximityScaleDistance());
             }
             if (c.sprintLookWeight() != null) {
                 w.setTag(Tag.Double("cslw"), c.sprintLookWeight());

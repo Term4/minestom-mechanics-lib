@@ -12,7 +12,6 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.attribute.AttributeModifier;
 import net.minestom.server.entity.attribute.AttributeOperation;
-import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.inventory.InventoryItemChangeEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
@@ -93,8 +92,9 @@ public class BlockingSystem extends InitializableSystem {
         // Register input handler
         inputHandler.registerListeners();
 
-        // Register damage and velocity handlers
-        handler.addListener(EntityDamageEvent.class, modifiers::handleDamage);
+        // Blocking damage reduction is applied inside HealthSystem's damage pipeline (DamageType.processDamage)
+        // so it runs after weapon damage is calculated. Do NOT add EntityDamageEvent here - that runs before
+        // the health pipeline and would see amount=0 for melee attacks.
 
         // When a player inventory slot is set with a plain sword (or other auto-preset material), apply blockable preset
         handler.addListener(InventoryItemChangeEvent.class, this::onInventoryItemChange);
@@ -288,6 +288,17 @@ public class BlockingSystem extends InitializableSystem {
 
     public boolean shouldShowBlockEffects() {
         return showBlockEffectsOverride != null ? showBlockEffectsOverride : config.showBlockEffects();
+    }
+
+    /**
+     * Apply blocking damage reduction and feedback. Called from the damage pipeline (DamageType)
+     * after weapon damage is calculated, so blocking sees the correct amount.
+     *
+     * @return the reduced damage amount, or the original if not blocking / not applicable
+     */
+    public float applyBlockingDamageReduction(Player victim, float currentAmount,
+                                              net.minestom.server.registry.RegistryKey<?> damageType) {
+        return modifiers.applyBlockingReduction(victim, currentAmount, damageType);
     }
 
     // Setters for runtime configuration

@@ -4,8 +4,6 @@ import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.blocking.BlockingPreferences;
 import net.minestom.server.entity.Player;
-import net.minestom.server.entity.damage.Damage;
-import net.minestom.server.event.entity.EntityDamageEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.sound.Sound;
@@ -39,37 +37,31 @@ public class BlockingModifiers {
     }
 
     /**
-     * Handle damage reduction for blocking players
+     * Apply blocking damage reduction. Called from the damage pipeline after damage is calculated.
+     *
+     * @return the reduced damage amount, or originalAmount if not blocking / not applicable
      */
-    public void handleDamage(EntityDamageEvent event) {
-        if (!blockingSystem.isEnabled()) return;
-        if (!(event.getEntity() instanceof Player victim)) return;
-        if (!stateManager.isBlocking(victim)) return;
+    public float applyBlockingReduction(Player victim, float originalAmount,
+                                        net.minestom.server.registry.RegistryKey<?> damageType) {
+        if (!blockingSystem.isEnabled()) return originalAmount;
+        if (!stateManager.isBlocking(victim)) return originalAmount;
 
-        // If HealthSystem is initialized, respect per-damage-type "blocking applies" tag/config
         try {
             HealthSystem hs = HealthSystem.getInstance();
-            if (!hs.isBlockingApplicable(event.getDamage().getType(), victim)) {
-                return;
-            }
+            if (!hs.isBlockingApplicable(damageType, victim)) return originalAmount;
         } catch (IllegalStateException ignored) {
-            // HealthSystem not initialized; blocking applies to all damage types
+            // HealthSystem not initialized; blocking applies to all
         }
 
-        Damage damage = event.getDamage();
-        float originalAmount = damage.getAmount();
-
-        // Apply damage reduction (resolve from victim's blockable item or config)
         double currentReduction = blockingSystem.getDamageReduction(victim);
-        float reducedAmount = originalAmount * (float)(1.0 - currentReduction);
-        damage.setAmount(reducedAmount);
+        float reducedAmount = originalAmount * (float) (1.0 - currentReduction);
 
         log.debug("{} blocked {:.2f} damage (from {:.2f} to {:.2f})",
                 victim.getUsername(), originalAmount - reducedAmount,
                 originalAmount, reducedAmount);
 
-        // Provide feedback based on preferences
         provideFeedback(victim, originalAmount, reducedAmount);
+        return reducedAmount;
     }
 
     /**
