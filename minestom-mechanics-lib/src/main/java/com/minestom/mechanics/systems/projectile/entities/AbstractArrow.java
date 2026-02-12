@@ -3,7 +3,7 @@ package com.minestom.mechanics.systems.projectile.entities;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
+
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -213,29 +213,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 				living.setArrowCount(living.getArrowCount() + 1);
 			}
 
-		// Apply knockback using integrated KnockbackHandler system
-            if (useKnockbackHandler) {
-                try {
-                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
-                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-
-                    applicator.applyProjectileKnockback(living, this, shooterOriginPos, knockback);
-                } catch (Exception e) {
-                    // Fallback to old system if applicator fails
-                    if (knockback > 0) {
-                        Vec knockbackVec = getVelocity()
-                                .mul(1, 0, 1)
-                                .normalize().mul(knockback * 0.6);
-                        knockbackVec = knockbackVec.add(0, 0.1, 0)
-                                .mul(ServerFlag.SERVER_TICKS_PER_SECOND / 2.0);
-
-                        if (knockbackVec.lengthSquared() > 0) {
-                            Vec newVel = living.getVelocity().add(knockbackVec);
-                            living.setVelocity(newVel);
-                        }
-                    }
-                }
-            }
+			// Knockback is now handled by the damage pipeline via DamageResult
 
 			onHurt(living);
 

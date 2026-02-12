@@ -1,7 +1,6 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.LivingEntity;
@@ -29,15 +28,7 @@ public class Snowball extends CustomEntityProjectile implements ItemHoldingProje
         int damage = entity.getEntityType() == EntityType.BLAZE ? 3 : 0;
         LivingEntity living = (LivingEntity) entity;
 
-        if (HealthSystem.applyDamage(living, new Damage(DamageType.THROWN, this, getShooter(), null, damage))) {
-            if (isUseKnockbackHandler()) {
-                try {
-                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
-                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-                    applicator.applyProjectileKnockback(living, this, shooterOriginPos, 0);
-                } catch (Exception ignored) {}
-            }
-        }
+        HealthSystem.applyDamage(living, new Damage(DamageType.THROWN, this, getShooter(), null, damage));
         return true;
     }
 

@@ -102,7 +102,8 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
             item = handUsed == EquipmentSlot.MAIN_HAND ? p.getItemInMainHand() : p.getItemInOffHand();
         }
 
-        // TODO: Move to knockbackconfig getters?
+        KnockbackConfig base = resolveBaseConfig(attacker, victim, item);
+
         double[] components = resolveComponents(
                 attacker,
                 victim,
@@ -119,12 +120,17 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
 
         return new KnockbackConfig(
                 components[0], components[1],
-                serverDefaultConfig.verticalLimit(),
+                base.verticalLimit(),
                 components[2], components[3],
                 components[4], components[5],
-                serverDefaultConfig.lookWeight(),
-                serverDefaultConfig.modern(),
-                serverDefaultConfig.knockbackSyncSupported()
+                base.lookWeight(),
+                base.modern(),
+                base.knockbackSyncSupported(),
+                base.meleeDirection(),
+                base.projectileDirection(),
+                base.degenerateFallback(),
+                base.proximityScaleDistance(),
+                base.sprintLookWeight()
         );
     }
 
@@ -143,5 +149,37 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
      */
     public enum KnockbackType {
         ATTACK, DAMAGE, SWEEPING, EXPLOSION, PROJECTILE
+    }
+
+    /**
+     * Determines how knockback direction is calculated.
+     * Configurable per server default and overridable via tags.
+     * <p>
+     * For position-based modes, {@code lookWeight} blends position-direction with the attacker's
+     * look direction. Pure attacker look is achieved by using ATTACKER_POSITION with lookWeight=1.
+     * VICTIM_FACING replaces the look source with the victim's facing; lookWeight controls how
+     * much victim-facing contributes vs. the position-based component.
+     */
+    public enum KnockbackDirectionMode {
+        /** Direction from attacker's current position to victim (melee default). */
+        ATTACKER_POSITION,
+        /** Direction from shooter's position at projectile launch to victim (projectile default). */
+        SHOOTER_ORIGIN,
+        /** Direction from projectile impact position to victim. */
+        PROJECTILE_POSITION,
+        /** Victim's own facing direction (knocked "forward"). */
+        VICTIM_FACING
+    }
+
+    /**
+     * Configurable behavior when victim and knockback origin are very close (degenerate geometry).
+     */
+    public enum DegenerateFallback {
+        /** Use look direction when position is degenerate. */
+        LOOK,
+        /** Scale knockback strength by distance; closer = weaker. Near zero distance = near zero KB. */
+        PROXIMITY_SCALE,
+        /** Random direction when degenerate (legacy). */
+        RANDOM
     }
 }

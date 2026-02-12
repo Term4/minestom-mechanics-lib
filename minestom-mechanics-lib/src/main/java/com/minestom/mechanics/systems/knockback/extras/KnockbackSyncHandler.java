@@ -1,6 +1,7 @@
-package com.minestom.mechanics.systems.knockback;
+package com.minestom.mechanics.systems.knockback.extras;
 
 import com.minestom.mechanics.InitializableSystem;
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;

@@ -1,5 +1,7 @@
 package com.minestom.mechanics.config.knockback;
 
+import com.minestom.mechanics.systems.knockback.KnockbackSystem;
+
 public record KnockbackConfig(
         double horizontal,
         double vertical,
@@ -9,27 +11,36 @@ public record KnockbackConfig(
         double airMultiplierHorizontal,
         double airMultiplierVertical,
         double lookWeight,
-        boolean modern,  // true = modern, false = legacy
-        boolean knockbackSyncSupported
+        boolean modern,
+        boolean knockbackSyncSupported,
+        KnockbackSystem.KnockbackDirectionMode meleeDirection,
+        KnockbackSystem.KnockbackDirectionMode projectileDirection,
+        KnockbackSystem.DegenerateFallback degenerateFallback,
+        double proximityScaleDistance,
+        Double sprintLookWeight
 ) {
-    // Constructor with validation moved to factory methods
-    public KnockbackConfig {
-        // No validation in constructor - validation happens in factory methods
+    public KnockbackConfig {}
+
+    /** Backward-compatible constructor (defaults to ATTACKER_POSITION / SHOOTER_ORIGIN, LOOK, 1.0, null). */
+    public KnockbackConfig(double horizontal, double vertical, double verticalLimit,
+                           double sprintBonusHorizontal, double sprintBonusVertical,
+                           double airMultiplierHorizontal, double airMultiplierVertical,
+                           double lookWeight, boolean modern, boolean knockbackSyncSupported) {
+        this(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical,
+                airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported,
+                KnockbackSystem.KnockbackDirectionMode.ATTACKER_POSITION, KnockbackSystem.KnockbackDirectionMode.SHOOTER_ORIGIN,
+                KnockbackSystem.DegenerateFallback.LOOK, 1.0, null);
     }
 
-    // Factory methods
+    // ===========================
+    // FACTORY METHODS
+    // ===========================
+
     public static KnockbackConfig validated(
-            double horizontal,
-            double vertical,
-            double verticalLimit,
-            double sprintBonusHorizontal,
-            double sprintBonusVertical,
-            double airMultiplierHorizontal,
-            double airMultiplierVertical,
-            double lookWeight,
-            boolean modern,
-            boolean knockbackSyncSupported
-    ) {
+            double horizontal, double vertical, double verticalLimit,
+            double sprintBonusHorizontal, double sprintBonusVertical,
+            double airMultiplierHorizontal, double airMultiplierVertical,
+            double lookWeight, boolean modern, boolean knockbackSyncSupported) {
         validate(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical,
                 airMultiplierHorizontal, airMultiplierVertical, lookWeight);
         return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal,
@@ -38,33 +49,18 @@ public record KnockbackConfig(
     }
 
     public static KnockbackConfig unvalidated(
-            double horizontal,
-            double vertical,
-            double verticalLimit,
-            double sprintBonusHorizontal,
-            double sprintBonusVertical,
-            double airMultiplierHorizontal,
-            double airMultiplierVertical,
-            double lookWeight,
-            boolean modern,
-            boolean knockbackSyncSupported
-    ) {
+            double horizontal, double vertical, double verticalLimit,
+            double sprintBonusHorizontal, double sprintBonusVertical,
+            double airMultiplierHorizontal, double airMultiplierVertical,
+            double lookWeight, boolean modern, boolean knockbackSyncSupported) {
         return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal,
                 sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight,
                 modern, knockbackSyncSupported);
     }
 
-    // Validation method
-    private static void validate(
-            double horizontal,
-            double vertical,
-            double verticalLimit,
-            double sprintBonusHorizontal,
-            double sprintBonusVertical,
-            double airMultiplierHorizontal,
-            double airMultiplierVertical,
-            double lookWeight
-    ) {
+    private static void validate(double horizontal, double vertical, double verticalLimit,
+                                 double sprintBonusHorizontal, double sprintBonusVertical,
+                                 double airMultiplierHorizontal, double airMultiplierVertical, double lookWeight) {
         if (horizontal < 0) throw new IllegalArgumentException("Horizontal knockback cannot be negative");
         if (vertical < 0) throw new IllegalArgumentException("Vertical knockback cannot be negative");
         if (verticalLimit < 0) throw new IllegalArgumentException("Vertical limit cannot be negative");
@@ -75,65 +71,83 @@ public record KnockbackConfig(
         if (lookWeight < 0 || lookWeight > 1) throw new IllegalArgumentException("Look weight must be between 0 and 1");
     }
 
-    // Base knockback
+    // ===========================
+    // WITH METHODS
+    // ===========================
+
     public KnockbackConfig withKnockback(double horizontal, double vertical) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
     public KnockbackConfig withKnockback(double horizontal, double vertical, double verticalLimit) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
     public KnockbackConfig withHorizontal(double horizontal) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
     public KnockbackConfig withVertical(double vertical) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
     public KnockbackConfig withVerticalLimit(double verticalLimit) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    // Sprint bonuses
     public KnockbackConfig withSprintBonus(double horizontal, double vertical) {
-        return validated(this.horizontal, this.vertical, verticalLimit, horizontal, vertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(this.horizontal, this.vertical, verticalLimit, horizontal, vertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    public KnockbackConfig withSprintBonusHorizontal(double sprintBonusHorizontal) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+    public KnockbackConfig withSprintBonusHorizontal(double v) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, v, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    public KnockbackConfig withSprintBonusVertical(double sprintBonusVertical) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+    public KnockbackConfig withSprintBonusVertical(double v) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, v, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    // Air multipliers
-    public KnockbackConfig withAirMultipliers(double horizontal, double vertical) {
-        return validated(this.horizontal, this.vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, horizontal, vertical, lookWeight, modern, knockbackSyncSupported);
+    public KnockbackConfig withAirMultipliers(double h, double v) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, h, v, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    public KnockbackConfig withAirMultiplierHorizontal(double airMultiplierHorizontal) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+    public KnockbackConfig withAirMultiplierHorizontal(double v) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, v, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    public KnockbackConfig withAirMultiplierVertical(double airMultiplierVertical) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+    public KnockbackConfig withAirMultiplierVertical(double v) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, v, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    // Look weight
     public KnockbackConfig withLookWeight(double lookWeight) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    // Modern/Legacy
     public KnockbackConfig withModern(boolean modern) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 
-    // Sync support
-    public KnockbackConfig withKnockbackSyncSupported(boolean knockbackSyncSupported) {
-        return validated(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported);
+    public KnockbackConfig withKnockbackSyncSupported(boolean v) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, v, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
+    }
+
+    public KnockbackConfig withMeleeDirection(KnockbackSystem.KnockbackDirectionMode mode) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, mode, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
+    }
+
+    public KnockbackConfig withProjectileDirection(KnockbackSystem.KnockbackDirectionMode mode) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, mode, degenerateFallback, proximityScaleDistance, sprintLookWeight);
+    }
+
+    public KnockbackConfig withDegenerateFallback(KnockbackSystem.DegenerateFallback degenerateFallback) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
+    }
+
+    public KnockbackConfig withProximityScaleDistance(double proximityScaleDistance) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
+    }
+
+    public KnockbackConfig withSprintLookWeight(Double sprintLookWeight) {
+        return new KnockbackConfig(horizontal, vertical, verticalLimit, sprintBonusHorizontal, sprintBonusVertical, airMultiplierHorizontal, airMultiplierVertical, lookWeight, modern, knockbackSyncSupported, meleeDirection, projectileDirection, degenerateFallback, proximityScaleDistance, sprintLookWeight);
     }
 }

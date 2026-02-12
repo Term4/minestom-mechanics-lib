@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
+
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import net.minestom.server.coordinate.Pos;
@@ -83,15 +83,7 @@ public class Enderpearl extends CustomEntityProjectile implements ItemHoldingPro
     public boolean onHit(Entity entity) {
         LivingEntity living = (LivingEntity) entity;
 
-        if (HealthSystem.applyDamage(living, new Damage(DamageType.THROWN, this, getShooter(), null, 0))) {
-            if (isUseKnockbackHandler()) {
-                try {
-                    var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
-                    KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-                    applicator.applyProjectileKnockback(living, this, shooterOriginPos, 0);
-                } catch (Exception ignored) {}
-            }
-        }
+        HealthSystem.applyDamage(living, new Damage(DamageType.THROWN, this, getShooter(), null, 0));
         teleportOwner();
         return true;
     }

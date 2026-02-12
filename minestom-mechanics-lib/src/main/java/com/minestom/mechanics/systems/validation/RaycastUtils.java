@@ -12,6 +12,9 @@ import net.minestom.server.instance.block.Block;
 /**
  * Raycasting utilities for block and entity intersection (block raycast, voxel traversal, ray-AABB).
  */
+
+// TODO: Switch to real raycast (no step, use block box thing (check cactus damage type))
+
 public class RaycastUtils {
 
     private final com.minestom.mechanics.config.world.WorldInteractionConfig worldConfig;

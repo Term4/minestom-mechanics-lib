@@ -69,6 +69,9 @@ public class ProjectileCreator {
      */
     public void spawn(CustomEntityProjectile projectile, Player player, ItemStack sourceItem,
                       ProjectileVelocityConfig velocityConfig, double power, Pos spawnPos) {
+        // Capture thrower's position/look at spawn (for knockback direction) before any calculations
+        projectile.setShooterOriginPos(player.getPosition());
+
         // 1. Calculate velocity with power
         Vec velocity = ProjectileCalculator.calculateProjectileVelocity(
                 player, sourceItem, projectile, velocityConfig, power, shouldInheritPlayerMomentum()

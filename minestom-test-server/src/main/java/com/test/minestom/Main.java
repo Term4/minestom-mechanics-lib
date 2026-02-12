@@ -209,7 +209,7 @@ public class Main {
                 giveStarterKit(player);
 
                 LegacyInventoryUtil.forceInventorySyncDelayed(player, 5);
-                // TODO: make this scheduler based on ping?
+                // TODO: make this scheduler based on ping? / Replace with inventory packets (also look into command tablist)
 
                 sendWelcomeMessage(player);
 
@@ -272,12 +272,15 @@ public class Main {
         inventory.setItemStack(5, ItemStack.of(Material.WHITE_WOOL, 64));
         inventory.setItemStack(6, TestItems.bypassSword());
         inventory.setItemStack(9, ItemStack.of(Material.ARROW, 64));
+        inventory.setItemStack(8, ItemStack.of(Material.COOKED_BEEF, 64));
+        inventory.setItemStack(10, TestItems.slowGrappleEgg().withAmount(64));
 
-        // Test Items
+        // Test Items (addItemStack fills remaining slots 7, 11, 12, ... - don't overwrite after)
         player.getInventory().addItemStack(BlockableItem.withBlockable(
                 TestItems.knockbackStick(),
                 BlockableTagValue.blockable(true, 0.25, 0.25, 0.25)  // 25% damage reduction, 75% knockback reduction
         ));
+        player.getInventory().addItemStack(TestItems.sprintLookSword());
         player.getInventory().addItemStack(TestItems.knockbackEgg().withAmount(16));
         player.getInventory().addItemStack(TestItems.skySnowball().withAmount(16));
         player.getInventory().addItemStack(TestItems.grappleKnockbackSnowball().withAmount(16));
@@ -285,13 +288,10 @@ public class Main {
         player.getInventory().addItemStack(TestItems.laserSnowball().withAmount(16));
         player.getInventory().addItemStack(TestItems.heavyRock().withAmount(16));
         player.getInventory().addItemStack(TestItems.comboEgg().withAmount(16));
-        player.getInventory().setItemStack(10, TestItems.slowGrappleEgg().withAmount(64));
+        player.getInventory().addItemStack(TestItems.knockbackMine().withAmount(16));
         player.getInventory().addItemStack(TestItems.cannonBow());
         player.getInventory().addItemStack(TestItems.bypassBow());
         player.getInventory().addItemStack(TestItems.bypassSnowballs());
-
-        // Food
-        inventory.setItemStack(8, ItemStack.of(Material.COOKED_BEEF, 64));
 
         // Diamond Armor
         player.setHelmet(ItemStack.of(Material.DIAMOND_HELMET));

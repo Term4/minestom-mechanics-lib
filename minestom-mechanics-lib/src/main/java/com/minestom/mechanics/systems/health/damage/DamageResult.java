@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.health.damage;
 
+import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
@@ -13,11 +14,13 @@ public record DamageResult(
         boolean wasReplacement,
         float finalDamage,
         DamageTypeProperties props,
-        @Nullable Entity attacker,
-        LivingEntity victim
+        @Nullable Entity source,          // direct source: player (melee) or projectile (ranged)
+        @Nullable Entity attacker,        // the player who caused the damage
+        LivingEntity victim,
+        @Nullable Pos shooterOriginPos    // where the shooter was when projectile launched (for KB direction)
 ) {
-    /** Damage was blocked (creative, i-frames, disabled, etc.) */
-    public static DamageResult blocked(DamageTypeProperties props, @Nullable Entity attacker, LivingEntity victim) {
-        return new DamageResult(false, false, 0, props, attacker, victim);
+    /** Damage was blocked. */
+    public static DamageResult blocked(DamageTypeProperties props, @Nullable Entity source, @Nullable Entity attacker, LivingEntity victim) {
+        return new DamageResult(false, false, 0, props, source, attacker, victim, null);
     }
 }

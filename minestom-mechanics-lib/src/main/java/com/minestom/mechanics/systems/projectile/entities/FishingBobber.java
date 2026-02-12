@@ -3,7 +3,7 @@ package com.minestom.mechanics.systems.projectile.entities;
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.knockback.KnockbackApplicator;
+
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.systems.projectile.components.ProjectileBehavior;
@@ -215,20 +215,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         if (entity instanceof Player hitPlayer) {
             LivingEntity living = hitPlayer;
 
-            if (HealthSystem.applyDamage(living, new Damage(DamageType.GENERIC, this, getShooter(), null, 0))) {
-                if (isUseKnockbackHandler()) {
-                    try {
-                        var projectileManager = com.minestom.mechanics.manager.ProjectileManager.getInstance();
-                        KnockbackApplicator applicator = projectileManager.getKnockbackApplicator();
-                        Pos knockbackOrigin = knockbackMode == ProjectileConfig.FishingRodKnockbackMode.BOBBER_RELATIVE
-                                ? this.getPosition()
-                                : (getShooter() != null ? getShooter().getPosition() : this.getPosition());
-                        applicator.applyProjectileKnockback(living, this, knockbackOrigin, 0);
-                    } catch (Exception e) {
-                        log.debug("KnockbackApplicator failed, no knockback applied");
-                    }
-                }
-            }
+            HealthSystem.applyDamage(living, new Damage(DamageType.GENERIC, this, getShooter(), null, 0));
 
             // Pseudo-hook: hook now (bobber teleports to victim this tick), then unhook next tick so we stop following.
             // Re-hook on PlayerMoveEvent when they move; canHit excludes this player so bobber can fall when they stand still.

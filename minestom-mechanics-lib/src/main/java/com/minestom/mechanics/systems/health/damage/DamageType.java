@@ -210,7 +210,7 @@ public class DamageType {
 
     /** Calculate final damage with all modifiers (delegates to {@link DamageCalculator}). */
     public float calculateDamage(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item, float baseDamage) {
-        return DamageCalculator.calculate(resolveProperties(attacker, victim, item), itemTag, entityTag, attacker, victim, item, baseDamage);
+        return DamageCalculator.calculate(resolveProperties(attacker, victim, item), name, itemTag, entityTag, attacker, victim, item, baseDamage);
     }
 
     public boolean isEnabled(@Nullable Entity attacker, LivingEntity victim, @Nullable ItemStack item) {
@@ -248,19 +248,25 @@ public class DamageType {
         ItemStack item = attackerPlayer != null ? attackerPlayer.getItemInMainHand() : null;
         Entity attacker = attackerPlayer != null ? attackerPlayer : source;
 
+        // Extract shooter origin for knockback direction (projectiles store this at launch time)
+        net.minestom.server.coordinate.Pos shooterOriginPos = null;
+        if (source instanceof com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile proj) {
+            shooterOriginPos = proj.getShooterOriginPos();
+        }
+
         DamageTypeProperties props = resolveProperties(source, shooter, victim, item);
 
         // 1. Disabled check
         if (!props.enabled()) {
             event.setCancelled(true);
-            return DamageResult.blocked(props, attacker, victim);
+            return DamageResult.blocked(props, source, attacker, victim);
         }
 
         // 2. Creative mode check
         if (victim instanceof Player player && player.getGameMode() == GameMode.CREATIVE) {
             if (!props.bypassCreative()) {
                 event.setCancelled(true);
-                return DamageResult.blocked(props, attacker, victim);
+                return DamageResult.blocked(props, source, attacker, victim);
             }
         }
 
@@ -275,27 +281,27 @@ public class DamageType {
         if (props.bypassInvulnerability()) {
             invulnerability.markDamaged(victim, damageAmount);
             invulnerability.setLastDamageReplacement(victim, false);
-            return new DamageResult(true, false, damageAmount, props, attacker, victim);
+            return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
         }
 
         // 5. Not in i-frames: allow damage normally
         if (!invulnerability.isInvulnerable(victim)) {
             invulnerability.markDamaged(victim, damageAmount);
             invulnerability.setLastDamageReplacement(victim, false);
-            return new DamageResult(true, false, damageAmount, props, attacker, victim);
+            return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
         }
 
         // 6. In i-frames: check if this damage type supports replacement
         if (!props.damageReplacement()) {
             event.setCancelled(true);
-            return DamageResult.blocked(props, attacker, victim);
+            return DamageResult.blocked(props, source, attacker, victim);
         }
 
         // 7. Replacement: only if incoming damage > previous damage
         float previousDamage = invulnerability.getLastDamageAmount(victim);
         if (damageAmount <= previousDamage) {
             event.setCancelled(true);
-            return DamageResult.blocked(props, attacker, victim);
+            return DamageResult.blocked(props, source, attacker, victim);
         }
 
         // 8. Apply replacement damage (difference only)
@@ -319,7 +325,7 @@ public class DamageType {
         invulnerability.updateDamageAmount(victim, damageAmount);
         invulnerability.setLastDamageReplacement(victim, true);
 
-        return new DamageResult(true, true, finalDifference, props, attacker, victim);
+        return new DamageResult(true, true, finalDifference, props, source, attacker, victim, shooterOriginPos);
     }
 
     /**

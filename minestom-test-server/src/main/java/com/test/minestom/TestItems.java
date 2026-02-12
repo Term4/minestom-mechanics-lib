@@ -3,6 +3,7 @@ package com.test.minestom;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.health.damage.DamageType;
 import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.knockback.KnockbackPresets;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import net.minestom.server.item.ItemStack;
@@ -42,6 +43,18 @@ public class TestItems {
                 .withTag(KnockbackSystem.ITEM_CUSTOM, kbMult(5.0, 2.0));
     }
 
+    /** Base KB = position only (lookWeight 0); Sprint KB = look direction (sprintLookWeight 1). */
+    public static ItemStack sprintLookSword() {
+        return ItemStack.builder(Material.STICK)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Sprint Look Sword", NamedTextColor.AQUA, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Base: position-based KB", NamedTextColor.GRAY),
+                        Component.text("Sprint: KB in your look direction", NamedTextColor.GRAY)))
+                .build()
+                .withTag(KnockbackSystem.ITEM_CUSTOM, kbSet(
+                        KnockbackPresets.minemen().withLookWeight(0.0).withSprintLookWeight(1.0)));
+    }
+
     public static ItemStack knockbackEgg() {
         return ItemStack.builder(Material.EGG)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Knockback Egg", NamedTextColor.YELLOW, TextDecoration.BOLD))
@@ -56,6 +69,17 @@ public class TestItems {
                 .set(DataComponents.LORE, List.of(Component.text("Feeling lazy?", NamedTextColor.GRAY)))
                 .build()
                 .withTag(KnockbackSystem.ITEM_PROJECTILE_CUSTOM, kbMult(-3, 1.0))
+                .withTag(ProjectileVelocity.ITEM_CUSTOM, velMult(0.0, 0.0, 0.0, 0, 1.0, 1.0));
+    }
+
+    /** Zero velocity, zero gravity, knockback entirely in thrower's look direction at launch. */
+    public static ItemStack knockbackMine() {
+        return ItemStack.builder(Material.EGG)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Knockback Mine", NamedTextColor.DARK_GRAY, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("Drops in place • KB in throw direction", NamedTextColor.GRAY)))
+                .build()
+                .withTag(KnockbackSystem.ITEM_PROJECTILE_CUSTOM, KB_LOOK_DIRECTION)
                 .withTag(ProjectileVelocity.ITEM_CUSTOM, velMult(0.0, 0.0, 0.0, 0, 1.0, 1.0));
     }
 

@@ -1,6 +1,7 @@
 package com.minestom.mechanics.systems.knockback.tags;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
+import com.minestom.mechanics.config.knockback.KnockbackPresets;
 import com.minestom.mechanics.systems.ConfigTagWrapper;
 import org.jetbrains.annotations.Nullable;
 
@@ -113,6 +114,11 @@ public record KnockbackTagValue(
 
     /** Launcher: huge vertical, low horizontal */
     public static final KnockbackTagValue KB_LAUNCHER = kbMult(0.5, 3.0);
+
+    /** Pure thrower look: 100% knockback in direction thrower was facing at launch (for projectiles). */
+    public static final KnockbackTagValue KB_LOOK_DIRECTION = kbSet(
+            KnockbackPresets.minemen().withLookWeight(1.0)
+    );
 
     // ===========================
     // ConfigTagWrapper INTERFACE

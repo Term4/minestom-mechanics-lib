@@ -106,7 +106,10 @@ public class HealthSystem extends InitializableSystem {
                     ? dt.processDamage(event, invulnerability, config)
                     : DamageType.processUnregistered(event, invulnerability, config);
 
-            // result is available here for future knockback integration
+            // Trigger knockback from damage result
+            if (result.applied() || result.wasReplacement()) {
+                applyKnockbackFromResult(result);
+            }
         });
 
         // Environmental tick
@@ -160,6 +163,35 @@ public class HealthSystem extends InitializableSystem {
         boolean result = victim.damage(damage);
         if (wasInvulnerable) victim.setInvulnerable(true);
         return result;
+    }
+
+    /**
+     * Apply knockback based on damage result. Called automatically after damage pipeline.
+     * Determines melee vs projectile from the source entity and delegates to KnockbackApplicator.
+     */
+    private void applyKnockbackFromResult(DamageResult result) {
+        if (result.attacker() == null && result.source() == null) return; // environmental — no kb source
+
+        if (result.wasReplacement() && !result.props().knockbackOnReplacement()) return;
+
+        try {
+            var knockbackApplicator = com.minestom.mechanics.manager.ProjectileManager.getInstance().getKnockbackApplicator();
+            boolean isProjectile = result.source() != null && result.source() != result.attacker();
+
+            knockbackApplicator.applyKnockback(
+                    result.victim(),
+                    result.attacker(),
+                    result.source(),
+                    result.shooterOriginPos(),
+                    isProjectile
+                            ? com.minestom.mechanics.systems.knockback.KnockbackSystem.KnockbackType.PROJECTILE
+                            : com.minestom.mechanics.systems.knockback.KnockbackSystem.KnockbackType.ATTACK,
+                    result.attacker() instanceof Player p && p.isSprinting(),
+                    0 // TODO: enchantment level from tags
+            );
+        } catch (IllegalStateException ignored) {
+            // KnockbackSystem or ProjectileManager not initialized
+        }
     }
 
     public boolean canTakeDamage(LivingEntity entity) { return !invulnerability.isInvulnerable(entity); }
