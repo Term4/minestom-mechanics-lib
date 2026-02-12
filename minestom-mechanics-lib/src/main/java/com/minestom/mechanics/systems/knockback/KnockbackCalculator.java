@@ -1,17 +1,17 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import com.minestom.mechanics.systems.misc.GameplayUtils;
-import com.minestom.mechanics.util.LogUtil;
+import com.minestom.mechanics.systems.misc.VelocityEstimator;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.MIN_KNOCKBACK_DISTANCE;
-import static com.minestom.mechanics.config.constants.MechanicsConstants.MIN_FALLING_KNOCKBACK;
 
 // TODO: Potentially add another knockback calculator for modern knockback
 //  (the formula is entirely different) would lead to this being called "LegacyKnockbackCalculator"
@@ -23,8 +23,7 @@ import static com.minestom.mechanics.config.constants.MechanicsConstants.MIN_FAL
  */
 public class KnockbackCalculator {
 
-    private static final LogUtil.SystemLogger log = LogUtil.system("KnockbackCalculator");
-
+    private static final Logger log = LoggerFactory.getLogger(KnockbackCalculator.class);
     private final KnockbackConfig config;
 
     public KnockbackCalculator(KnockbackConfig config) {
@@ -120,6 +119,7 @@ public class KnockbackCalculator {
         double dz = victim.getPosition().z() - origin.z();
         double distance = Math.sqrt(dx * dx + dz * dz);
         if (distance < MIN_KNOCKBACK_DISTANCE) return fallback(fallbackIfDegenerate);
+        // TODO: Might can allow up direction
         return new Vec(dx / distance, 0, dz / distance);
     }
 
@@ -135,46 +135,6 @@ public class KnockbackCalculator {
         double dz = Math.random() * 0.02 - 0.01;
         double dist = Math.sqrt(dx * dx + dz * dz);
         return dist > 0 ? new Vec(dx / dist, 0, dz / dist) : new Vec(1, 0, 0);
-    }
-
-    /**
-     * Calculate knockback direction from victim to attacker position.
-     * @deprecated Use {@link #calculateDirection} with a mode instead.
-     */
-    @Deprecated
-    public Vec calculateKnockbackDirection(LivingEntity victim, Entity attacker) {
-        double dx = victim.getPosition().x() - attacker.getPosition().x();
-        double dz = victim.getPosition().z() - attacker.getPosition().z();
-
-        double distance = Math.sqrt(dx * dx + dz * dz);
-
-        if (distance < MIN_KNOCKBACK_DISTANCE) {
-            dx = Math.random() * 0.02 - 0.01;
-            dz = Math.random() * 0.02 - 0.01;
-            distance = Math.sqrt(dx * dx + dz * dz);
-        }
-
-        dx /= distance;
-        dz /= distance;
-
-        // Apply look weight if configured
-        double lookWeight = config.lookWeight();
-        if (lookWeight > 0 && attacker instanceof Player) {
-            double yaw = Math.toRadians(attacker.getPosition().yaw());
-            double lookX = -Math.sin(yaw);
-            double lookZ = Math.cos(yaw);
-
-            dx = dx * (1 - lookWeight) + lookX * lookWeight;
-            dz = dz * (1 - lookWeight) + lookZ * lookWeight;
-
-            double finalDistance = Math.sqrt(dx * dx + dz * dz);
-            if (finalDistance > MIN_KNOCKBACK_DISTANCE) {
-                dx /= finalDistance;
-                dz /= finalDistance;
-            }
-        }
-
-        return new Vec(dx, 0, dz);
     }
 
     /**
@@ -200,59 +160,33 @@ public class KnockbackCalculator {
     }
 
     /**
-     * Calculate final velocity from knockback components.
+     * Calculate final velocity from knockback components. Uses {@link VelocityEstimator}
+     * for victim velocity so knockback properly accounts for existing motion.
+     *
+     * @param horizontalFriction divisor for old x/z velocity (2 = retain 50%). 0 = ignore old velocity.
+     * @param verticalFriction divisor for old y velocity. 0 = ignore old velocity.
+     * @param verticalLimit cap for upward vertical component (blocks/tick). Applied after calculation.
      */
     public Vec calculateFinalVelocity(LivingEntity victim, Vec direction, KnockbackSystem.KnockbackStrength strength,
-                                      KnockbackSystem.KnockbackType type) {
+                                      KnockbackSystem.KnockbackType type,
+                                      double horizontalFriction, double verticalFriction,
+                                      double verticalLimit) {
         double tps = ServerFlag.SERVER_TICKS_PER_SECOND;
         double horizontal = strength.horizontal() / tps;
         double vertical = strength.vertical() / tps;
 
-        // TODO: Come up with an actual USABLE method to get the old player velocity
-        Vec oldVelocity = victim.getVelocity();
+        Vec oldVelocity = VelocityEstimator.getVelocity(victim);
 
+        double oldX = horizontalFriction > 0 ? oldVelocity.x() / horizontalFriction : 0;
+        double oldZ = horizontalFriction > 0 ? oldVelocity.z() / horizontalFriction : 0;
+        double oldY = verticalFriction > 0 ? oldVelocity.y() / verticalFriction : 0;
 
-        // TODO: Is this necessary?
-        // Handle ground state velocity correction
-        if (victim.isOnGround()) {
-            Vec minestomVel = victim.getVelocity();
-            if (minestomVel.y() > 0.1) {
-                oldVelocity = oldVelocity.withY(minestomVel.y());
-            } else {
-                oldVelocity = oldVelocity.withY(Math.max(oldVelocity.y(), 0));
-            }
-        }
+        double finalVertical = oldY + vertical * tps;
+        finalVertical = Math.min(finalVertical, verticalLimit);
 
-        // Calculate final vertical component
-        double finalVertical = calculateVerticalComponent(victim, oldVelocity, vertical, tps);
+        double vx = oldX + direction.x() * horizontal * tps;
+        double vz = oldZ + direction.z() * horizontal * tps;
 
-        // 1.8 legacy calculation
-        return new Vec(
-                oldVelocity.x() / 2.0 + direction.x() * horizontal * tps,
-                finalVertical,
-                oldVelocity.z() / 2.0 + direction.z() * horizontal * tps
-        );
-    }
-
-    /**
-     * Calculate final vertical component of knockback.
-     */
-    private double calculateVerticalComponent(LivingEntity victim, Vec oldVelocity,
-                                              double vertical, double tps) {
-        if (victim.isOnGround()) {
-            return oldVelocity.y() / 2.0 + vertical * tps;
-        }
-
-        // TODO: Make sure oldVelocity.y() DOESN'T SUFFER from the minenstom y velocity bug
-        // UPDATE: It does. add new velocity tracking, maybe using movement packets + get player location on the previous tick?
-        boolean isFalling = GameplayUtils.isFalling(victim);
-
-        if (isFalling) {
-            return Math.max(vertical * tps, MIN_FALLING_KNOCKBACK);
-        }
-        // TODO: Investigate if this is needed at all. Seems arbitrary, if someone configures
-        //  their knockback profile in a way that would result in vertical being < MIN_FALLING_KNOCKBACK,
-        //  we should allow that, not override it. If they get upset that's kinda their fault
-        return oldVelocity.y() / 2.0 + vertical * tps;
+        return new Vec(vx, finalVertical, vz);
     }
 }

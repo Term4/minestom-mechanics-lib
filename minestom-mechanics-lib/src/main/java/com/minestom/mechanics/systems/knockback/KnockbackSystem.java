@@ -5,12 +5,15 @@ import com.minestom.mechanics.systems.ConfigTagWrapper;
 import com.minestom.mechanics.systems.knockback.tags.KnockbackTagSerializer;
 import com.minestom.mechanics.systems.knockback.tags.KnockbackTagValue;
 import com.minestom.mechanics.ConfigurableSystem;
+import com.minestom.mechanics.systems.misc.VelocityEstimator;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
 import net.minestom.server.entity.*;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.Nullable;
+
+import static com.minestom.mechanics.config.constants.CombatConstants.FALLING_VELOCITY_THRESHOLD;
 
 /**
  * Knockback configuration system using unified tag approach.
@@ -129,13 +132,52 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 base.meleeDirection(),
                 base.projectileDirection(),
                 base.degenerateFallback(),
-                base.sprintLookWeight()
+                base.sprintLookWeight(),
+                base.horizontalFriction(),
+                base.verticalFriction(),
+                base.velocityApplyMode(),
+                base.stateOverrides()
         );
     }
 
     public KnockbackConfig getConfig() {
         requireInitialized();
         return serverDefaultConfig;
+    }
+
+    /**
+     * Resolve config for victim state. Applies state overrides from base config.
+     * Called before applying knockback to use state-specific friction, mode, or strength multipliers.
+     */
+    public static KnockbackConfig resolveConfigForVictim(KnockbackConfig base, LivingEntity victim) {
+        var overrides = base.stateOverrides();
+        if (overrides == null || overrides.isEmpty()) return base;
+
+        KnockbackVictimState state = determineVictimState(victim);
+        KnockbackStateOverride override = overrides.get(state);
+        if (override == null) return base;
+
+        if (override.fullProfile() != null) return override.fullProfile();
+
+        // Merge partial overrides
+        double hFric = override.horizontalFriction() != null ? override.horizontalFriction() : base.horizontalFriction();
+        double vFric = override.verticalFriction() != null ? override.verticalFriction() : base.verticalFriction();
+        VelocityApplyMode vam = override.velocityApplyMode() != null ? override.velocityApplyMode() : base.velocityApplyMode();
+        Double hMult = override.horizontalMultiplier();
+        Double vMult = override.verticalMultiplier();
+
+        KnockbackConfig merged = base.withHorizontalFriction(hFric).withVerticalFriction(vFric).withVelocityApplyMode(vam);
+        if (hMult != null || vMult != null) {
+            merged = merged.withHorizontal(hMult != null ? base.horizontal() * hMult : base.horizontal())
+                    .withVertical(vMult != null ? base.vertical() * vMult : base.vertical());
+        }
+        return merged;
+    }
+
+    private static KnockbackVictimState determineVictimState(LivingEntity victim) {
+        if (victim.isOnGround()) return KnockbackVictimState.ON_GROUND;
+        var vel = VelocityEstimator.getVelocity(victim);
+        return vel.y() < FALLING_VELOCITY_THRESHOLD ? KnockbackVictimState.FALLING : KnockbackVictimState.IN_AIR;
     }
 
     /**
@@ -179,4 +221,38 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
         /** Random direction when degenerate (legacy). */
         RANDOM
     }
+
+    /**
+     * How to apply computed knockback velocity.
+     * Friction (including 0 = ignore old velocity) is always used when computing the result;
+     * this only controls whether we SET or ADD that result.
+     */
+    public enum VelocityApplyMode {
+        /** Replace velocity: victim.setVelocity(result) */
+        SET,
+        /** Add to current: victim.setVelocity(current.add(result)) */
+        ADD
+    }
+
+    /**
+     * Victim state when taking knockback. Used for per-state config overrides.
+     */
+    public enum KnockbackVictimState {
+        ON_GROUND,
+        IN_AIR,
+        FALLING
+    }
+
+    /**
+     * Optional overrides for a specific victim state. Null fields use base config.
+     * If fullProfile is non-null, it replaces the entire config for that state.
+     */
+    public record KnockbackStateOverride(
+            Double horizontalFriction,
+            Double verticalFriction,
+            VelocityApplyMode velocityApplyMode,
+            Double horizontalMultiplier,
+            Double verticalMultiplier,
+            KnockbackConfig fullProfile
+    ) {}
 }

@@ -8,7 +8,9 @@ import net.minestom.server.tag.TagSerializer;
 import net.minestom.server.tag.TagWritable;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Serializer for {@link KnockbackTagValue} on items.
@@ -37,6 +39,45 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
         }
     }
 
+    private static KnockbackSystem.VelocityApplyMode parseVelocityApplyMode(String name, KnockbackSystem.VelocityApplyMode defaultValue) {
+        if (name == null) return defaultValue;
+        switch (name) {
+            case "FRICTION", "ZERO" -> { return KnockbackSystem.VelocityApplyMode.SET; }
+            case "ZERO_ADD" -> { return KnockbackSystem.VelocityApplyMode.ADD; }
+            default -> {
+                try {
+                    return KnockbackSystem.VelocityApplyMode.valueOf(name);
+                } catch (IllegalArgumentException e) {
+                    return defaultValue;
+                }
+            }
+        }
+    }
+
+    private static final String PREFIX_GROUND = "sog_";
+    private static final String PREFIX_AIR = "sia_";
+    private static final String PREFIX_FALLING = "sfl_";
+
+    private static Map<KnockbackSystem.KnockbackVictimState, KnockbackSystem.KnockbackStateOverride> parseStateOverrides(TagReadable r) {
+        Map<KnockbackSystem.KnockbackVictimState, KnockbackSystem.KnockbackStateOverride> out = new HashMap<>();
+        addStateOverride(r, out, KnockbackSystem.KnockbackVictimState.ON_GROUND, PREFIX_GROUND);
+        addStateOverride(r, out, KnockbackSystem.KnockbackVictimState.IN_AIR, PREFIX_AIR);
+        addStateOverride(r, out, KnockbackSystem.KnockbackVictimState.FALLING, PREFIX_FALLING);
+        return out.isEmpty() ? Map.of() : out;
+    }
+
+    private static void addStateOverride(TagReadable r, Map<KnockbackSystem.KnockbackVictimState, KnockbackSystem.KnockbackStateOverride> out,
+                                         KnockbackSystem.KnockbackVictimState state, String prefix) {
+        Double hf = r.getTag(Tag.Double(prefix + "hf"));
+        Double vf = r.getTag(Tag.Double(prefix + "vf"));
+        KnockbackSystem.VelocityApplyMode vam = parseVelocityApplyMode(r.getTag(Tag.String(prefix + "vam")), null);
+        Double hm = r.getTag(Tag.Double(prefix + "hm"));
+        Double vm = r.getTag(Tag.Double(prefix + "vm"));
+        if (hf != null || vf != null || vam != null || hm != null || vm != null) {
+            out.put(state, new KnockbackSystem.KnockbackStateOverride(hf, vf, vam, hm, vm, null));
+        }
+    }
+
     @Override
     public KnockbackTagValue read(@NotNull TagReadable r) {
         List<Double> mult = r.getTag(Tag.Double("m").list());
@@ -50,6 +91,11 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             KnockbackSystem.KnockbackDirectionMode proj = parseDirectionMode(projDir, KnockbackSystem.KnockbackDirectionMode.SHOOTER_ORIGIN);
             KnockbackSystem.DegenerateFallback df = parseDegenerateFallback(r.getTag(Tag.String("cdf")), KnockbackSystem.DegenerateFallback.LOOK);
             Double slw = r.getTag(Tag.Double("cslw"));
+            Double chf = r.getTag(Tag.Double("chf"));
+            Double cvf = r.getTag(Tag.Double("cvf"));
+            KnockbackSystem.VelocityApplyMode vam = parseVelocityApplyMode(r.getTag(Tag.String("cvam")), KnockbackSystem.VelocityApplyMode.SET);
+
+            Map<KnockbackSystem.KnockbackVictimState, KnockbackSystem.KnockbackStateOverride> stateOverrides = parseStateOverrides(r);
 
             custom = new KnockbackConfig(
                     r.getTag(Tag.Double("ch")), r.getTag(Tag.Double("cv")),
@@ -57,7 +103,9 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
                     r.getTag(Tag.Double("csv")), r.getTag(Tag.Double("cah")),
                     r.getTag(Tag.Double("cav")), r.getTag(Tag.Double("clw")),
                     r.getTag(Tag.Boolean("cmd")), r.getTag(Tag.Boolean("csn")),
-                    melee, proj, df, slw
+                    melee, proj, df, slw,
+                    chf != null ? chf : 2.0, cvf != null ? cvf : 2.0, vam,
+                    stateOverrides
             );
         }
         if (mult == null && mod == null && custom == null) return null;
@@ -93,6 +141,30 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             }
             if (c.sprintLookWeight() != null) {
                 w.setTag(Tag.Double("cslw"), c.sprintLookWeight());
+            }
+            if (c.horizontalFriction() != 2.0) {
+                w.setTag(Tag.Double("chf"), c.horizontalFriction());
+            }
+            if (c.verticalFriction() != 2.0) {
+                w.setTag(Tag.Double("cvf"), c.verticalFriction());
+            }
+            if (c.velocityApplyMode() != KnockbackSystem.VelocityApplyMode.SET) {
+                w.setTag(Tag.String("cvam"), c.velocityApplyMode().name());
+            }
+            if (c.stateOverrides() != null && !c.stateOverrides().isEmpty()) {
+                for (var e : c.stateOverrides().entrySet()) {
+                    String p = switch (e.getKey()) {
+                        case KnockbackSystem.KnockbackVictimState.ON_GROUND -> PREFIX_GROUND;
+                        case KnockbackSystem.KnockbackVictimState.IN_AIR -> PREFIX_AIR;
+                        case KnockbackSystem.KnockbackVictimState.FALLING -> PREFIX_FALLING;
+                    };
+                    var o = e.getValue();
+                    if (o.horizontalFriction() != null) w.setTag(Tag.Double(p + "hf"), o.horizontalFriction());
+                    if (o.verticalFriction() != null) w.setTag(Tag.Double(p + "vf"), o.verticalFriction());
+                    if (o.velocityApplyMode() != null) w.setTag(Tag.String(p + "vam"), o.velocityApplyMode().name());
+                    if (o.horizontalMultiplier() != null) w.setTag(Tag.Double(p + "hm"), o.horizontalMultiplier());
+                    if (o.verticalMultiplier() != null) w.setTag(Tag.Double(p + "vm"), o.verticalMultiplier());
+                }
             }
         }
     }

@@ -9,6 +9,8 @@ import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
+import com.minestom.mechanics.systems.player.PlayerDeathHandler;
+import com.minestom.mechanics.systems.misc.VelocityEstimator;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -461,6 +463,9 @@ public class MechanicsManager {
                 manager.healthSystem = HealthSystem.initialize(healthConfig);
                 manager.damageEnabled = true;
                 systemCount++;
+                // PlayerDeathHandler: visibility on death, IS_DEAD tag, and disables death messages
+                // (incomplete messages like "X was slain by" crash 1.7 clients)
+                PlayerDeathHandler.initialize();
             }
 
             // Initialize hitbox if configured
@@ -482,6 +487,7 @@ public class MechanicsManager {
             // Initialize knockback if configured
             if (knockbackConfig != null) {
                 log.info("Initializing Knockback System...");
+                VelocityEstimator.initialize();
                 manager.knockbackSystem = KnockbackSystem.initialize(knockbackConfig);
                 // Removed: setKnockbackSyncEnabled() - sync is disabled
                 manager.knockbackEnabled = true;

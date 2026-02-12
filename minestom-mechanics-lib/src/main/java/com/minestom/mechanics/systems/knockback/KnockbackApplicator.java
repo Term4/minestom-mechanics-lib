@@ -3,6 +3,7 @@ package com.minestom.mechanics.systems.knockback;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
 import static com.minestom.mechanics.config.constants.CombatConstants.MIN_KNOCKBACK_DISTANCE;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.misc.VelocityEstimator;
 import net.minestom.server.MinecraftServer;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
@@ -50,6 +51,7 @@ public class KnockbackApplicator {
         Entity configEntity = (type == KnockbackSystem.KnockbackType.PROJECTILE && source != null)
                 ? source : (attacker != null ? attacker : source);
         KnockbackConfig resolved = KnockbackSystem.getInstance().resolveConfig(configEntity, victim, handUsed);
+        resolved = KnockbackSystem.resolveConfigForVictim(resolved, victim);
 
         // Calculate direction based on configured mode
         KnockbackSystem.KnockbackDirectionMode dirMode = (type == KnockbackSystem.KnockbackType.PROJECTILE)
@@ -128,7 +130,19 @@ public class KnockbackApplicator {
         );
 
         // Calculate and apply final velocity
-        Vec finalVelocity = calculator.calculateFinalVelocity(victim, direction, strength, type);
+        Vec computed = calculator.calculateFinalVelocity(victim, direction, strength, type,
+                resolved.horizontalFriction(), resolved.verticalFriction(),
+                resolved.verticalLimit());
+
+        Vec finalVelocity;
+        if (resolved.velocityApplyMode() == KnockbackSystem.VelocityApplyMode.ADD) {
+            Vec oldVel = VelocityEstimator.getVelocity(victim);
+            finalVelocity = oldVel.add(computed);
+        } else {
+            finalVelocity = computed;
+        }
+
+        log.debug("Final Velocity: {}", finalVelocity);
         victim.setVelocity(finalVelocity);
         if (victim instanceof Player player) {
             player.sendPacket(new EntityVelocityPacket(player.getEntityId(), finalVelocity));

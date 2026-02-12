@@ -41,6 +41,7 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
+import net.minestom.server.timer.TaskSchedule;
 
 // DamageOverride replaces the old HealthTagWrapper/HealthTagValue system
 
@@ -75,6 +76,7 @@ public class Main {
         System.setProperty( "minestom.enforce-entity-interaction-range", "false");
         System.setProperty("minestom.chunk-view-distance", "12");
         System.setProperty("minestom.entity-view-distance", "5");
+        System.setProperty("minestom.tps", "20");
 
         // Initialize server
         MinecraftServer server;
@@ -96,6 +98,7 @@ public class Main {
         initializePvP();
         initializeCompatibility();
         registerEvents();
+        // startMsptLogger();
 
         // Start server
         server.start(SERVER_CONFIG.getServerIp(), SERVER_CONFIG.getServerPort());
@@ -185,6 +188,23 @@ public class Main {
         // Gameplay mechanics are now handled by MechanicsManager in initializePvP()
         MinecraftServer.LOGGER.info("[Compat] 1.8 mechanics enforced");
     }
+
+    // ===========================
+    // MSPT LOGGER
+    // ===========================
+
+    /*
+    private static void startMsptLogger() {
+        long[] lastRun = { System.currentTimeMillis() };
+        MinecraftServer.getSchedulerManager().buildTask(() -> {
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastRun[0];
+            lastRun[0] = now;
+            double mspt = elapsed / 20.0;  // 20 ticks per second
+            MinecraftServer.LOGGER.info("[MSPT] %.2f ms/tick".formatted(mspt));
+        }).repeat(TaskSchedule.tick(20)).schedule();
+    }
+    */
 
     // ===========================
     // EVENT HANDLERS
