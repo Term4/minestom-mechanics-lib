@@ -4,6 +4,7 @@ import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.manager.ArmorManager;
 import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.health.InvulnerabilityTracker;
 import com.minestom.mechanics.systems.health.damage.util.DamageCalculator;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
@@ -302,6 +303,34 @@ public class DamageType {
             invulnerability.markDamaged(victim, damageAmount);
             invulnerability.setLastDamageReplacement(victim, false);
             return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
+        }
+
+        // 5b. In i-frames: check invulnerability buffer (schedule hit for when invuln ends)
+        if (props.invulnerabilityBufferTicks() > 0 && config.isInvulnerabilityEnabled()) {
+            long ticksSince = invulnerability.getTicksSinceLastDamage(victim);
+            if (ticksSince >= 0) {
+                long ticksRemaining = config.invulnerabilityTicks() - ticksSince;
+                if (ticksRemaining <= props.invulnerabilityBufferTicks()) {
+                    HealthSystem hs = HealthSystem.getInstance();
+                    if (!hs.hasBufferedHit(victim)) {
+                        long lastDamageTick = invulnerability.getLastDamageTick(victim);
+                        long applyAtTick = lastDamageTick + config.invulnerabilityTicks();
+                        var dmg = event.getDamage();
+                        Entity dmgSource = dmg.getSource();
+                        net.minestom.server.coordinate.Point pos = dmg.getSourcePosition();
+                        if (pos == null && dmgSource != null) pos = dmgSource.getPosition();
+                        if (pos == null) pos = victim.getPosition();
+                        net.minestom.server.entity.damage.Damage snap = new net.minestom.server.entity.damage.Damage(
+                                dmg.getType(), dmg.getSource(), dmg.getAttacker(), pos, dmg.getAmount());
+                        if (hs.scheduleBufferedDamage(victim, snap, applyAtTick)) {
+                            event.setCancelled(true);
+                            return DamageResult.blocked(props, source, attacker, victim);
+                        }
+                    }
+                    event.setCancelled(true);
+                    return DamageResult.blocked(props, source, attacker, victim);
+                }
+            }
         }
 
         // 6. In i-frames: check if this damage type supports replacement

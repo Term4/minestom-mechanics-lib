@@ -23,6 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.LEGACY_BLOCKING_SPEED_MULTIPLIER;
 
+// TODO: Update to use TAG based tracking instead of a hashmap
+
 /**
  * Main blocking system orchestrator - coordinates all blocking components.
  * Replaces the monolithic BlockingFeature with focused component architecture.

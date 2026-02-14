@@ -55,6 +55,18 @@ public class TestItems {
                         KnockbackPresets.minemen().withLookWeight(0.0).withSprintLookWeight(1.0)));
     }
 
+    /** Same knockback values as minemen, but uses ADD_VECTORS: adds (posMag*posDir) + (lookMag*lookDir) instead of blending directions. */
+    public static ItemStack vectorAddSword() {
+        return ItemStack.builder(Material.IRON_SWORD)
+                .set(DataComponents.CUSTOM_NAME, Component.text("Vector Add Sword", NamedTextColor.GREEN, TextDecoration.BOLD))
+                .set(DataComponents.LORE, List.of(
+                        Component.text("ADD_VECTORS mode: look+position vectors added", NamedTextColor.GRAY),
+                        Component.text("(Same values as minemen preset)", NamedTextColor.GRAY)))
+                .build()
+                .withTag(KnockbackSystem.ITEM_CUSTOM, kbSet(
+                        KnockbackPresets.minemen().withDirectionBlendMode(KnockbackSystem.DirectionBlendMode.ADD_VECTORS)));
+    }
+
     public static ItemStack knockbackEgg() {
         return ItemStack.builder(Material.EGG)
                 .set(DataComponents.CUSTOM_NAME, Component.text("Knockback Egg", NamedTextColor.YELLOW, TextDecoration.BOLD))

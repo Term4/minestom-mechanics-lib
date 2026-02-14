@@ -36,6 +36,11 @@ public record CombatConfig(
         boolean sprintWindowDouble,
         int sprintWindowMaxTicks,
 
+        // Swing hit window: ticks after attacker hits victim when swings can register as attacks (Minemen-style). 0 = disabled.
+        int swingHitWindowTicks,
+        // Ticks after each swing to poll look direction. When > 0, the hit can land when crosshair passes over victim during this window (not just at swing moment). 0 = check only at swing packet.
+        int swingLookCheckTicks,
+
         // Blocking (combat-specific)
         boolean blockingEnabled,
         double blockDamageReduction,
@@ -51,6 +56,10 @@ public record CombatConfig(
             throw new IllegalArgumentException("Critical multiplier must be >= 1.0");
         if (sprintWindowMaxTicks < 0)
             throw new IllegalArgumentException("Sprint window max ticks must be >= 0");
+        if (swingHitWindowTicks < 0)
+            throw new IllegalArgumentException("Swing hit window ticks must be >= 0");
+        if (swingLookCheckTicks < 0)
+            throw new IllegalArgumentException("Swing look check ticks must be >= 0");
         if (blockDamageReduction < MIN_BLOCKING_REDUCTION || blockDamageReduction > MAX_BLOCKING_REDUCTION)
             throw new IllegalArgumentException("Block damage reduction must be between " +
                     MIN_BLOCKING_REDUCTION + " and " + MAX_BLOCKING_REDUCTION);
@@ -65,56 +74,56 @@ public record CombatConfig(
     // ===== KNOCKBACK =====
 
     public CombatConfig withKnockbackConfig(KnockbackConfig knockbackConfig) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withKnockback(double horizontal, double vertical) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withKnockback(double horizontal, double vertical, double verticalLimit) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical, verticalLimit), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical, verticalLimit), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withSprintBonus(double horizontal, double vertical) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withSprintBonus(horizontal, vertical), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withSprintBonus(horizontal, vertical), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withAirMultipliers(double horizontal, double vertical) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withAirMultipliers(horizontal, vertical), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withAirMultipliers(horizontal, vertical), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withLookWeight(double lookWeight) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withLookWeight(lookWeight), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withLookWeight(lookWeight), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withModern(boolean modern) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withModern(modern), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withModern(modern), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withKnockbackSyncSupported(boolean syncSupported) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockbackSyncSupported(syncSupported), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockbackSyncSupported(syncSupported), dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     // ===== ATTACK =====
 
     public CombatConfig withAttackCooldown(boolean remove) {
         return new CombatConfig(remove, criticalMultiplier, allowSprintCrits,
-                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks,
                 blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
                 blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withCriticalMultiplier(float multiplier) {
         return new CombatConfig(removeAttackCooldown, multiplier, allowSprintCrits,
-                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks,
                 blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
                 blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withSprintCrits(boolean allow) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allow,
-                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks,
                 blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
                 blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects);
     }
@@ -123,8 +132,22 @@ public record CombatConfig(
 
     public CombatConfig withSprintWindow(boolean dynamic, boolean doubleHit, int maxTicks) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
-                knockbackConfig, dynamic, doubleHit, maxTicks, blockingEnabled,
+                knockbackConfig, dynamic, doubleHit, maxTicks, swingHitWindowTicks, swingLookCheckTicks, blockingEnabled,
                 blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
+                showBlockDamageMessages, showBlockEffects);
+    }
+
+    public CombatConfig withSwingHitWindowTicks(int ticks) {
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, ticks, swingLookCheckTicks,
+                blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
+                showBlockDamageMessages, showBlockEffects);
+    }
+
+    public CombatConfig withSwingLookCheckTicks(int ticks) {
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, ticks,
+                blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
                 showBlockDamageMessages, showBlockEffects);
     }
 
@@ -132,21 +155,21 @@ public record CombatConfig(
 
     public CombatConfig withBlockDamageReduction(double reduction) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
-                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks,
                 blockingEnabled, reduction, blockKnockbackHReduction, blockKnockbackVReduction,
                 showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withBlockKnockback(double horizontal, double vertical) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
-                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks,
                 blockingEnabled, blockDamageReduction, horizontal, vertical,
                 showBlockDamageMessages, showBlockEffects);
     }
 
     public CombatConfig withBlockEffects(boolean showMessages, boolean showEffects) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
-                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks,
+                knockbackConfig, dynamicSprintWindow, sprintWindowDouble, sprintWindowMaxTicks, swingHitWindowTicks, swingLookCheckTicks,
                 blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
                 blockKnockbackVReduction, showMessages, showEffects);
     }

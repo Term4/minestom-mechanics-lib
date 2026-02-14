@@ -17,6 +17,7 @@ import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
+import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.item.ItemStack;
 
 /**
@@ -59,8 +60,27 @@ public class AttackFeature extends InitializableSystem {
         // Client-side hit detection (primarily 1.8 clients)
         handler.addListener(EntityAttackEvent.class, this::handleAttackPacket);
 
-        // Server-side hit detection (for 1.21+ clients with strict raycasting)
+        // Server-side hit detection (swing animations)
         handler.addListener(PlayerHandAnimationEvent.class, this::handleSwing);
+
+        // Swing window: poll look direction after each swing (hit lands when crosshair passes over victim)
+        if (config.swingHitWindowTicks() > 0 && config.swingLookCheckTicks() > 0) {
+            handler.addListener(PlayerTickEvent.class, this::handleSwingLookCheck);
+        }
+
+        // Record attacker-victim for swing window when damage lands
+        HealthSystem.getInstance().addAttackLandedListener(this::onAttackLanded);
+    }
+
+    /** Set before processAttack when the hit is from swing window — prevents recording (only initial melee/projectile hits count). */
+    private static final ThreadLocal<Boolean> FROM_SWING_WINDOW = ThreadLocal.withInitial(() -> false);
+
+    private void onAttackLanded(Player attacker, LivingEntity victim, long tick) {
+        if (Boolean.TRUE.equals(FROM_SWING_WINDOW.get())) return;
+        if (config.swingHitWindowTicks() > 0) {
+            SwingWindowTracker.recordHit(attacker, victim, tick);
+            log.debug("Swing window: recorded hit {} -> {} at tick {}", attacker.getUsername(), victim.getEntityType(), tick);
+        }
     }
 
     // ===========================
@@ -84,9 +104,6 @@ public class AttackFeature extends InitializableSystem {
 
     private void handleSwing(PlayerHandAnimationEvent event) {
         Player attacker = event.getPlayer();
-        if (ClientVersionDetector.getInstance().getClientVersion(attacker) != ClientVersionDetector.ClientVersion.MODERN) {
-            return;
-        }
 
         if (isBlocking(attacker)) {
             BlockingSystem.getInstance().stopBlocking(attacker);
@@ -100,11 +117,67 @@ public class AttackFeature extends InitializableSystem {
         }
 
         HitDetection hitDetection = HitDetection.getInstance();
-        LivingEntity target = hitDetection.findTargetFromSwing(attacker);
-        if (target == null) return;
-        if (!hitDetection.isReachValid(attacker, target)) return;
+        long tick = HealthSystem.getInstance().getCurrentTick();
 
-        processAttack(attacker, target);
+        // Swing window: record swing for look-check; if swingLookCheckTicks==0, check immediately at swing moment
+        if (config.swingHitWindowTicks() > 0) {
+            SwingWindowTracker.recordSwing(attacker, tick);
+            var recentVictims = SwingWindowTracker.getRecentVictims(attacker, tick, config.swingHitWindowTicks());
+            if (config.swingLookCheckTicks() == 0) {
+                // Check ray only at swing moment
+                for (LivingEntity victim : recentVictims) {
+                    if (hitDetection.isLookHittingVictimInSwingWindow(attacker, victim) && hitDetection.isReachValid(attacker, victim)) {
+                        try {
+                            FROM_SWING_WINDOW.set(true);
+                            processAttack(attacker, victim);
+                        } finally {
+                            FROM_SWING_WINDOW.remove();
+                        }
+                        return;
+                    }
+                }
+            } else if (!recentVictims.isEmpty()) {
+                // Tick handler will poll look each tick — don't run findTargetFromSwing (avoids double-hit)
+                return;
+            }
+        }
+
+        // Modern clients: raycast to find target (extended hitbox)
+        if (ClientVersionDetector.getInstance().getClientVersion(attacker) == ClientVersionDetector.ClientVersion.MODERN) {
+            LivingEntity target = hitDetection.findTargetFromSwing(attacker);
+            if (target != null && hitDetection.isReachValid(attacker, target)) {
+                processAttack(attacker, target);
+            }
+        }
+    }
+
+    /**
+     * Each tick: for attackers with recent victims and an unconsumed swing, check if look ray hits victim.
+     * Hit lands when crosshair passes over victim during the look-check window (not just at swing moment).
+     */
+    private void handleSwingLookCheck(PlayerTickEvent event) {
+        Player attacker = event.getPlayer();
+        if (isBlocking(attacker)) return;
+
+        long tick = HealthSystem.getInstance().getCurrentTick();
+        if (!SwingWindowTracker.hasUnconsumedSwing(attacker, tick, config.swingLookCheckTicks())) return;
+
+        var recentVictims = SwingWindowTracker.getRecentVictims(attacker, tick, config.swingHitWindowTicks());
+        if (recentVictims.isEmpty()) return;
+
+        HitDetection hitDetection = HitDetection.getInstance();
+        for (LivingEntity victim : recentVictims) {
+            if (hitDetection.isLookHittingVictimInSwingWindow(attacker, victim) && hitDetection.isReachValid(attacker, victim)) {
+                SwingWindowTracker.consumeSwing(attacker);
+                try {
+                    FROM_SWING_WINDOW.set(true);
+                    processAttack(attacker, victim);
+                } finally {
+                    FROM_SWING_WINDOW.remove();
+                }
+                return;
+            }
+        }
     }
 
     // ===========================

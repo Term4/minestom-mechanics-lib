@@ -11,6 +11,7 @@ import com.minestom.mechanics.systems.blocking.tags.BlockableTagValue;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyInventoryUtil;
+import com.minestom.mechanics.systems.health.damage.types.Fire;
 import com.minestom.mechanics.systems.misc.ModernStutterFix;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyAnimationFix;
 import com.minestom.mechanics.systems.health.HealthSystem;
@@ -153,9 +154,14 @@ public class Main {
                 .withDamage(DAMAGE_CONFIG)
                 .withHitbox(com.minestom.mechanics.config.combat.HitDetectionConfig.standard())
                 .withArmor(true)
-                .withKnockback(COMBAT_CONFIG.knockbackConfig(), true)  // ← CHANGED
+                .withKnockback(COMBAT_CONFIG.knockbackConfig())
                 .initialize();
 
+        DAMAGE_CONFIG.applyInvulnerabilityBuffersTo(gameWorld);
+
+        // Melee: zero damage, knockback and attack animation still work
+        gameWorld.setTag(HealthSystem.tag("melee"), DamageOverride.NO_DAMAGE);
+        
         // Initialize projectiles separately (not handled by MechanicsManager YET)
         // Using default projectile config
         com.minestom.mechanics.manager.ProjectileManager.getInstance()
@@ -241,16 +247,18 @@ public class Main {
                 ));
 
                 // Default movement speed is 0.1, Speed II increases by 40% (0.1 * 1.4 = 0.14)
-                /*
+
                 player.getAttribute(net.minestom.server.entity.attribute.Attribute.MOVEMENT_SPEED)
                         .setBaseValue(0.1 * (1 + (0.2 * 2))); // Speed II
-                 */
+
                 // Set gravity to 25% of normal (0.02 / 0.08 = 0.25)
                 // GravitySystem.setGravity(player, 0.167);
                 // Enable fire and cactus damage via player tags (overrides server config)
                 var fireTag = HealthSystem.tag("fire");
                 var cactusTag = HealthSystem.tag("cactus");
-                if (fireTag != null) player.setTag(fireTag, DamageOverride.mult(1.0));
+                if (fireTag != null) player.setTag(fireTag, DamageOverride.config(
+                        Fire.Config.DEFAULT.withIgnitionDelayTicks(0).withIgnitionMode(Fire.IgnitionMode.DELAYED)
+                ));
                 if (cactusTag != null) player.setTag(cactusTag, DamageOverride.mult(1.0));
             }
         });
@@ -301,6 +309,7 @@ public class Main {
                 BlockableTagValue.blockable(true, 0.25, 0.25, 0.25)  // 25% damage reduction, 75% knockback reduction
         ));
         player.getInventory().addItemStack(TestItems.sprintLookSword());
+        player.getInventory().addItemStack(TestItems.vectorAddSword());
         player.getInventory().addItemStack(TestItems.knockbackEgg().withAmount(16));
         player.getInventory().addItemStack(TestItems.skySnowball().withAmount(16));
         player.getInventory().addItemStack(TestItems.grappleKnockbackSnowball().withAmount(16));
@@ -315,7 +324,7 @@ public class Main {
 
         // Diamond Armor
         player.setHelmet(ItemStack.of(Material.DIAMOND_HELMET));
-        player.setChestplate(ItemStack.of(Material.ELYTRA));
+        player.setChestplate(ItemStack.of(Material.DIAMOND_CHESTPLATE));
         player.setLeggings(ItemStack.of(Material.DIAMOND_LEGGINGS));
         player.setBoots(ItemStack.of(Material.DIAMOND_BOOTS));
     }

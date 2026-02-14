@@ -26,6 +26,7 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
     private static final Tag<Boolean> CC = Tag.Boolean("cc");
     private static final Tag<Boolean> CR = Tag.Boolean("cr");
     private static final Tag<Boolean> CK = Tag.Boolean("ck");
+    private static final Tag<Integer> CIB = Tag.Integer("cib");
 
     @Override
     public DamageOverride read(@NotNull TagReadable r) {
@@ -33,6 +34,7 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
         Double mod = r.getTag(MOD);
         DamageTypeProperties custom = null;
         if (Boolean.TRUE.equals(r.getTag(HC))) {
+            Integer ib = r.getTag(CIB);
             custom = new DamageTypeProperties(
                     Boolean.TRUE.equals(r.getTag(CE)),
                     r.getTag(CM) != null ? r.getTag(CM) : 1.0f,
@@ -41,7 +43,8 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
                     Boolean.TRUE.equals(r.getTag(CI)),
                     Boolean.TRUE.equals(r.getTag(CC)),
                     Boolean.TRUE.equals(r.getTag(CR)),
-                    Boolean.TRUE.equals(r.getTag(CK))
+                    Boolean.TRUE.equals(r.getTag(CK)),
+                    ib != null ? ib : 0
             );
         }
         return new DamageOverride(
@@ -66,6 +69,7 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
             w.setTag(CC, p.bypassCreative());
             w.setTag(CR, p.damageReplacement());
             w.setTag(CK, p.knockbackOnReplacement());
+            if (p.invulnerabilityBufferTicks() > 0) w.setTag(CIB, p.invulnerabilityBufferTicks());
         }
     }
 }

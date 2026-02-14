@@ -8,9 +8,13 @@ import com.minestom.mechanics.ConfigurableSystem;
 import com.minestom.mechanics.systems.misc.VelocityEstimator;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.systems.projectile.tags.ProjectileTagRegistry;
+import net.minestom.server.MinecraftServer;
+import net.minestom.server.coordinate.Pos;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.*;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
+import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.Nullable;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.FALLING_VELOCITY_THRESHOLD;
@@ -32,6 +36,11 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     private static KnockbackSystem instance;
     private static final LogUtil.SystemLogger log = LogUtil.system("KnockbackSystem");
 
+    /** Last tick we observed player sprinting. Updated each tick when sprinting. */
+    public static final Tag<Long> LAST_SPRINT_TICK = Tag.Transient("kb_last_sprint_tick");
+
+    private long currentTick = 0;
+
     private KnockbackSystem(KnockbackConfig config) {
         super(config);
     }
@@ -49,10 +58,28 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
         instance = new KnockbackSystem(config);
         instance.markInitialized();
 
+        // Tick: update currentTick and last sprint tick for players
+        MinecraftServer.getSchedulerManager().buildTask(() -> {
+            instance.currentTick++;
+            for (Player p : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
+                if (p.isSprinting()) p.setTag(LAST_SPRINT_TICK, instance.currentTick);
+            }
+        }).repeat(TaskSchedule.tick(1)).schedule();
+
         ProjectileTagRegistry.register(KnockbackSystem.class);
         LogUtil.logInit("KnockbackSystem");
         return instance;
     }
+
+    /** Whether to treat this as a sprint hit for knockback: currently sprinting or within buffer. */
+    public static boolean isSprintHit(Player attacker, int sprintBufferTicks, long currentTick) {
+        if (attacker.isSprinting()) return true;
+        if (sprintBufferTicks <= 0) return false;
+        Long last = attacker.getTag(LAST_SPRINT_TICK);
+        return last != null && (currentTick - last) <= sprintBufferTicks;
+    }
+
+    public long getCurrentTick() { return currentTick; }
 
     public static KnockbackSystem getInstance() {
         if (instance == null || !instance.initialized) {
@@ -121,9 +148,17 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 }
         );
 
+        // Scale vertical limit when item/entity mult or modify amplifies vertical strength.
+        // Otherwise high-vertical items (Sky Ball, Cannon Bow, KB_LAUNCHER) get crushed by base limit.
+        double baseLimit = base.verticalLimit();
+        double[] mults = getMultipliers(attacker, victim, item);
+        double verticalMult = mults.length > 1 ? mults[1] : 1.0;
+        double verticalModify = getModifyValue(attacker, victim, item, 1);
+        double effectiveVerticalLimit = baseLimit * Math.max(1.0, verticalMult) + Math.max(0, verticalModify);
+
         return new KnockbackConfig(
                 components[0], components[1],
-                base.verticalLimit(),
+                effectiveVerticalLimit,
                 components[2], components[3],
                 components[4], components[5],
                 base.lookWeight(),
@@ -132,11 +167,17 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
                 base.meleeDirection(),
                 base.projectileDirection(),
                 base.degenerateFallback(),
+                base.directionBlendMode(),
                 base.sprintLookWeight(),
                 base.horizontalFriction(),
                 base.verticalFriction(),
+                base.sprintHorizontalFriction(),
+                base.sprintVerticalFriction(),
                 base.velocityApplyMode(),
-                base.stateOverrides()
+                base.stateOverrides(),
+                base.rangeReduction(),
+                base.sprintRangeReduction(),
+                base.sprintBufferTicks()
         );
     }
 
@@ -186,6 +227,62 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     public record KnockbackStrength(double horizontal, double vertical) {}
 
     /**
+     * Debug info for knockback tuning. Populated when debug is enabled.
+     */
+    public record KnockbackDebugInfo(
+            Vec oldVelocity,
+            Vec postKnockbackVelocity,
+            Vec preSprintBonusVector,
+            Double verticalPreLimit,
+            Double verticalLimitApplied,
+            Double rangeDistance,
+            Double rangeReductionH,
+            Double rangeReductionV
+    ) {}
+
+    private static volatile boolean debugToChat = false;
+
+    /** Enable/disable knockback velocity debug output (prints to attacker and victim chat). */
+    public static void setDebugToChat(boolean enabled) {
+        debugToChat = enabled;
+    }
+
+    public static boolean isDebugToChat() {
+        return debugToChat;
+    }
+
+    /**
+     * Range reduction config: start distances, factors, and max reduction per axis.
+     * maxHorizontal/maxVertical cap the reduction; use Double.POSITIVE_INFINITY for no cap.
+     */
+    public record RangeReductionConfig(
+            double startDistanceHorizontal,
+            double startDistanceVertical,
+            double factorHorizontal,
+            double factorVertical,
+            double maxHorizontal,
+            double maxVertical
+    ) {
+        public static RangeReductionConfig none() {
+            return new RangeReductionConfig(0, 0, 0, 0, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+        }
+    }
+
+    /**
+     * Full context for a knockback event. Resolved by the applicator, consumed by the calculator.
+     */
+    public record KnockbackContext(
+            LivingEntity victim,
+            @Nullable Entity attacker,
+            @Nullable Entity source,
+            @Nullable Pos shooterOriginPos,
+            KnockbackType type,
+            boolean wasSprinting,
+            int kbEnchantLevel,
+            KnockbackConfig config
+    ) {}
+
+    /**
      * Types of knockback that can be applied.
      */
     public enum KnockbackType {
@@ -210,6 +307,18 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
         PROJECTILE_POSITION,
         /** Victim's own facing direction (knocked "forward"). */
         VICTIM_FACING
+    }
+
+    /**
+     * How to combine look and position directions with horizontal magnitude.
+     * BLEND_DIRECTION: blend unit vectors by weight, then multiply by scalar (current behavior).
+     * ADD_VECTORS: scale each direction by its fraction of magnitude, add vectors (different feel).
+     */
+    public enum DirectionBlendMode {
+        /** Blend direction vectors, then multiply by horizontal scalar. */
+        BLEND_DIRECTION,
+        /** Add (lookMag * lookDir) + (positionMag * positionDir) where magnitudes sum to horizontal. */
+        ADD_VECTORS
     }
 
     /**

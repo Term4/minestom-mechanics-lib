@@ -14,13 +14,15 @@ public final class DamagePresets {
      * - 10 tick invulnerability (50ms)
      * - Standard environmental damage
      * - Damage replacement enabled
+     * - 1 tick invulnerability buffer for attacker-based damage
      */
     public static final DamageConfig MINEMEN = new DamageConfig(
             10,   // invulnerabilityTicks (50ms)
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER,
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             true, false,  // damageReplacement, knockbackOnReplacement
-            true  // logReplacementDamage
+            true,  // logReplacementDamage
+            1     // attackerInvulnerabilityBufferTicks
     );
 
     /**
@@ -34,7 +36,8 @@ public final class DamagePresets {
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER,
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             DEFAULT_DAMAGE_REPLACEMENT, DEFAULT_KNOCKBACK_ON_REPLACEMENT,
-            true  // logReplacementDamage
+            true,  // logReplacementDamage
+            0      // attackerInvulnerabilityBufferTicks
     );
 
     /**
@@ -47,7 +50,8 @@ public final class DamagePresets {
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER,
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             true, false,
-            true  // logReplacementDamage
+            true,  // logReplacementDamage
+            0      // attackerInvulnerabilityBufferTicks
     );
 
     /**
@@ -65,7 +69,8 @@ public final class DamagePresets {
             false, 0.0f,  // No fall damage
             false, 0.0f,  // No fire damage
             false, false,
-            true  // logReplacementDamage
+            true,  // logReplacementDamage
+            0      // attackerInvulnerabilityBufferTicks
     );
 
     /**
@@ -77,6 +82,7 @@ public final class DamagePresets {
             true, DEFAULT_FALL_DAMAGE_MULTIPLIER,
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             false, false,
-            true  // logReplacementDamage
+            true,  // logReplacementDamage
+            0      // attackerInvulnerabilityBufferTicks
     );
 }

@@ -1,11 +1,9 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
-import static com.minestom.mechanics.config.constants.CombatConstants.MIN_KNOCKBACK_DISTANCE;
-import com.minestom.mechanics.systems.blocking.BlockingSystem;
-import com.minestom.mechanics.systems.misc.VelocityEstimator;
-import net.minestom.server.MinecraftServer;
 import com.minestom.mechanics.util.LogUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.*;
@@ -13,34 +11,20 @@ import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Applies knockback to entities based on resolved configuration.
- * Delegates config resolution to {@link KnockbackSystem} and direction to {@link KnockbackCalculator}.
+ * Event-like knockback applicator. Resolves config and context, requests velocity from
+ * {@link KnockbackCalculator}, then applies it. All computation lives in the calculator.
  */
 public class KnockbackApplicator {
 
     private static final LogUtil.SystemLogger log = LogUtil.system("KnockbackApplicator");
-
-    private final KnockbackCalculator calculator;
+    private final KnockbackCalculator calculator = new KnockbackCalculator();
 
     public KnockbackApplicator(KnockbackConfig config) {
-        this.calculator = new KnockbackCalculator(config);
+        // Config used only for backward compat / future use; resolution is per-call
     }
 
-    // ===========================
-    // PUBLIC API
-    // ===========================
-
     /**
-     * Apply knockback with full context. Used by HealthSystem after damage pipeline.
-     * Direction mode is determined from the resolved KnockbackConfig.
-     *
-     * @param victim          the entity being knocked back
-     * @param attacker        the player who caused the damage (or null)
-     * @param source          the direct damage source (player for melee, projectile for ranged)
-     * @param shooterOriginPos where the shooter was at projectile launch (or null for melee)
-     * @param type            knockback type (ATTACK, PROJECTILE, SWEEPING)
-     * @param wasSprinting    whether the attacker was sprinting
-     * @param kbEnchantLevel  knockback enchantment level
+     * Apply knockback with full context. Resolves config, builds context, computes via calculator, applies result.
      */
     public void applyKnockback(LivingEntity victim, @Nullable Entity attacker, @Nullable Entity source,
                                 @Nullable Pos shooterOriginPos, KnockbackSystem.KnockbackType type,
@@ -53,94 +37,24 @@ public class KnockbackApplicator {
         KnockbackConfig resolved = KnockbackSystem.getInstance().resolveConfig(configEntity, victim, handUsed);
         resolved = KnockbackSystem.resolveConfigForVictim(resolved, victim);
 
-        // Calculate direction based on configured mode
-        KnockbackSystem.KnockbackDirectionMode dirMode = (type == KnockbackSystem.KnockbackType.PROJECTILE)
-                ? resolved.projectileDirection()
-                : resolved.meleeDirection();
-        KnockbackSystem.DegenerateFallback degenerateFallback = resolved.degenerateFallback();
-        double lookWeight = resolved.lookWeight();
-        double sprintLookWeight = resolved.sprintLookWeight() != null ? resolved.sprintLookWeight() : lookWeight;
-
-        Vec direction;
-        double horizontal;
-        double vertical;
-
-        if (wasSprinting && type != KnockbackSystem.KnockbackType.PROJECTILE) {
-            if (attacker instanceof Player player) player.setSprinting(false);
-            Vec baseDir = calculator.calculateDirection(dirMode, victim, attacker, source, shooterOriginPos, lookWeight, degenerateFallback);
-            Vec sprintDir = calculator.calculateDirection(dirMode, victim, attacker, source, shooterOriginPos, sprintLookWeight, degenerateFallback);
-            double baseH = resolved.horizontal();
-            double sprintH = resolved.sprintBonusHorizontal();
-            double hVecX = baseH * baseDir.x() + sprintH * sprintDir.x();
-            double hVecZ = baseH * baseDir.z() + sprintH * sprintDir.z();
-            double len = Math.sqrt(hVecX * hVecX + hVecZ * hVecZ);
-            if (len < MIN_KNOCKBACK_DISTANCE) {
-                direction = baseDir;
-                horizontal = baseH + sprintH;
-            } else {
-                direction = new Vec(hVecX / len, 0, hVecZ / len);
-                horizontal = len;
-            }
-            vertical = resolved.vertical() + resolved.sprintBonusVertical();
-        } else {
-            direction = calculator.calculateDirection(dirMode, victim, attacker, source, shooterOriginPos, lookWeight, degenerateFallback);
-            horizontal = resolved.horizontal();
-            vertical = resolved.vertical();
+        // Determine wasSprinting: use buffer (ticks after stopping we still count as sprint hit) when configured
+        boolean effectiveSprint = wasSprinting;
+        if (attacker instanceof Player p && type != KnockbackSystem.KnockbackType.PROJECTILE) {
+            effectiveSprint = resolved.sprintBufferTicks() > 0
+                    ? KnockbackSystem.isSprintHit(p, resolved.sprintBufferTicks(), KnockbackSystem.getInstance().getCurrentTick())
+                    : p.isSprinting();
         }
 
-        // Enchantment bonus (melee only)
-        if (kbEnchantLevel > 0 && type != KnockbackSystem.KnockbackType.PROJECTILE) {
-            horizontal += kbEnchantLevel * 0.6;
-            vertical += 0.1;
+        KnockbackSystem.KnockbackContext ctx = new KnockbackSystem.KnockbackContext(
+                victim, attacker, source, shooterOriginPos, type, effectiveSprint, kbEnchantLevel, resolved);
+
+        // Side effect: stop sprint for tick (before applying knockback)
+        if (effectiveSprint && type != KnockbackSystem.KnockbackType.PROJECTILE && attacker instanceof Player p) {
+            p.setSprinting(false);
         }
 
-        // Sweeping reduction
-        if (type == KnockbackSystem.KnockbackType.SWEEPING) {
-            horizontal *= 0.5;
-            vertical *= 0.5;
-        }
-
-        KnockbackSystem.KnockbackStrength strength = new KnockbackSystem.KnockbackStrength(horizontal, vertical);
-
-        // Blocking reduction
-        if (victim instanceof Player player) {
-            try {
-                BlockingSystem blocking = BlockingSystem.getInstance();
-                if (blocking.isBlocking(player)) {
-                    horizontal *= (1.0 - blocking.getKnockbackHorizontalReduction(player));
-                    vertical *= (1.0 - blocking.getKnockbackVerticalReduction(player));
-                    strength = new KnockbackSystem.KnockbackStrength(horizontal, vertical);
-                }
-            } catch (IllegalStateException ignored) {}
-        }
-
-        // Air multipliers
-        if (!victim.isOnGround()) {
-            strength = new KnockbackSystem.KnockbackStrength(
-                    strength.horizontal() * resolved.airMultiplierHorizontal(),
-                    strength.vertical() * resolved.airMultiplierVertical()
-            );
-        }
-
-        // Resistance attribute
-        double resistance = victim.getAttributeValue(net.minestom.server.entity.attribute.Attribute.KNOCKBACK_RESISTANCE);
-        strength = new KnockbackSystem.KnockbackStrength(
-                strength.horizontal() * (1 - resistance),
-                strength.vertical() * (1 - resistance)
-        );
-
-        // Calculate and apply final velocity
-        Vec computed = calculator.calculateFinalVelocity(victim, direction, strength, type,
-                resolved.horizontalFriction(), resolved.verticalFriction(),
-                resolved.verticalLimit());
-
-        Vec finalVelocity;
-        if (resolved.velocityApplyMode() == KnockbackSystem.VelocityApplyMode.ADD) {
-            Vec oldVel = VelocityEstimator.getVelocity(victim);
-            finalVelocity = oldVel.add(computed);
-        } else {
-            finalVelocity = computed;
-        }
+        var debugSink = KnockbackSystem.isDebugToChat() ? new KnockbackCalculator.DebugSink() : null;
+        Vec finalVelocity = calculator.computeKnockbackVelocity(ctx, debugSink);
 
         log.debug("Final Velocity: {}", finalVelocity);
         victim.setVelocity(finalVelocity);
@@ -148,25 +62,61 @@ public class KnockbackApplicator {
             player.sendPacket(new EntityVelocityPacket(player.getEntityId(), finalVelocity));
         }
 
-        log.debug("Applied {} knockback ({}): {}", type, dirMode, finalVelocity);
+        if (debugSink != null && debugSink.info != null) {
+            sendDebugToChat(debugSink.info, attacker, victim);
+        }
+        log.debug("Applied {} knockback: {}", type, finalVelocity);
     }
 
-    // ===========================
-    // LEGACY API (kept for backward compatibility)
-    // ===========================
-
-    /** @deprecated Use {@link #applyKnockback(LivingEntity, Entity, Entity, Pos, KnockbackSystem.KnockbackType, boolean, int)} */
     @Deprecated
     public void applyKnockback(LivingEntity victim, Entity attacker, KnockbackSystem.KnockbackType type,
                                 boolean wasSprinting, int kbEnchantLevel) {
         applyKnockback(victim, attacker, attacker, null, type, wasSprinting, kbEnchantLevel);
     }
 
-    /** @deprecated Use the full context version. */
     @Deprecated
     public void applyProjectileKnockback(LivingEntity victim, Entity projectile,
                                           Pos shooterOrigin, int kbEnchantLevel) {
         applyKnockback(victim, null, projectile, shooterOrigin,
                 KnockbackSystem.KnockbackType.PROJECTILE, false, kbEnchantLevel);
+    }
+
+    private static void sendDebugToChat(KnockbackSystem.KnockbackDebugInfo d,
+                                        Entity attacker, LivingEntity victim) {
+        var msg = Component.text()
+                .append(Component.text("[KB] ", NamedTextColor.GRAY))
+                .append(Component.text("old: ", NamedTextColor.DARK_GRAY))
+                .append(vecStr(d.oldVelocity()))
+                .append(Component.text(" → post: ", NamedTextColor.DARK_GRAY))
+                .append(vecStr(d.postKnockbackVelocity()))
+                .append(Component.text(" | preSprint: ", NamedTextColor.DARK_GRAY))
+                .append(vecStr(d.preSprintBonusVector()))
+                .build();
+        var vert = Component.empty();
+        if (d.verticalPreLimit() != null && d.verticalLimitApplied() != null) {
+            vert = Component.text(" | vert preLimit: ", NamedTextColor.DARK_GRAY)
+                    .append(Component.text(String.format("%.3f", d.verticalPreLimit()), NamedTextColor.YELLOW))
+                    .append(Component.text(" limit: ", NamedTextColor.DARK_GRAY))
+                    .append(Component.text(String.format("%.3f", d.verticalLimitApplied()), NamedTextColor.YELLOW));
+        }
+        var range = Component.empty();
+        if (d.rangeDistance() != null && d.rangeReductionH() != null && d.rangeReductionV() != null) {
+            range = Component.text(" | range: ", NamedTextColor.DARK_GRAY)
+                    .append(Component.text(String.format("d=%.2f", d.rangeDistance()), NamedTextColor.GOLD))
+                    .append(Component.text(" redH=", NamedTextColor.DARK_GRAY))
+                    .append(Component.text(String.format("%.3f", d.rangeReductionH()), NamedTextColor.GOLD))
+                    .append(Component.text(" redV=", NamedTextColor.DARK_GRAY))
+                    .append(Component.text(String.format("%.3f", d.rangeReductionV()), NamedTextColor.GOLD));
+        } else {
+            range = Component.text(" | range: N/A (factor=0 or no origin)", NamedTextColor.DARK_GRAY);
+        }
+        var full = msg.append(vert).append(range);
+
+        if (attacker instanceof Player p) p.sendMessage(full);
+        if (victim instanceof Player p && p != attacker) p.sendMessage(full);
+    }
+
+    private static Component vecStr(Vec v) {
+        return Component.text(String.format("(%.3f, %.3f, %.3f)", v.x(), v.y(), v.z()), NamedTextColor.AQUA);
     }
 }

@@ -8,7 +8,6 @@ import com.minestom.mechanics.systems.validation.hits.HitSnapshotTracker;
 import com.minestom.mechanics.systems.validation.hits.ServerSideDetector;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.coordinate.Pos;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 
@@ -70,6 +69,15 @@ public class HitDetection extends InitializableSystem {
         );
         hitSnapshotTracker.storeHitSnapshot(victim, snapshot);
         return true;
+    }
+
+    /**
+     * Check if attacker's look ray hits victim. Used for swing-window detection.
+     * Skips block filter so crosshair-over-ground doesn't reject valid combat hits.
+     */
+    public boolean isLookHittingVictimInSwingWindow(Player attacker, LivingEntity victim) {
+        LivingEntity target = serverSideDetector.findTargetFromSwing(attacker, false);
+        return target == victim;
     }
 
     /**

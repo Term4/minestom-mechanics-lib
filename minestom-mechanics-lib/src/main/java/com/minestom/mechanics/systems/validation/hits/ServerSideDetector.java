@@ -22,7 +22,6 @@ import static com.minestom.mechanics.config.constants.CombatConstants.PLAYER_HEI
 
 /**
  * Consolidated server-side hit detection with distance calculation capabilities.
- * ✅ CONSOLIDATED: Merged RayDistanceCalculator into ServerSideDetector for better cohesion.
  */
 public class ServerSideDetector {
     private static final LogUtil.SystemLogger log = LogUtil.system("ServerSideDetector");
@@ -39,29 +38,36 @@ public class ServerSideDetector {
 
     /**
      * Performs server-side raycasting to find entity the player is aiming at.
-     * Modern clients: use expanded hitbox (primary). Legacy: exact hitbox only (no expansion).
+     * Uses primary expansion for all clients (server is modern; legacy benefits from same hitbox).
      *
      * @param attacker Player swinging
      * @return Target entity, or null if none found
      */
     public LivingEntity findTargetFromSwing(Player attacker) {
+        return findTargetFromSwing(attacker, true);
+    }
+
+    /**
+     * Performs server-side raycasting to find entity the player is aiming at.
+     *
+     * @param filterBlocks When true, returns null if looking at a block (avoids entity hit when mining). When false, skips this check (for combat swing window where crosshair-over-ground can reject valid hits).
+     */
+    public LivingEntity findTargetFromSwing(Player attacker, boolean filterBlocks) {
         Pos eyePos = EyeHeightSystem.getInstance().getEyePosition(attacker);
         Vec direction = eyePos.direction();
         Vec normalizedDir = direction.normalize();
 
-        // Filter out block interactions
-        if (raycastUtils.isLookingAtBlock(attacker, eyePos, normalizedDir)) {
+        if (filterBlocks && raycastUtils.isLookingAtBlock(attacker, eyePos, normalizedDir)) {
             return null;
         }
 
-        Vec expansion = isModernAttacker(attacker) ? hitboxExpansion.getPrimary() : Vec.ZERO;
+        Vec expansion = hitboxExpansion.getPrimary();
         return findClosestEntityTarget(attacker, eyePos, normalizedDir, expansion);
     }
 
     /**
      * Find the closest entity target within reach.
      * Only returns entities that are not obstructed by a solid block between eye and hit point.
-     * @param expansion Hitbox expansion (use Vec.ZERO for legacy clients).
      */
     private LivingEntity findClosestEntityTarget(Player attacker, Pos eyePos, Vec direction, Vec expansion) {
         Instance instance = attacker.getInstance();

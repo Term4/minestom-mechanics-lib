@@ -39,6 +39,15 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
         }
     }
 
+    private static KnockbackSystem.DirectionBlendMode parseDirectionBlendMode(String name, KnockbackSystem.DirectionBlendMode defaultValue) {
+        if (name == null) return defaultValue;
+        try {
+            return KnockbackSystem.DirectionBlendMode.valueOf(name);
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
+    }
+
     private static KnockbackSystem.VelocityApplyMode parseVelocityApplyMode(String name, KnockbackSystem.VelocityApplyMode defaultValue) {
         if (name == null) return defaultValue;
         switch (name) {
@@ -90,12 +99,41 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             KnockbackSystem.KnockbackDirectionMode melee = parseDirectionMode(meleeDir, KnockbackSystem.KnockbackDirectionMode.ATTACKER_POSITION);
             KnockbackSystem.KnockbackDirectionMode proj = parseDirectionMode(projDir, KnockbackSystem.KnockbackDirectionMode.SHOOTER_ORIGIN);
             KnockbackSystem.DegenerateFallback df = parseDegenerateFallback(r.getTag(Tag.String("cdf")), KnockbackSystem.DegenerateFallback.LOOK);
+            KnockbackSystem.DirectionBlendMode dbm = parseDirectionBlendMode(r.getTag(Tag.String("cdbm")), KnockbackSystem.DirectionBlendMode.BLEND_DIRECTION);
             Double slw = r.getTag(Tag.Double("cslw"));
             Double chf = r.getTag(Tag.Double("chf"));
             Double cvf = r.getTag(Tag.Double("cvf"));
             KnockbackSystem.VelocityApplyMode vam = parseVelocityApplyMode(r.getTag(Tag.String("cvam")), KnockbackSystem.VelocityApplyMode.SET);
 
             Map<KnockbackSystem.KnockbackVictimState, KnockbackSystem.KnockbackStateOverride> stateOverrides = parseStateOverrides(r);
+            Double csrd = r.getTag(Tag.Double("csrd"));  // legacy: same for both axes
+            Double csrdh = r.getTag(Tag.Double("csrdh"));
+            Double csrdv = r.getTag(Tag.Double("csrdv"));
+            Double crfh = r.getTag(Tag.Double("crfh"));
+            Double crfv = r.getTag(Tag.Double("crfv"));
+            Double cmrh = r.getTag(Tag.Double("cmrh"));
+            Double cmrv = r.getTag(Tag.Double("cmrv"));
+            // Sprint range (if absent, use base)
+            Double scsrdh = r.getTag(Tag.Double("scsrdh"));
+            Double scsrdv = r.getTag(Tag.Double("scsrdv"));
+            Double scrfh = r.getTag(Tag.Double("scrfh"));
+            Double scrfv = r.getTag(Tag.Double("scrfv"));
+            Double scmrh = r.getTag(Tag.Double("scmrh"));
+            Double scmrv = r.getTag(Tag.Double("scmrv"));
+
+            double startH = csrdh != null ? csrdh : (csrd != null ? csrd : 0);
+            double startV = csrdv != null ? csrdv : (csrd != null ? csrd : 0);
+            double maxH = cmrh != null ? cmrh : Double.POSITIVE_INFINITY;
+            double maxV = cmrv != null ? cmrv : Double.POSITIVE_INFINITY;
+            KnockbackSystem.RangeReductionConfig baseRange = new KnockbackSystem.RangeReductionConfig(startH, startV, crfh != null ? crfh : 0, crfv != null ? crfv : 0, maxH, maxV);
+            double sStartH = scsrdh != null ? scsrdh : startH;
+            double sStartV = scsrdv != null ? scsrdv : startV;
+            double sFactorH = scrfh != null ? scrfh : (crfh != null ? crfh : 0);
+            double sFactorV = scrfv != null ? scrfv : (crfv != null ? crfv : 0);
+            double sMaxH = scmrh != null ? scmrh : maxH;
+            double sMaxV = scmrv != null ? scmrv : maxV;
+            KnockbackSystem.RangeReductionConfig sprintRange = new KnockbackSystem.RangeReductionConfig(sStartH, sStartV, sFactorH, sFactorV, sMaxH, sMaxV);
+            Integer csbt = r.getTag(Tag.Integer("csbt"));
 
             custom = new KnockbackConfig(
                     r.getTag(Tag.Double("ch")), r.getTag(Tag.Double("cv")),
@@ -103,9 +141,11 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
                     r.getTag(Tag.Double("csv")), r.getTag(Tag.Double("cah")),
                     r.getTag(Tag.Double("cav")), r.getTag(Tag.Double("clw")),
                     r.getTag(Tag.Boolean("cmd")), r.getTag(Tag.Boolean("csn")),
-                    melee, proj, df, slw,
-                    chf != null ? chf : 2.0, cvf != null ? cvf : 2.0, vam,
-                    stateOverrides
+                    melee, proj, df, dbm, slw,
+                    chf != null ? chf : 2.0, cvf != null ? cvf : 2.0, null, null, vam,
+                    stateOverrides,
+                    baseRange, sprintRange,
+                    csbt != null ? csbt : 0
             );
         }
         if (mult == null && mod == null && custom == null) return null;
@@ -139,6 +179,9 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             if (c.degenerateFallback() != KnockbackSystem.DegenerateFallback.LOOK) {
                 w.setTag(Tag.String("cdf"), c.degenerateFallback().name());
             }
+            if (c.directionBlendMode() != KnockbackSystem.DirectionBlendMode.BLEND_DIRECTION) {
+                w.setTag(Tag.String("cdbm"), c.directionBlendMode().name());
+            }
             if (c.sprintLookWeight() != null) {
                 w.setTag(Tag.Double("cslw"), c.sprintLookWeight());
             }
@@ -150,6 +193,30 @@ public class KnockbackTagSerializer implements TagSerializer<KnockbackTagValue> 
             }
             if (c.velocityApplyMode() != KnockbackSystem.VelocityApplyMode.SET) {
                 w.setTag(Tag.String("cvam"), c.velocityApplyMode().name());
+            }
+            var baseR = c.rangeReduction();
+            var sprintR = c.sprintRangeReduction();
+            if (baseR.factorHorizontal() > 0 || baseR.factorVertical() > 0
+                    || baseR.startDistanceHorizontal() > 0 || baseR.startDistanceVertical() > 0) {
+                w.setTag(Tag.Double("csrdh"), baseR.startDistanceHorizontal());
+                w.setTag(Tag.Double("csrdv"), baseR.startDistanceVertical());
+                w.setTag(Tag.Double("crfh"), baseR.factorHorizontal());
+                w.setTag(Tag.Double("crfv"), baseR.factorVertical());
+                if (baseR.maxHorizontal() != Double.POSITIVE_INFINITY) w.setTag(Tag.Double("cmrh"), baseR.maxHorizontal());
+                if (baseR.maxVertical() != Double.POSITIVE_INFINITY) w.setTag(Tag.Double("cmrv"), baseR.maxVertical());
+            }
+            if (sprintR.startDistanceHorizontal() != baseR.startDistanceHorizontal() || sprintR.startDistanceVertical() != baseR.startDistanceVertical()
+                    || sprintR.factorHorizontal() != baseR.factorHorizontal() || sprintR.factorVertical() != baseR.factorVertical()
+                    || sprintR.maxHorizontal() != baseR.maxHorizontal() || sprintR.maxVertical() != baseR.maxVertical()) {
+                w.setTag(Tag.Double("scsrdh"), sprintR.startDistanceHorizontal());
+                w.setTag(Tag.Double("scsrdv"), sprintR.startDistanceVertical());
+                w.setTag(Tag.Double("scrfh"), sprintR.factorHorizontal());
+                w.setTag(Tag.Double("scrfv"), sprintR.factorVertical());
+                if (sprintR.maxHorizontal() != Double.POSITIVE_INFINITY) w.setTag(Tag.Double("scmrh"), sprintR.maxHorizontal());
+                if (sprintR.maxVertical() != Double.POSITIVE_INFINITY) w.setTag(Tag.Double("scmrv"), sprintR.maxVertical());
+            }
+            if (c.sprintBufferTicks() > 0) {
+                w.setTag(Tag.Integer("csbt"), c.sprintBufferTicks());
             }
             if (c.stateOverrides() != null && !c.stateOverrides().isEmpty()) {
                 for (var e : c.stateOverrides().entrySet()) {
