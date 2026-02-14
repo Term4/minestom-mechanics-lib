@@ -30,7 +30,7 @@ public final class KnockbackPresets {
                 KnockbackSystem.KnockbackDirectionMode.ATTACKER_POSITION,
                 KnockbackSystem.KnockbackDirectionMode.ATTACKER_POSITION,
                 KnockbackSystem.DirectionBlendMode.ADD_VECTORS,
-                7, 1,
+                7, 6.5,
                 6.0, 6.5,
                 KnockbackSystem.VelocityApplyMode.SET,
                 0, 0, 0, 0, 0, 0,

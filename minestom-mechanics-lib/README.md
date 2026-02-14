@@ -34,18 +34,16 @@ Add the library to your Maven project:
 ### 2. Basic Usage
 
 ```java
-import com.minestom.mechanics.CombatManager;
-import com.minestom.mechanics.config.combat.CombatPresets;
+import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.config.MechanicsPresets;
 
 public class MyServer {
     public static void main(String[] args) {
-        // Initialize server
         MinecraftServer server = MinecraftServer.init();
-        
-        // Initialize combat system with MinemanClub preset
-        CombatManager.getInstance().initialize(CombatPresets.Modes.MINEMEN);
-        
-        // Start server
+
+        // Initialize with preset (Minemen, Vanilla, Hypixel)
+        MechanicsManager.getInstance().withPreset(MechanicsPresets.MINEMEN);
+
         server.start("0.0.0.0", 25566);
     }
 }
@@ -54,13 +52,19 @@ public class MyServer {
 ### 3. Custom Configuration
 
 ```java
-// Create custom combat configuration
-CombatManager.getInstance()
+import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.config.combat.CombatPresets;
+import com.minestom.mechanics.config.gameplay.GameplayPresets;
+import com.minestom.mechanics.config.gameplay.DamagePresets;
+
+// Configure systems individually
+MechanicsManager.getInstance()
     .configure()
-    .fromPreset(CombatPresets.Modes.MINEMEN)
-    .withHitDetection(CombatPresets.STRICT_HIT_DETECTION)
-    .withName("Custom Minemen", "Minemen with strict hit detection")
-    .apply();
+    .withCombat(CombatPresets.MINEMEN)
+    .withGameplay(GameplayPresets.MINEMEN)
+    .withDamage(DamagePresets.MINEMEN)
+    .withKnockback(CombatPresets.MINEMEN.knockbackConfig())
+    .initialize();
 ```
 
 ## Combat Modes
@@ -116,13 +120,10 @@ TODO
 ### Runtime Configuration
 
 ```java
-CombatManager manager = CombatManager.getInstance();
+MechanicsManager manager = MechanicsManager.getInstance();
 
 // Enable/disable blocking
-manager.setBlockingEnabled(true);
-
-// Configure knockback sync
-manager.setKnockbackSyncEnabled(true);
+manager.getCombatManager().setBlockingEnabled(true);
 
 // Get system status
 String status = manager.getStatus();
@@ -139,43 +140,40 @@ GuiManager.getInstance().openBlockingSettings(player);
 
 ## API Reference
 
-### CombatManager
+### MechanicsManager
 
-The main entry point for the combat system.
+The main entry point for initializing all mechanics systems.
 
 ```java
-// Initialize with preset
-CombatManager.getInstance().initialize(CombatPresets.Modes.MINEMEN);
+// Initialize with preset (MINEMEN, VANILLA, HYPIXEL)
+MechanicsManager.getInstance().withPreset(MechanicsPresets.MINEMEN);
 
-// Initialize with custom configuration
-CombatManager.getInstance().configure()
-    .fromPreset(CombatPresets.Modes.MINEMEN)
-    .withHitDetection(customHitDetection)
-    .apply();
+// Or configure systems individually
+MechanicsManager.getInstance()
+    .configure()
+    .withCombat(CombatPresets.MINEMEN)
+    .withGameplay(GameplayPresets.MINEMEN)
+    .withDamage(DamagePresets.MINEMEN)
+    .withKnockback(combatConfig.knockbackConfig())
+    .initialize();
 
-// Runtime configuration
-manager.setBlockingEnabled(true);
-manager.setKnockbackSyncEnabled(false);
-
-// Cleanup
-manager.cleanupPlayer(player);
-manager.shutdown();
+// Runtime: get CombatManager for blocking, etc.
+MechanicsManager.getInstance().getCombatManager().setBlockingEnabled(true);
 ```
 
 ### Configuration Classes
 
-- `CombatRulesConfig`: Combat mechanics configuration
+- `CombatConfig`: Combat mechanics (attack cooldown, blocking, knockback profile)
 - `HitDetectionConfig`: Hit detection settings
-- `DamageConfig`: Damage system configuration
-- `BlockingConfig`: Blocking system settings
-- `ProjectileConfig`: Projectile system configuration
+- `DamageConfig`: Damage system (invulnerability, replacement, buffers)
+- `GameplayConfig`: Gameplay (eye height, movement)
+- `KnockbackConfig`: Knockback profiles
 
 ### Presets
 
-- `CombatPresets.Modes.*`: Complete combat mode presets
-- `CombatPresets.STANDARD_COMBAT_RULES`: Individual config presets
-- `CombatPresets.STANDARD_HIT_DETECTION`: Hit detection presets
-- `CombatPresets.STANDARD_DAMAGE`: Damage system presets
+- `MechanicsPresets.*`: Full preset (MINEMEN, VANILLA, HYPIXEL)
+- `CombatPresets.*`: Combat config only
+- `GameplayPresets.*`, `DamagePresets.*`, `KnockbackPresets.*`: Per-system presets
 
 ## Requirements
 

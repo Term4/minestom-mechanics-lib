@@ -37,7 +37,7 @@ public class KnockbackSystem extends ConfigurableSystem<KnockbackConfig> {
     private static final LogUtil.SystemLogger log = LogUtil.system("KnockbackSystem");
 
     /** Last tick we observed player sprinting. Updated each tick when sprinting. */
-    public static final Tag<Long> LAST_SPRINT_TICK = Tag.Transient("kb_last_sprint_tick");
+    public static final Tag<Long> LAST_SPRINT_TICK = Tag.Transient("knockback_last_sprint_tick");
 
     private long currentTick = 0;
 

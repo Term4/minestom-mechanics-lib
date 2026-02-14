@@ -13,8 +13,9 @@ public final class DamagePresets {
      * MinemanClub damage - fast-paced combat.
      * - 10 tick invulnerability (50ms)
      * - Standard environmental damage
-     * - Damage replacement enabled
-     * - 1 tick invulnerability buffer for attacker-based damage
+     * - Damage replacement enabled (cutoff 1 = replacement only if incoming is 1+ more)
+     * - No hurt effect (silent damage, minemen-style)
+     * - Hit queue and same-item exclusion are in CombatConfig (CombatPresets.MINEMEN)
      */
     public static final DamageConfig MINEMEN = new DamageConfig(
             10,   // invulnerabilityTicks (50ms)
@@ -22,7 +23,7 @@ public final class DamagePresets {
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             true, false,  // damageReplacement, knockbackOnReplacement
             true,  // logReplacementDamage
-            1     // attackerInvulnerabilityBufferTicks
+            1f, false    // replacementCutoff (1), hurtEffect (off)
     );
 
     /**
@@ -37,7 +38,7 @@ public final class DamagePresets {
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             DEFAULT_DAMAGE_REPLACEMENT, DEFAULT_KNOCKBACK_ON_REPLACEMENT,
             true,  // logReplacementDamage
-            0      // attackerInvulnerabilityBufferTicks
+            0f, false    // replacementCutoff (0), hurtEffect (off)
     );
 
     /**
@@ -51,7 +52,7 @@ public final class DamagePresets {
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             true, false,
             true,  // logReplacementDamage
-            0      // attackerInvulnerabilityBufferTicks
+            0f, false    // replacementCutoff (0), hurtEffect (off)
     );
 
     /**
@@ -70,7 +71,7 @@ public final class DamagePresets {
             false, 0.0f,  // No fire damage
             false, false,
             true,  // logReplacementDamage
-            0      // attackerInvulnerabilityBufferTicks
+            0f, false    // replacementCutoff (0), hurtEffect (off)
     );
 
     /**
@@ -83,6 +84,6 @@ public final class DamagePresets {
             true, DEFAULT_FIRE_DAMAGE_MULTIPLIER,
             false, false,
             true,  // logReplacementDamage
-            0      // attackerInvulnerabilityBufferTicks
+            0f, false    // replacementCutoff (0), hurtEffect (off)
     );
 }

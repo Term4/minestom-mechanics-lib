@@ -11,6 +11,8 @@ import java.util.List;
  * Knockback modification values. Used on items via Mechanics component
  * and on entities via transient tags.
  *
+ * <p><b>Override resolution:</b> Item &gt; Attacker &gt; Player &gt; World &gt; Server Default</p>
+ *
  * <pre>
  * import static KnockbackTagValue.*;
  *

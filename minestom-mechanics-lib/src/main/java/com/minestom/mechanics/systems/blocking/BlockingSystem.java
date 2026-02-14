@@ -257,31 +257,33 @@ public class BlockingSystem extends InitializableSystem {
 
     /**
      * Resolve horizontal knockback reduction for a blocking player. When player is null or not blocking, returns config default.
-     * Return value is "reduction" (0 = no reduction, 0.6 = 60% reduction).
+     * Return value is "reduction" (0 = no reduction, 1 = full reduction).
+     * Config stores reduction directly; item tag stores multiplier (what we keep), converted to reduction.
      */
     public double getKnockbackHorizontalReduction(@Nullable Player player) {
-        double configMult = knockbackHMultiplierOverride != null ? knockbackHMultiplierOverride : config.blockKnockbackHReduction();
-        if (player == null || !stateManager.isBlocking(player)) return 1.0 - configMult;
+        double configReduction = knockbackHMultiplierOverride != null ? 1.0 - knockbackHMultiplierOverride : config.blockKnockbackHReduction();
+        if (player == null || !stateManager.isBlocking(player)) return configReduction;
         ItemStack mainHand = player.getItemInMainHand();
-        if (mainHand == null || mainHand.isAir()) return 1.0 - configMult;
+        if (mainHand == null || mainHand.isAir()) return configReduction;
         BlockableTagValue tag = mainHand.getTag(BLOCKABLE);
-        if (tag == null) return 1.0 - configMult;
-        double mult = tag.knockbackHMultiplier() != null ? tag.knockbackHMultiplier() : configMult;
-        return 1.0 - mult;
+        if (tag == null) return configReduction;
+        if (tag.knockbackHMultiplier() != null) return 1.0 - tag.knockbackHMultiplier();
+        return configReduction;
     }
 
     /**
      * Resolve vertical knockback reduction for a blocking player. When player is null or not blocking, returns config default.
+     * Return value is "reduction" (0 = no reduction, 1 = full reduction).
      */
     public double getKnockbackVerticalReduction(@Nullable Player player) {
-        double configMult = knockbackVMultiplierOverride != null ? knockbackVMultiplierOverride : config.blockKnockbackVReduction();
-        if (player == null || !stateManager.isBlocking(player)) return 1.0 - configMult;
+        double configReduction = knockbackVMultiplierOverride != null ? 1.0 - knockbackVMultiplierOverride : config.blockKnockbackVReduction();
+        if (player == null || !stateManager.isBlocking(player)) return configReduction;
         ItemStack mainHand = player.getItemInMainHand();
-        if (mainHand == null || mainHand.isAir()) return 1.0 - configMult;
+        if (mainHand == null || mainHand.isAir()) return configReduction;
         BlockableTagValue tag = mainHand.getTag(BLOCKABLE);
-        if (tag == null) return 1.0 - configMult;
-        double mult = tag.knockbackVMultiplier() != null ? tag.knockbackVMultiplier() : configMult;
-        return 1.0 - mult;
+        if (tag == null) return configReduction;
+        if (tag.knockbackVMultiplier() != null) return 1.0 - tag.knockbackVMultiplier();
+        return configReduction;
     }
 
     public boolean shouldShowDamageMessages() {

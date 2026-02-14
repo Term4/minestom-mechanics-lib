@@ -12,8 +12,6 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
-import net.minestom.server.entity.damage.Damage;
-import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
@@ -25,7 +23,7 @@ import net.minestom.server.item.ItemStack;
  * then passes attacker + victim to the damage system.
  *
  * <p>Does NOT calculate damage, apply knockback, or manage combat state.
- * All of that flows through {@link HealthSystem#applyDamage}.</p>
+ * All of that flows through {@link HealthSystem#processPlayerMeleeAttack}.</p>
  */
 public class AttackFeature extends InitializableSystem {
     private static AttackFeature instance;
@@ -63,8 +61,9 @@ public class AttackFeature extends InitializableSystem {
         // Server-side hit detection (swing animations)
         handler.addListener(PlayerHandAnimationEvent.class, this::handleSwing);
 
-        // Swing window: poll look direction after each swing (hit lands when crosshair passes over victim)
-        if (config.swingHitWindowTicks() > 0 && config.swingLookCheckTicks() > 0) {
+        // Swing window: poll look direction after each swing (attacker→victim and victim→attacker)
+        if ((config.swingHitWindowTicks() > 0 && config.swingLookCheckTicks() > 0) ||
+                (config.victimSwingHitWindowTicks() > 0 && config.victimSwingLookCheckTicks() > 0)) {
             handler.addListener(PlayerTickEvent.class, this::handleSwingLookCheck);
         }
 
@@ -76,10 +75,12 @@ public class AttackFeature extends InitializableSystem {
     private static final ThreadLocal<Boolean> FROM_SWING_WINDOW = ThreadLocal.withInitial(() -> false);
 
     private void onAttackLanded(Player attacker, LivingEntity victim, long tick) {
-        if (Boolean.TRUE.equals(FROM_SWING_WINDOW.get())) return;
         if (config.swingHitWindowTicks() > 0) {
             SwingWindowTracker.recordHit(attacker, victim, tick);
             log.debug("Swing window: recorded hit {} -> {} at tick {}", attacker.getUsername(), victim.getEntityType(), tick);
+        }
+        if (config.victimSwingHitWindowTicks() > 0 && victim instanceof Player victimPlayer) {
+            SwingWindowTracker.recordAttacker(victimPlayer, attacker, tick);
         }
     }
 
@@ -110,10 +111,13 @@ public class AttackFeature extends InitializableSystem {
             return;
         }
 
-        ItemStack mainHand = attacker.getItemInMainHand();
-        if (mainHand != null && !mainHand.isAir()) {
-            var mat = mainHand.material();
-            if (ProjectileMaterials.isFishingRod(mat) || ProjectileMaterials.isThrowable(mat)) return;
+        // 1.8 clients don't send swing packets while throwing projectiles; only filter for modern
+        if (ClientVersionDetector.getInstance().getClientVersion(attacker) == ClientVersionDetector.ClientVersion.MODERN) {
+            ItemStack mainHand = attacker.getItemInMainHand();
+            if (mainHand != null && !mainHand.isAir()) {
+                var mat = mainHand.material();
+                if (ProjectileMaterials.isFishingRod(mat) || ProjectileMaterials.isThrowable(mat)) return;
+            }
         }
 
         HitDetection hitDetection = HitDetection.getInstance();
@@ -124,9 +128,10 @@ public class AttackFeature extends InitializableSystem {
             SwingWindowTracker.recordSwing(attacker, tick);
             var recentVictims = SwingWindowTracker.getRecentVictims(attacker, tick, config.swingHitWindowTicks());
             if (config.swingLookCheckTicks() == 0) {
-                // Check ray only at swing moment
+                // Check ray only at swing moment (attacker→victim)
                 for (LivingEntity victim : recentVictims) {
                     if (hitDetection.isLookHittingVictimInSwingWindow(attacker, victim) && hitDetection.isReachValid(attacker, victim)) {
+                        SwingWindowTracker.consumeSwing(attacker);
                         try {
                             FROM_SWING_WINDOW.set(true);
                             processAttack(attacker, victim);
@@ -142,6 +147,27 @@ public class AttackFeature extends InitializableSystem {
             }
         }
 
+        // Victim→attacker: swinger was hit recently, can swing-hit their attacker
+        if (config.victimSwingHitWindowTicks() > 0) {
+            var recentAttackers = SwingWindowTracker.getRecentAttackers(attacker, tick, config.victimSwingHitWindowTicks());
+            if (config.victimSwingLookCheckTicks() == 0) {
+                for (LivingEntity attackerEntity : recentAttackers) {
+                    if (hitDetection.isLookHittingVictimInSwingWindow(attacker, attackerEntity) && hitDetection.isReachValid(attacker, attackerEntity)) {
+                        SwingWindowTracker.consumeSwing(attacker);
+                        try {
+                            FROM_SWING_WINDOW.set(true);
+                            processAttack(attacker, attackerEntity);
+                        } finally {
+                            FROM_SWING_WINDOW.remove();
+                        }
+                        return;
+                    }
+                }
+            } else if (!recentAttackers.isEmpty()) {
+                return; // Tick handler will poll
+            }
+        }
+
         // Modern clients: raycast to find target (extended hitbox)
         if (ClientVersionDetector.getInstance().getClientVersion(attacker) == ClientVersionDetector.ClientVersion.MODERN) {
             LivingEntity target = hitDetection.findTargetFromSwing(attacker);
@@ -152,30 +178,49 @@ public class AttackFeature extends InitializableSystem {
     }
 
     /**
-     * Each tick: for attackers with recent victims and an unconsumed swing, check if look ray hits victim.
-     * Hit lands when crosshair passes over victim during the look-check window (not just at swing moment).
+     * Each tick: for players with unconsumed swing, check look ray for attacker→victim or victim→attacker hits.
+     * Hit lands when crosshair passes over target during the look-check window (not just at swing moment).
      */
     private void handleSwingLookCheck(PlayerTickEvent event) {
-        Player attacker = event.getPlayer();
-        if (isBlocking(attacker)) return;
+        Player swinger = event.getPlayer();
+        if (isBlocking(swinger)) return;
 
         long tick = HealthSystem.getInstance().getCurrentTick();
-        if (!SwingWindowTracker.hasUnconsumedSwing(attacker, tick, config.swingLookCheckTicks())) return;
-
-        var recentVictims = SwingWindowTracker.getRecentVictims(attacker, tick, config.swingHitWindowTicks());
-        if (recentVictims.isEmpty()) return;
-
         HitDetection hitDetection = HitDetection.getInstance();
-        for (LivingEntity victim : recentVictims) {
-            if (hitDetection.isLookHittingVictimInSwingWindow(attacker, victim) && hitDetection.isReachValid(attacker, victim)) {
-                SwingWindowTracker.consumeSwing(attacker);
-                try {
-                    FROM_SWING_WINDOW.set(true);
-                    processAttack(attacker, victim);
-                } finally {
-                    FROM_SWING_WINDOW.remove();
+
+        // Attacker→victim: swinger has recent victims, look hits one
+        int lookTicks = config.swingLookCheckTicks();
+        if (lookTicks > 0 && SwingWindowTracker.hasUnconsumedSwing(swinger, tick, lookTicks)) {
+            var recentVictims = SwingWindowTracker.getRecentVictims(swinger, tick, config.swingHitWindowTicks());
+            for (LivingEntity victim : recentVictims) {
+                if (hitDetection.isLookHittingVictimInSwingWindow(swinger, victim) && hitDetection.isReachValid(swinger, victim)) {
+                    SwingWindowTracker.consumeSwing(swinger);
+                    try {
+                        FROM_SWING_WINDOW.set(true);
+                        processAttack(swinger, victim);
+                    } finally {
+                        FROM_SWING_WINDOW.remove();
+                    }
+                    return;
                 }
-                return;
+            }
+        }
+
+        // Victim→attacker: swinger was hit recently, look hits their attacker
+        int victimLookTicks = config.victimSwingLookCheckTicks();
+        if (victimLookTicks > 0 && SwingWindowTracker.hasUnconsumedSwing(swinger, tick, victimLookTicks)) {
+            var recentAttackers = SwingWindowTracker.getRecentAttackers(swinger, tick, config.victimSwingHitWindowTicks());
+            for (LivingEntity attackerEntity : recentAttackers) {
+                if (hitDetection.isLookHittingVictimInSwingWindow(swinger, attackerEntity) && hitDetection.isReachValid(swinger, attackerEntity)) {
+                    SwingWindowTracker.consumeSwing(swinger);
+                    try {
+                        FROM_SWING_WINDOW.set(true);
+                        processAttack(swinger, attackerEntity);
+                    } finally {
+                        FROM_SWING_WINDOW.remove();
+                    }
+                    return;
+                }
             }
         }
     }
@@ -185,13 +230,12 @@ public class AttackFeature extends InitializableSystem {
     // ===========================
 
     /**
-     * Pass attacker + victim to the damage system. The damage pipeline handles:
-     * weapon damage calculation, crits, multipliers, i-frames, replacement, and knockback.
+     * Pass attacker + victim to the damage system. For replacement hits (victim in i-frames),
+     * health is updated directly without firing the damage event — no client damage effects.
+     * Normal hits go through the full pipeline.
      */
     private void processAttack(Player attacker, LivingEntity victim) {
-        Damage damage = new Damage(DamageType.PLAYER_ATTACK, attacker, attacker,
-                attacker.getPosition(), 0); // base = 0, DamageCalculator resolves weapon damage
-        HealthSystem.applyDamage(victim, damage);
+        HealthSystem.getInstance().processPlayerMeleeAttack(attacker, victim);
     }
 
     // ===========================
@@ -211,7 +255,7 @@ public class AttackFeature extends InitializableSystem {
     // ===========================
 
     public void cleanup(Player player) {
-        // SprintBonusCalculator cleanup will move to knockback system
+        // No per-player state to clean
     }
 
     public void shutdown() {

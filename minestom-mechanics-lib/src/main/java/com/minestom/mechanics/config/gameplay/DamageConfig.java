@@ -1,9 +1,11 @@
 package com.minestom.mechanics.config.gameplay;
 
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import net.minestom.server.instance.Instance;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Damage system configuration record.
@@ -30,9 +32,8 @@ public record DamageConfig(
         boolean damageReplacementEnabled,
         boolean knockbackOnReplacement,
         boolean logReplacementDamage,
-
-        // Invulnerability buffer for attacker-based damage (melee, projectiles). Hits in last N ticks scheduled for when invuln ends.
-        int attackerInvulnerabilityBufferTicks
+        float replacementCutoff,
+        boolean hurtEffect
 ) {
 
     // Validation
@@ -43,8 +44,8 @@ public record DamageConfig(
             throw new IllegalArgumentException("Fall damage multiplier must be >= 0");
         if (fireDamageMultiplier < 0)
             throw new IllegalArgumentException("Fire damage multiplier must be >= 0");
-        if (attackerInvulnerabilityBufferTicks < 0)
-            throw new IllegalArgumentException("Attacker invulnerability buffer ticks must be >= 0");
+        if (replacementCutoff < 0)
+            throw new IllegalArgumentException("Replacement cutoff must be >= 0");
     }
 
     // ===== COMPATIBILITY GETTERS (match old class) =====
@@ -64,13 +65,25 @@ public record DamageConfig(
     public DamageConfig withInvulnerabilityTicks(int ticks) {
         return new DamageConfig(ticks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
-    public DamageConfig withAttackerInvulnerabilityBufferTicks(int ticks) {
+    public DamageConfig withReplacementCutoff(float cutoff) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, ticks);
+                knockbackOnReplacement, logReplacementDamage, cutoff, hurtEffect);
+    }
+
+    public DamageConfig withHurtEffect(boolean hurtEffect) {
+        return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
+                fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+    }
+
+    public DamageConfig withNoReplacementSameItem(boolean noReplacementSameItem) {
+        return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
+                fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     // ===== FALL DAMAGE =====
@@ -78,19 +91,19 @@ public record DamageConfig(
     public DamageConfig withFallDamage(boolean enabled) {
         return new DamageConfig(invulnerabilityTicks, enabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFallDamage(boolean enabled, float multiplier) {
         return new DamageConfig(invulnerabilityTicks, enabled, multiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFallDamageMultiplier(float multiplier) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, multiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     // ===== FIRE DAMAGE =====
@@ -98,19 +111,19 @@ public record DamageConfig(
     public DamageConfig withFireDamage(boolean enabled) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 enabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFireDamage(boolean enabled, float multiplier) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 enabled, multiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFireDamageMultiplier(float multiplier) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, multiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     // ===== DAMAGE REPLACEMENT =====
@@ -118,25 +131,36 @@ public record DamageConfig(
     public DamageConfig withDamageReplacement(boolean enabled, boolean knockback) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, enabled, knockback,
-                logReplacementDamage, attackerInvulnerabilityBufferTicks);
+                logReplacementDamage, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withLogReplacementDamage(boolean log) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, log, attackerInvulnerabilityBufferTicks);
+                knockbackOnReplacement, log, replacementCutoff, hurtEffect);
     }
 
     // ===== INVULNERABILITY BUFFER APPLICATION =====
 
     /**
-     * Applies invulnerability buffer settings to a world via HealthSystem tags.
+     * Applies invulnerability buffer and damage replacement settings to a world via HealthSystem tags.
      * Applies to all attacker-based damage (melee, arrows, thrown projectiles).
+     * Uses replacementCutoff and hurtEffect from this config; noReplacementSameItem and
+     * attackerInvulnerabilityBufferTicks from combat config.
      * Call this after HealthSystem is initialized and before players spawn.
+     * <p><b>Override resolution:</b> Item &gt; Attacker &gt; Player &gt; World &gt; Server Default</p>
+     *
+     * @param world the instance to apply tags to
+     * @param combat combat config for hit queue settings; if null, uses bufferTicks=0 and noReplacementSameItem=false
      */
-    public void applyInvulnerabilityBuffersTo(Instance world) {
-        if (attackerInvulnerabilityBufferTicks <= 0) return;
-        var props = DamageTypeProperties.ATTACK_DEFAULT.withInvulnerabilityBufferTicks(attackerInvulnerabilityBufferTicks);
+    public void applyInvulnerabilityBuffersTo(Instance world, @Nullable CombatConfig combat) {
+        int bufferTicks = combat != null ? combat.attackerInvulnerabilityBufferTicks() : 0;
+        boolean sameItem = combat != null && combat.noReplacementSameItem();
+        var props = DamageTypeProperties.ATTACK_DEFAULT
+                .withInvulnerabilityBufferTicks(bufferTicks)
+                .withReplacementCutoff(replacementCutoff)
+                .withHurtEffect(hurtEffect)
+                .withNoReplacementSameItem(sameItem);
         var override = DamageOverride.override(props);
         var meleeTag = HealthSystem.tag("melee");
         var arrowTag = HealthSystem.tag("arrow");

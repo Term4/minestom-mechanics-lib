@@ -179,11 +179,11 @@ public final class CombatConstants {
     /** Default damage reduction when blocking (50%) */
     public static final double DEFAULT_BLOCKING_DAMAGE_REDUCTION = 0.5;
 
-    /** Default horizontal knockback multiplier when blocking (40% = 60% reduction) */
-    public static final double DEFAULT_BLOCKING_KB_HORIZONTAL = 0.4;
+    /** Default horizontal knockback reduction when blocking (0 = none, 1 = full). 0.6 = 60% reduction. */
+    public static final double DEFAULT_BLOCKING_KB_HORIZONTAL = 0;
 
-    /** Default vertical knockback multiplier when blocking (40% = 60% reduction) */
-    public static final double DEFAULT_BLOCKING_KB_VERTICAL = 0.4;
+    /** Default vertical knockback reduction when blocking (0 = none, 1 = full). 0.6 = 60% reduction. */
+    public static final double DEFAULT_BLOCKING_KB_VERTICAL = 0;
 
     /** Minimum blocking reduction value */
     public static final double MIN_BLOCKING_REDUCTION = 0.0;
@@ -271,21 +271,6 @@ public final class CombatConstants {
 
     /** Minimum critical multiplier (1.0 = no bonus) */
     public static final float MIN_CRITICAL_MULTIPLIER = 1.0f;
-
-    /** Sprint window tracking size (ticks) */
-    public static final int SPRINTWINDOW_TRACKING_TICKS = 10;
-
-    /** Minimum time (ms) a player must be sprinting to recieve knockback bonus */
-    public static final int SPRINTWINDOW_MIN_SPRINT_DURATION_MS = 50;
-
-    /** Sprint window jitter buffer (ms) */
-    public static final int SPRINTWINDOW_JITTER_TOLERANCE_MS = 25;
-
-    /** Default sprint window tick buffer */
-    public static final int DEFAULT_SPRINTWINDOW_TICKS = 2;
-
-    /** Default maximum sprint window tick buffer */
-    public static final int DEFAULT_SPRINT_WINDOW_MAX_TICKS = 10;
 
     /** Maximum knockback multiplier for validation */
     public static final double MAX_KNOCKBACK_MULTIPLIER = 2.0;

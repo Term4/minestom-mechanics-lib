@@ -157,11 +157,9 @@ public class Main {
                 .withKnockback(COMBAT_CONFIG.knockbackConfig())
                 .initialize();
 
-        DAMAGE_CONFIG.applyInvulnerabilityBuffersTo(gameWorld);
+        DAMAGE_CONFIG.applyInvulnerabilityBuffersTo(gameWorld, COMBAT_CONFIG);
+        // To disable melee damage but keep knockback: set NO_DAMAGE.thenOverride(propsWithBuffer) on world melee tag. See DAMAGE_KNOCKBACK_ANALYSIS.md.
 
-        // Melee: zero damage, knockback and attack animation still work
-        gameWorld.setTag(HealthSystem.tag("melee"), DamageOverride.NO_DAMAGE);
-        
         // Initialize projectiles separately (not handled by MechanicsManager YET)
         // Using default projectile config
         com.minestom.mechanics.manager.ProjectileManager.getInstance()

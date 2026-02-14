@@ -25,7 +25,11 @@ public final class SwingWindowTracker {
     private record VictimMap(HashMap<UUID, Long> data) {
         VictimMap() { this(new HashMap<>()); }
     }
+    private record AttackerMap(HashMap<UUID, Long> data) {
+        AttackerMap() { this(new HashMap<>()); }
+    }
     private static final Tag<VictimMap> VICTIMS = Tag.Transient("attack_swing_window");
+    private static final Tag<AttackerMap> ATTACKERS = Tag.Transient("attack_victim_attackers");
     private static final Tag<Long> LAST_SWING_TICK = Tag.Transient("attack_last_swing_tick");
     private static final Tag<Long> LAST_CONSUMED_SWING = Tag.Transient("attack_last_consumed_swing");
 
@@ -98,6 +102,48 @@ public final class SwingWindowTracker {
             LivingEntity v = findLivingByUuid(instance, e.getKey());
             if (v != null && !v.isRemoved()) {
                 result.add(v);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Record that victim was hit by attacker at the given tick (for victim→attacker swing hits).
+     * Call when damage lands (melee or swing-window).
+     */
+    public static void recordAttacker(Player victim, LivingEntity attacker, long tick) {
+        if (victim == null || attacker == null) return;
+        UUID aId = attacker.getUuid();
+        if (victim.getUuid().equals(aId)) return;
+        AttackerMap am = victim.getTag(ATTACKERS);
+        if (am == null) am = new AttackerMap();
+        am.data().put(aId, tick);
+        victim.setTag(ATTACKERS, am);
+    }
+
+    /**
+     * Get attackers the victim was recently hit by, still within the window.
+     */
+    public static List<LivingEntity> getRecentAttackers(Player victim, long currentTick, int windowTicks) {
+        if (windowTicks <= 0) return List.of();
+        AttackerMap am = victim.getTag(ATTACKERS);
+        if (am == null || am.data().isEmpty()) return List.of();
+
+        Map<UUID, Long> map = am.data();
+        List<LivingEntity> result = new ArrayList<>();
+        long cutoff = currentTick - windowTicks;
+        map.entrySet().removeIf(e -> e.getValue() < cutoff);
+        if (map.isEmpty()) {
+            victim.removeTag(ATTACKERS);
+            return List.of();
+        }
+
+        Instance instance = victim.getInstance();
+        if (instance == null) return List.of();
+        for (Map.Entry<UUID, Long> e : map.entrySet()) {
+            LivingEntity a = findLivingByUuid(instance, e.getKey());
+            if (a != null && !a.isRemoved()) {
+                result.add(a);
             }
         }
         return result;

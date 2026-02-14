@@ -10,6 +10,8 @@ import java.util.List;
  * Runtime damage type override. Used on entities/worlds via transient tags,
  * on items via {@code Tag.Structure} with {@link DamageOverrideSerializer}.
  *
+ * <p><b>Override resolution:</b> Item &gt; Attacker &gt; Player &gt; World &gt; Server Default</p>
+ *
  * <pre>
  * // Entity/world (transient)
  * player.setTag(HealthSystem.tag("fire"), DamageOverride.mult(2.0));

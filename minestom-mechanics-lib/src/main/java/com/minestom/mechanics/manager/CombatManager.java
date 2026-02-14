@@ -63,9 +63,9 @@ public class CombatManager extends AbstractManager<CombatManager> {
         log.debug("Knockback: H={}, V={}",
                 currentConfig.knockbackConfig().horizontal(),
                 currentConfig.knockbackConfig().vertical());
-        log.debug("Sprint Window: {}{}",
-                currentConfig.dynamicSprintWindow() ? "dynamic" : "static",
-                currentConfig.sprintWindowDouble() ? " (double hit)" : "");
+        log.debug("Sprint Window: {} ticks ({})",
+                currentConfig.sprintWindowTicks(),
+                currentConfig.sprintWindowTicks() == 0 ? "disabled" : "enabled");
         log.debug("Blocking: {} ({}% reduction)",
                 currentConfig.blockDamageReduction() > 0 ? "enabled" : "disabled",
                 (int)(currentConfig.blockDamageReduction() * 100));

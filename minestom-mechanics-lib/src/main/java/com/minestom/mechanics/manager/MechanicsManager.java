@@ -485,10 +485,17 @@ public class MechanicsManager {
             }
 
             // Initialize knockback if configured
-            if (knockbackConfig != null) {
+            KnockbackConfig effectiveKnockback = knockbackConfig;
+            if (effectiveKnockback == null && combatConfig != null) {
+                effectiveKnockback = combatConfig.knockbackConfig();
+            }
+            if (effectiveKnockback != null && combatConfig != null) {
+                effectiveKnockback = effectiveKnockback.withSprintBufferTicks(combatConfig.sprintWindowTicks());
+            }
+            if (effectiveKnockback != null) {
                 log.info("Initializing Knockback System...");
                 VelocityEstimator.initialize();
-                manager.knockbackSystem = KnockbackSystem.initialize(knockbackConfig);
+                manager.knockbackSystem = KnockbackSystem.initialize(effectiveKnockback);
                 // Removed: setKnockbackSyncEnabled() - sync is disabled
                 manager.knockbackEnabled = true;
                 systemCount++;

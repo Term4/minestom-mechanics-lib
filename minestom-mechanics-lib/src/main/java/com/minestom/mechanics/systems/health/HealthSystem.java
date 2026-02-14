@@ -2,7 +2,13 @@ package com.minestom.mechanics.systems.health;
 
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.config.health.HealthConfig;
+import com.minestom.mechanics.manager.ArmorManager;
+import com.minestom.mechanics.manager.MechanicsManager;
+import com.minestom.mechanics.systems.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
+import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyHurtSuppression;
 import com.minestom.mechanics.systems.health.damage.*;
+import net.minestom.server.item.ItemStack;
 import com.minestom.mechanics.systems.health.damage.types.*;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.util.LogUtil;
@@ -10,6 +16,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
@@ -49,7 +56,10 @@ public class HealthSystem extends InitializableSystem {
     private final Map<UUID, Long> lastProcessedTick = new ConcurrentHashMap<>();
     private final Map<UUID, BufferedDamageEntry> invulnerabilityBuffer = new ConcurrentHashMap<>();
 
-    private record BufferedDamageEntry(long applyAtTick, Damage damage) {}
+    /** ThreadLocal: when set, applyKnockbackFromResult uses this for wasSprinting (buffered hits). Cleared after use. */
+    private static final ThreadLocal<Boolean> BUFFERED_WAS_SPRINTING = new ThreadLocal<>();
+
+    private record BufferedDamageEntry(long applyAtTick, Damage damage, boolean wasSprinting) {}
     private final List<AttackLandedListener> attackLandedListeners = new CopyOnWriteArrayList<>();
     private EventNode<Event> eventNode;
     private Task tickCounterTask;
@@ -82,6 +92,28 @@ public class HealthSystem extends InitializableSystem {
     /** Get the entity/world override tag for a damage type (transient). For player.setTag / world.setTag. */
     public static Tag<DamageOverride> tag(String id) {
         return DamageType.getTag(id);
+    }
+
+    /**
+     * When set to {@code Boolean.FALSE} on a player, disables hurt effect (camera shake, red flash)
+     * for ALL damage types for that player. Disabled by default.
+     * <p>To turn ON (disable hurt for this player): {@code player.setTag(HealthSystem.VICTIM_HURT_EFFECT_OVERRIDE, false);}
+     * <p>To turn OFF (normal hurt): {@code player.removeTag(HealthSystem.VICTIM_HURT_EFFECT_OVERRIDE);}
+     */
+    public static final Tag<Boolean> VICTIM_HURT_EFFECT_OVERRIDE = Tag.Transient("health_victim_no_hurt");
+
+    /** True when victim has global override set (wants no hurt effect). Used for normal damage path. */
+    public static boolean hasVictimHurtEffectOverride(LivingEntity victim) {
+        return victim instanceof Player p && Boolean.FALSE.equals(p.getTag(VICTIM_HURT_EFFECT_OVERRIDE));
+    }
+
+    /** Resolve effective hurtEffect for replacement only: victim override wins over props when set to false. */
+    public static boolean shouldApplyHurtEffect(LivingEntity victim, DamageTypeProperties props) {
+        if (victim instanceof Player p) {
+            Boolean override = p.getTag(VICTIM_HURT_EFFECT_OVERRIDE);
+            if (Boolean.FALSE.equals(override)) return false;
+        }
+        return props.hurtEffect();
     }
 
     // ===========================
@@ -176,12 +208,13 @@ public class HealthSystem extends InitializableSystem {
      * @param victim the entity to damage
      * @param damage snapshot of the damage (final amount after modifiers/blocking)
      * @param applyAtTick tick when invulnerability ends for this victim
+     * @param wasSprinting whether the attacker was sprinting at hit time (for correct knockback when buffer fires)
      * @return true if scheduled, false if another hit is already buffered for this victim
      */
-    public boolean scheduleBufferedDamage(LivingEntity victim, Damage damage, long applyAtTick) {
+    public boolean scheduleBufferedDamage(LivingEntity victim, Damage damage, long applyAtTick, boolean wasSprinting) {
         UUID id = victim.getUuid();
         if (invulnerabilityBuffer.containsKey(id)) return false;
-        invulnerabilityBuffer.put(id, new BufferedDamageEntry(applyAtTick, damage));
+        invulnerabilityBuffer.put(id, new BufferedDamageEntry(applyAtTick, damage, wasSprinting));
         return true;
     }
 
@@ -190,12 +223,52 @@ public class HealthSystem extends InitializableSystem {
         return invulnerabilityBuffer.containsKey(victim.getUuid());
     }
 
+    /** Clear any buffered hit for this victim. Called when replacement supersedes the buffer. */
+    public void clearBufferedHit(LivingEntity victim) {
+        invulnerabilityBuffer.remove(victim.getUuid());
+    }
+
+    /**
+     * Update health without triggering hurt/screen tilt.
+     * <ul>
+     *   <li>1.8 clients: call setHealth (keeps server's this.health in sync), suppress
+     *       UpdateHealth/EntityAttributes packets, then send EntityMetaDataPacket to the victim.
+     *       The metadata (index 6 = health) updates the bar without tilt.</li>
+     *   <li>Modern clients: max-health trick (temp max=new, setHealth, restore max).</li>
+     * </ul>
+     */
+    public static void setHealthWithoutHurtEffect(Player player, float newHealth) {
+        ClientVersionDetector detector = ClientVersionDetector.getInstance();
+        if (detector.getClientVersion(player) == ClientVersionDetector.ClientVersion.LEGACY) {
+            LegacyHurtSuppression.getInstance();
+            LegacyHurtSuppression.setSuppressNextHealthPacket(player, true);
+            try {
+                player.setHealth(newHealth);
+                player.sendPacket(player.getMetadataPacket());
+            } finally {
+                LegacyHurtSuppression.setSuppressNextHealthPacket(player, false);
+            }
+            return;
+        }
+        var maxAttr = player.getAttribute(Attribute.MAX_HEALTH);
+        double originalBase = maxAttr.getBaseValue();
+        maxAttr.setBaseValue(Math.max(0.5, newHealth)); // min 0.5 for attribute validity
+        player.setHealth(newHealth);
+        maxAttr.setBaseValue(originalBase);
+    }
+
     private void processBufferedDamage() {
         invulnerabilityBuffer.entrySet().removeIf(entry -> {
             if (entry.getValue().applyAtTick > currentTick) return false;
             LivingEntity victim = findLivingByUuid(entry.getKey());
             if (victim == null || victim.isRemoved()) return true;
-            applyDamage(victim, entry.getValue().damage);
+            BufferedDamageEntry buf = entry.getValue();
+            try {
+                BUFFERED_WAS_SPRINTING.set(buf.wasSprinting());
+                applyDamage(victim, buf.damage());
+            } finally {
+                BUFFERED_WAS_SPRINTING.remove();
+            }
             return true;
         });
     }
@@ -205,6 +278,96 @@ public class HealthSystem extends InitializableSystem {
             if (player.getUuid().equals(uuid)) return player;
         }
         return null; // non-player living entities: would need instance iteration; players cover the main case
+    }
+
+    /**
+     * Process a player melee attack. For replacement hits (victim in i-frames, higher damage),
+     * updates health directly without firing the damage event — avoiding client-side damage
+     * effects like screen tilt. Normal hits and buffered hits still go through the event pipeline.
+     */
+    public boolean processPlayerMeleeAttack(Player attacker, LivingEntity victim) {
+        Damage damage = new Damage(net.minestom.server.entity.damage.DamageType.PLAYER_ATTACK,
+                attacker, attacker, attacker.getPosition(), 0);
+        com.minestom.mechanics.systems.health.damage.DamageType melee = DamageType.find(damage.getType());
+        if (melee == null) melee = DamageType.get("melee");
+        if (melee == null) return applyDamage(victim, damage);
+
+        DamageTypeProperties props = melee.resolveProperties(attacker, attacker, victim, attacker.getItemInMainHand());
+        if (!props.enabled()) return false;
+
+        if (victim instanceof Player p && p.getGameMode() == GameMode.CREATIVE && !props.bypassCreative())
+            return false;
+
+        float damageAmount = melee.calculateDamage(attacker, victim, attacker.getItemInMainHand(), 0);
+        if (victim instanceof Player victimPlayer && props.blockable()) {
+            try {
+                BlockingSystem blocking = BlockingSystem.getInstance();
+                if (blocking.isEnabled())
+                    damageAmount = blocking.applyBlockingDamageReduction(victimPlayer, damageAmount, damage.getType());
+            } catch (IllegalStateException ignored) {}
+        }
+
+        // Normal hits: delegate to applyDamage. Do NOT call markDamaged here — it would put
+        // the victim in i-frames before the event fires, causing processDamage to block the hit.
+        if (props.bypassInvulnerability()) return applyDamage(victim, damage);
+        if (!invulnerability.isInvulnerable(victim)) return applyDamage(victim, damage);
+
+        // In i-frames: buffer or replacement
+        if (props.invulnerabilityBufferTicks() > 0 && config.isInvulnerabilityEnabled()) {
+            long ticksSince = invulnerability.getTicksSinceLastDamage(victim);
+            if (ticksSince >= 0) {
+                long ticksRemaining = config.invulnerabilityTicks() - ticksSince;
+                if (ticksRemaining <= props.invulnerabilityBufferTicks()) {
+                    if (!hasBufferedHit(victim)) {
+                        long applyAtTick = invulnerability.getLastDamageTick(victim) + config.invulnerabilityTicks();
+                        net.minestom.server.entity.damage.Damage snap = new net.minestom.server.entity.damage.Damage(
+                                damage.getType(), damage.getSource(), damage.getAttacker(),
+                                damage.getSourcePosition() != null ? damage.getSourcePosition() : attacker.getPosition(),
+                                damageAmount);
+                        scheduleBufferedDamage(victim, snap, applyAtTick, attacker.isSprinting());
+                    }
+                    return false;
+                }
+            }
+        }
+
+        if (!props.damageReplacement()) return false;
+
+        ItemStack currentItem = attacker.getItemInMainHand();
+        if (props.noReplacementSameItem() && DamageTypeProperties.isSameItem(currentItem, invulnerability.getLastMeleeItem(victim)))
+            return false;
+
+        float previousDamage = invulnerability.getLastDamageAmount(victim);
+        if (damageAmount < previousDamage + props.replacementCutoff()) return false;
+
+        // Replacement: update health directly (cancel event path to avoid double-processing).
+        float damageDifference = damageAmount - previousDamage;
+        float finalDifference = damageDifference;
+        if (!props.penetratesArmor() && victim instanceof Player player) {
+            try {
+                ArmorManager armorManager = MechanicsManager.getInstance().getArmorManager();
+                if (armorManager != null && armorManager.isInitialized() && armorManager.isEnabled())
+                    finalDifference = armorManager.calculateReducedDamage(player, damageDifference, damage.getType());
+            } catch (IllegalStateException ignored) {}
+        }
+
+        float newHealth = Math.max(0, victim.getHealth() - finalDifference);
+        if (!shouldApplyHurtEffect(victim, props) && victim instanceof Player player && newHealth > 0) {
+            setHealthWithoutHurtEffect(player, newHealth);
+        } else {
+            victim.setHealth(newHealth);
+        }
+
+        invulnerability.updateDamageAmount(victim, damageAmount);
+        invulnerability.setLastDamageReplacement(victim, true);
+        clearBufferedHit(victim);
+
+        DamageResult result = new DamageResult(true, true, finalDifference, props, attacker, attacker, victim, null);
+        applyKnockbackFromResult(result);
+        for (AttackLandedListener l : attackLandedListeners)
+            l.onAttackLanded(attacker, victim, currentTick);
+
+        return true;
     }
 
     /**
@@ -238,6 +401,13 @@ public class HealthSystem extends InitializableSystem {
             var knockbackApplicator = com.minestom.mechanics.manager.ProjectileManager.getInstance().getKnockbackApplicator();
             boolean isProjectile = result.source() != null && result.source() != result.attacker();
 
+            // Buffered hits: use wasSprinting captured at buffer time (attacker may have stopped by apply time)
+            Boolean bufferedSprint = BUFFERED_WAS_SPRINTING.get();
+            boolean wasSprinting = bufferedSprint != null
+                    ? bufferedSprint
+                    : (result.attacker() instanceof Player p && p.isSprinting());
+            boolean trustWasSprinting = bufferedSprint != null; // authoritative when from buffer
+
             knockbackApplicator.applyKnockback(
                     result.victim(),
                     result.attacker(),
@@ -246,7 +416,8 @@ public class HealthSystem extends InitializableSystem {
                     isProjectile
                             ? com.minestom.mechanics.systems.knockback.KnockbackSystem.KnockbackType.PROJECTILE
                             : com.minestom.mechanics.systems.knockback.KnockbackSystem.KnockbackType.ATTACK,
-                    result.attacker() instanceof Player p && p.isSprinting(),
+                    wasSprinting,
+                    trustWasSprinting,
                     0 // TODO: enchantment level from tags
             );
         } catch (IllegalStateException ignored) {

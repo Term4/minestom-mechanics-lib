@@ -81,7 +81,7 @@ public final class BlockableItem {
     }
 
     /**
-     * Sword/PvP preset: typical blocking (50% damage reduction, 40% knockback).
+     * Sword/PvP preset: no legacy slowdown, modifiers from CombatConfig.
      * Use with {@link #withBlockable(ItemStack, BlockableTagValue)} or {@link #withSwordPreset(Material)}.
      */
     public static BlockableTagValue swordPreset() {

@@ -25,10 +25,21 @@ public class KnockbackApplicator {
 
     /**
      * Apply knockback with full context. Resolves config, builds context, computes via calculator, applies result.
+     * Resolves wasSprinting from current attacker state (sprint buffer or isSprinting).
      */
     public void applyKnockback(LivingEntity victim, @Nullable Entity attacker, @Nullable Entity source,
                                 @Nullable Pos shooterOriginPos, KnockbackSystem.KnockbackType type,
                                 boolean wasSprinting, int kbEnchantLevel) {
+        applyKnockback(victim, attacker, source, shooterOriginPos, type, wasSprinting, false, kbEnchantLevel);
+    }
+
+    /**
+     * Apply knockback with full context. Resolves config, builds context, computes via calculator, applies result.
+     * @param trustWasSprinting when true, use wasSprinting as-is (e.g. from buffered hit); when false, resolve from current attacker state
+     */
+    public void applyKnockback(LivingEntity victim, @Nullable Entity attacker, @Nullable Entity source,
+                                @Nullable Pos shooterOriginPos, KnockbackSystem.KnockbackType type,
+                                boolean wasSprinting, boolean trustWasSprinting, int kbEnchantLevel) {
         // Resolve config
         EquipmentSlot handUsed = (attacker instanceof Player && type != KnockbackSystem.KnockbackType.PROJECTILE)
                 ? EquipmentSlot.MAIN_HAND : null;
@@ -37,9 +48,9 @@ public class KnockbackApplicator {
         KnockbackConfig resolved = KnockbackSystem.getInstance().resolveConfig(configEntity, victim, handUsed);
         resolved = KnockbackSystem.resolveConfigForVictim(resolved, victim);
 
-        // Determine wasSprinting: use buffer (ticks after stopping we still count as sprint hit) when configured
+        // Determine wasSprinting: use provided value when authoritative (e.g. buffered hit); else resolve from current state
         boolean effectiveSprint = wasSprinting;
-        if (attacker instanceof Player p && type != KnockbackSystem.KnockbackType.PROJECTILE) {
+        if (!trustWasSprinting && attacker instanceof Player p && type != KnockbackSystem.KnockbackType.PROJECTILE) {
             effectiveSprint = resolved.sprintBufferTicks() > 0
                     ? KnockbackSystem.isSprintHit(p, resolved.sprintBufferTicks(), KnockbackSystem.getInstance().getCurrentTick())
                     : p.isSprinting();
@@ -71,14 +82,14 @@ public class KnockbackApplicator {
     @Deprecated
     public void applyKnockback(LivingEntity victim, Entity attacker, KnockbackSystem.KnockbackType type,
                                 boolean wasSprinting, int kbEnchantLevel) {
-        applyKnockback(victim, attacker, attacker, null, type, wasSprinting, kbEnchantLevel);
+        applyKnockback(victim, attacker, attacker, null, type, wasSprinting, false, kbEnchantLevel);
     }
 
     @Deprecated
     public void applyProjectileKnockback(LivingEntity victim, Entity projectile,
                                           Pos shooterOrigin, int kbEnchantLevel) {
         applyKnockback(victim, null, projectile, shooterOrigin,
-                KnockbackSystem.KnockbackType.PROJECTILE, false, kbEnchantLevel);
+                KnockbackSystem.KnockbackType.PROJECTILE, false, false, kbEnchantLevel);
     }
 
     private static void sendDebugToChat(KnockbackSystem.KnockbackDebugInfo d,

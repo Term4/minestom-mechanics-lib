@@ -26,7 +26,11 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
     private static final Tag<Boolean> CC = Tag.Boolean("cc");
     private static final Tag<Boolean> CR = Tag.Boolean("cr");
     private static final Tag<Boolean> CK = Tag.Boolean("ck");
+    private static final Tag<Float> RCO = Tag.Float("rco");
+    private static final Tag<Boolean> HE = Tag.Boolean("he");
+    private static final Tag<Boolean> AOR = Tag.Boolean("aor"); // legacy: animationOnReplacement
     private static final Tag<Integer> CIB = Tag.Integer("cib");
+    private static final Tag<Boolean> SIS = Tag.Boolean("sis"); // noReplacementSameItem
 
     @Override
     public DamageOverride read(@NotNull TagReadable r) {
@@ -35,6 +39,10 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
         DamageTypeProperties custom = null;
         if (Boolean.TRUE.equals(r.getTag(HC))) {
             Integer ib = r.getTag(CIB);
+            Float rco = r.getTag(RCO);
+            Boolean he = r.getTag(HE);
+            if (he == null) he = r.getTag(AOR); // backward compat
+            Boolean sis = r.getTag(SIS);
             custom = new DamageTypeProperties(
                     Boolean.TRUE.equals(r.getTag(CE)),
                     r.getTag(CM) != null ? r.getTag(CM) : 1.0f,
@@ -44,7 +52,10 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
                     Boolean.TRUE.equals(r.getTag(CC)),
                     Boolean.TRUE.equals(r.getTag(CR)),
                     Boolean.TRUE.equals(r.getTag(CK)),
-                    ib != null ? ib : 0
+                    rco != null ? rco : 0f,
+                    Boolean.TRUE.equals(he),
+                    ib != null ? ib : 0,
+                    Boolean.TRUE.equals(sis)
             );
         }
         return new DamageOverride(
@@ -69,7 +80,10 @@ public class DamageOverrideSerializer implements TagSerializer<DamageOverride> {
             w.setTag(CC, p.bypassCreative());
             w.setTag(CR, p.damageReplacement());
             w.setTag(CK, p.knockbackOnReplacement());
+            if (p.replacementCutoff() > 0) w.setTag(RCO, p.replacementCutoff());
+            w.setTag(HE, p.hurtEffect());
             if (p.invulnerabilityBufferTicks() > 0) w.setTag(CIB, p.invulnerabilityBufferTicks());
+            if (p.noReplacementSameItem()) w.setTag(SIS, true);
         }
     }
 }

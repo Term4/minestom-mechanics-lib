@@ -311,6 +311,14 @@ public class CommandRegistry {
                 true,
                 "setfire"
         ));
+
+        COMMAND_LIST.add(new CommandInfo(
+                new HalfHeartCommand(),
+                CommandCategory.DEBUG,
+                "Reduce your health by half a heart (setHealth only, no damage)",
+                true,
+                "halfheart"
+        ));
     }
 
     /**

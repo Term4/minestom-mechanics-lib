@@ -292,15 +292,42 @@ public class DamageType {
         }
 
         // 4. Bypass invulnerability: allow damage, skip i-frame check
+        //    hurtEffect only applies to replacement; normal damage always flows through so viewers see red flash.
+        //    Global override (VICTIM_HURT_EFFECT_OVERRIDE=false) can force silent for this player.
         if (props.bypassInvulnerability()) {
-            invulnerability.markDamaged(victim, damageAmount);
+            if (HealthSystem.hasVictimHurtEffectOverride(victim) && victim instanceof Player player) {
+                event.setCancelled(true);
+                float newHealth = Math.max(0, player.getHealth() - damageAmount);
+                if (newHealth <= 0) {
+                    player.kill();
+                } else {
+                    HealthSystem.setHealthWithoutHurtEffect(player, newHealth);
+                }
+                invulnerability.markDamaged(victim, damageAmount, item);
+                invulnerability.setLastDamageReplacement(victim, false);
+                return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
+            }
+            invulnerability.markDamaged(victim, damageAmount, item);
             invulnerability.setLastDamageReplacement(victim, false);
             return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
         }
 
-        // 5. Not in i-frames: allow damage normally
+        // 5. Not in i-frames: allow damage normally (event flows through → viewers see red flash)
+        //    hurtEffect only applies to replacement. Global override can force silent.
         if (!invulnerability.isInvulnerable(victim)) {
-            invulnerability.markDamaged(victim, damageAmount);
+            if (HealthSystem.hasVictimHurtEffectOverride(victim) && victim instanceof Player player) {
+                event.setCancelled(true);
+                float newHealth = Math.max(0, player.getHealth() - damageAmount);
+                if (newHealth <= 0) {
+                    player.kill();
+                } else {
+                    HealthSystem.setHealthWithoutHurtEffect(player, newHealth);
+                }
+                invulnerability.markDamaged(victim, damageAmount, item);
+                invulnerability.setLastDamageReplacement(victim, false);
+                return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
+            }
+            invulnerability.markDamaged(victim, damageAmount, item);
             invulnerability.setLastDamageReplacement(victim, false);
             return new DamageResult(true, false, damageAmount, props, source, attacker, victim, shooterOriginPos);
         }
@@ -322,7 +349,8 @@ public class DamageType {
                         if (pos == null) pos = victim.getPosition();
                         net.minestom.server.entity.damage.Damage snap = new net.minestom.server.entity.damage.Damage(
                                 dmg.getType(), dmg.getSource(), dmg.getAttacker(), pos, dmg.getAmount());
-                        if (hs.scheduleBufferedDamage(victim, snap, applyAtTick)) {
+                        boolean wasSprinting = attacker instanceof Player p && p.isSprinting();
+                        if (hs.scheduleBufferedDamage(victim, snap, applyAtTick, wasSprinting)) {
                             event.setCancelled(true);
                             return DamageResult.blocked(props, source, attacker, victim);
                         }
@@ -339,19 +367,27 @@ public class DamageType {
             return DamageResult.blocked(props, source, attacker, victim);
         }
 
-        // 7. Replacement: only if incoming damage > previous damage
-        float previousDamage = invulnerability.getLastDamageAmount(victim);
-        if (damageAmount <= previousDamage) {
+        // 6b. Same-item exclusion (Minemen): no replacement if replacement hit uses same item as initial
+        if (props.noReplacementSameItem() && DamageTypeProperties.isSameItem(item, invulnerability.getLastMeleeItem(victim))) {
             event.setCancelled(true);
             return DamageResult.blocked(props, source, attacker, victim);
         }
 
-        // 8. Apply replacement damage (difference only)
+        // 7. Replacement: only if incoming damage >= previous + cutoff
+        float previousDamage = invulnerability.getLastDamageAmount(victim);
+        float cutoff = props.replacementCutoff();
+        if (damageAmount < previousDamage + cutoff) {
+            event.setCancelled(true);
+            return DamageResult.blocked(props, source, attacker, victim);
+        }
+
+        // 8. Apply replacement damage (difference only) — cancel event, update health directly.
+        boolean effectiveHurtEffect = HealthSystem.shouldApplyHurtEffect(victim, props);
+        event.setAnimation(effectiveHurtEffect);
         event.setCancelled(true);
         float damageDifference = damageAmount - previousDamage;
         float finalDifference = damageDifference;
 
-        // Apply armor reduction if damage doesn't penetrate
         if (!props.penetratesArmor() && victim instanceof Player player) {
             try {
                 ArmorManager armorManager = MechanicsManager.getInstance().getArmorManager();
@@ -362,10 +398,17 @@ public class DamageType {
         }
 
         float newHealth = Math.max(0, victim.getHealth() - finalDifference);
-        victim.setHealth(newHealth);
+        if (!effectiveHurtEffect && victim instanceof Player player && newHealth > 0) {
+            HealthSystem.setHealthWithoutHurtEffect(player, newHealth);
+        } else {
+            victim.setHealth(newHealth);
+        }
 
         invulnerability.updateDamageAmount(victim, damageAmount);
         invulnerability.setLastDamageReplacement(victim, true);
+
+        // Replacement supersedes any buffered hit — clear it so buffer does not fire later
+        HealthSystem.getInstance().clearBufferedHit(victim);
 
         return new DamageResult(true, true, finalDifference, props, source, attacker, victim, shooterOriginPos);
     }

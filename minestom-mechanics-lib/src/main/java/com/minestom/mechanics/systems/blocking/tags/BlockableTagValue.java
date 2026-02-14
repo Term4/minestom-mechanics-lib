@@ -2,12 +2,11 @@ package com.minestom.mechanics.systems.blocking.tags;
 
 import org.jetbrains.annotations.Nullable;
 
-import static com.minestom.mechanics.config.constants.CombatConstants.*;
-
 /**
  * Tag value for blockable items. Presence of this tag on an item means the item can be used to block.
  * Optional fields (null) fall back to CombatConfig defaults.
  * {@code applyLegacySlowdown}: when true, legacy clients get movement slowdown while blocking with this item; when false, no slowdown (e.g. sword preset).
+ * {@code knockbackHMultiplier}, {@code knockbackVMultiplier}: fraction of knockback retained (0 = full reduction, 1 = no reduction). Inverse of CombatConfig's reduction (0 = none, 1 = full).
  */
 public record BlockableTagValue(
         @Nullable Boolean applyLegacySlowdown,
@@ -49,12 +48,8 @@ public record BlockableTagValue(
     }
 
     /**
-     * PvP sword preset: no legacy slowdown, 50% damage reduction, 40% knockback (from CombatConstants).
+     * PvP sword preset: no legacy slowdown, all modifiers null so CombatConfig applies.
+     * Damage/knockback reduction come from the combat preset (e.g. CombatPresets.MINEMEN).
      */
-    public static final BlockableTagValue SWORD_PRESET = blockable(
-            false,
-            DEFAULT_BLOCKING_DAMAGE_REDUCTION,
-            DEFAULT_BLOCKING_KB_HORIZONTAL,
-            DEFAULT_BLOCKING_KB_VERTICAL
-    );
+    public static final BlockableTagValue SWORD_PRESET = blockable(false, null, null, null);
 }
