@@ -26,7 +26,7 @@ public class ProjectileVelocityPresets {
     public static final ProjectileVelocityConfig ENDER_PEARL =
             new ProjectileVelocityConfig(1.0, 1.0, 1.0, 0.03, 0.99, 0.99);
 
-    /** Default fishing rod bobber velocity (3.0 speed, medium gravity) */
+    /** Fishing rod bobber velocity */
     public static final ProjectileVelocityConfig FISHING_ROD =
             new ProjectileVelocityConfig(5, 3.5, 1.0, 0.04, 0.92, 0.92);
 
