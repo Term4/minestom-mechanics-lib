@@ -8,6 +8,8 @@ import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyHurtSuppression;
 import com.minestom.mechanics.config.health.DamageTypeProperties;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.health.damage.*;
 import com.minestom.mechanics.systems.health.events.BlockingDamageEvent;
 import net.minestom.server.item.ItemStack;
@@ -324,10 +326,12 @@ public class HealthSystem extends InitializableSystem {
         if (props.invulnerabilityBufferTicks() > 0 && config.isInvulnerabilityEnabled()) {
             long ticksSince = invulnerability.getTicksSinceLastDamage(victim);
             if (ticksSince >= 0) {
-                long ticksRemaining = config.invulnerabilityTicks() - ticksSince;
-                if (ticksRemaining <= props.invulnerabilityBufferTicks()) {
+                int scaledInvuln = TickScaler.scale(config.invulnerabilityTicks(), TickScalingConfig.getMode());
+                int scaledBuffer = TickScaler.scale(props.invulnerabilityBufferTicks(), TickScalingConfig.getMode());
+                long ticksRemaining = scaledInvuln - ticksSince;
+                if (ticksRemaining <= scaledBuffer) {
                     if (!hasBufferedHit(victim)) {
-                        long applyAtTick = invulnerability.getLastDamageTick(victim) + config.invulnerabilityTicks();
+                        long applyAtTick = invulnerability.getLastDamageTick(victim) + scaledInvuln;
                         net.minestom.server.entity.damage.Damage snap = new net.minestom.server.entity.damage.Damage(
                                 damage.getType(), damage.getSource(), damage.getAttacker(),
                                 damage.getSourcePosition() != null ? damage.getSourcePosition() : attacker.getPosition(),

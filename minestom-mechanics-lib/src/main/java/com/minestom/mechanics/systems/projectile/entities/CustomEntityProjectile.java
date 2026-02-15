@@ -1,8 +1,9 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.config.constants.ProjectileConstants;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileUtil;
-import net.minestom.server.ServerFlag;
 import net.minestom.server.collision.*;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
@@ -137,6 +138,11 @@ public abstract class CustomEntityProjectile extends Entity {
         this.velocity = velocity;
         // Also set velocity on the entity for Minestom's physics
         super.setVelocity(velocity);
+    }
+
+    @Override
+    protected Vec getVelocityForPacket() {
+        return velocity.div(TickScaler.velocityPacketDivisor(TickScalingConfig.getMode()));
     }
 
     // TODO: Figure out what this is??? Maybe use ProjectileBehavior interface?
@@ -281,7 +287,7 @@ public abstract class CustomEntityProjectile extends Entity {
         if (vehicle != null) return;
         
         if (!isStuck()) {
-            Vec diff = velocity.div(ServerFlag.SERVER_TICKS_PER_SECOND);
+            Vec diff = velocity.div(TickScaler.velocityDivisor());
             
             // Prevent entity infinitely in the void
             if (instance.isInVoid(position)) {
@@ -300,8 +306,8 @@ public abstract class CustomEntityProjectile extends Entity {
             Pos newPosition = physicsResult.newPosition();
             
             if (!noClip) {
-                // We won't check collisions with self for first ticks of projectile's life
-                boolean noCollideShooter = getAliveTicks() < ProjectileConstants.SHOOTER_COLLISION_DELAY_TICKS;
+                int scaledDelay = TickScaler.scale(ProjectileConstants.SHOOTER_COLLISION_DELAY_TICKS, TickScalingConfig.getMode());
+                boolean noCollideShooter = getAliveTicks() < scaledDelay;
                 Collection<EntityCollisionResult> entityResult = CollisionUtils.checkEntityCollisions(
                     instance, boundingBox.expand(0.1, 0.3, 0.1),
                     position.add(0, -0.3, 0), diff, 3, e -> {
@@ -333,7 +339,7 @@ public abstract class CustomEntityProjectile extends Entity {
             // Track whether this tick transitions from flying to stuck,
             // so we can send an absolute teleport after yaw/pitch are computed.
             boolean justBecameStuck = false;
-            
+
             if (physicsResult.hasCollision() && !isStuck()) {
                 double signumX = physicsResult.collisionX() ? Math.signum(velocity.x()) : 0;
                 double signumY = physicsResult.collisionY() ? Math.signum(velocity.y()) : 0;
@@ -363,11 +369,12 @@ public abstract class CustomEntityProjectile extends Entity {
             }
 
             Aerodynamics aerodynamics = getAerodynamics();
-            velocity = velocity.mul(
-                    aerodynamics.horizontalAirResistance(),
-                    aerodynamics.verticalAirResistance(),
-                    aerodynamics.horizontalAirResistance()
-            ).sub(0, hasNoGravity() ? 0 : getAerodynamics().gravity() * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
+            var mode = TickScalingConfig.getMode();
+            double hDrag = TickScaler.dragPerTick(aerodynamics.horizontalAirResistance(), mode);
+            double vDrag = TickScaler.dragPerTick(aerodynamics.verticalAirResistance(), mode);
+            double gravMult = TickScaler.gravityMultiplier(mode);
+            velocity = velocity.mul(hDrag, vDrag, hDrag)
+                    .sub(0, hasNoGravity() ? 0 : getAerodynamics().gravity() * gravMult, 0);
 
             // CRITICAL FIX: Update parent entity velocity so synchronization packets have correct velocity
             super.setVelocity(velocity);
@@ -489,9 +496,6 @@ public abstract class CustomEntityProjectile extends Entity {
             data = shooter.getEntityId();
         }
 
-        // Convert velocity from blocks/second to blocks/tick for the packet
-        Vec velocityPerTick = velocity.div(ServerFlag.SERVER_TICKS_PER_SECOND);
-
         SpawnEntityPacket customSpawnPacket = new SpawnEntityPacket(
             getEntityId(),
             getUuid(),
@@ -499,7 +503,7 @@ public abstract class CustomEntityProjectile extends Entity {
             getPosition(),
             getPosition().yaw(),
             data,
-            velocityPerTick  // Send velocity in blocks/tick, not blocks/second
+            getVelocityForPacket()
         );
 
         player.sendPacket(customSpawnPacket);

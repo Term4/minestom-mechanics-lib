@@ -2,6 +2,8 @@ package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackConfig;
@@ -86,7 +88,8 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     @Override
     public void tick(long time) {
         Pos before = getPosition();
-        velocity = velocity.add(0, -customGravity * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
+        double gravMult = TickScaler.gravityMultiplier(TickScalingConfig.getMode());
+        velocity = velocity.add(0, -customGravity * gravMult, 0);
         super.tick(time);
         Pos after = getPosition();
 
@@ -133,9 +136,11 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
             //
             // Pre-apply the next tick's gravity to the sent velocity so the client's
             // per-tick displacement matches the server's exactly.
-            Vec corrected = velocity.add(0, -customGravity * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
+            double gravMult = TickScaler.gravityMultiplier(TickScalingConfig.getMode());
+            Vec corrected = velocity.add(0, -customGravity * gravMult, 0);
+            Vec forPacket = corrected.div(TickScaler.velocityPacketDivisor(TickScalingConfig.getMode()));
             sendPacketToViewersAndSelf(new net.minestom.server.network.packet.server.play.EntityVelocityPacket(
-                    getEntityId(), corrected.div(ServerFlag.SERVER_TICKS_PER_SECOND)
+                    getEntityId(), forPacket
             ));
         }
     }
@@ -159,39 +164,38 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
 
     @Override
     public void update(long time) {
-        if (!shouldFallAfterHit && currentState == State.IN_AIR) {
-            Entity shooter = getShooter();
-            if (shooter instanceof Player player) {
-                Pos bobberPos = getPosition();
-                Pos eyePos = player.getPosition().add(0, player.getEyeHeight(), 0);
+        if (!shouldFallAfterHit && currentState == State.IN_AIR && pseudoHookedPlayer != null) {
+            // Fall sequence only for pseudo-hooked case: bobber hit a player, unhooked, and is now
+            // near them (re-hook on move). Do NOT trigger when merely near the shooter at cast —
+            // that would kill cast momentum when stationary (bobber spawns 0.3 in front).
+            Pos bobberPos = getPosition();
+            Pos eyePos = pseudoHookedPlayer.getPosition().add(0, pseudoHookedPlayer.getEyeHeight(), 0);
+            double distance = bobberPos.distance(eyePos);
 
-                double distance = bobberPos.distance(eyePos);
-
-                if (distance < 0.5 && getVelocity().length() > 0.1) {
-                    startFallSequence();
-                }
+            if (distance < 0.5 && getVelocity().length() > 0.1) {
+                startFallSequence();
             }
         }
 
         if (shouldFallAfterHit) {
             fallTicks++;
 
-            if (!hasAppliedFallVelocity && fallTicks >= 3) {
+            int scaledFallDelay = TickScaler.scale(ProjectileConstants.FISHING_BOBBER_FALL_DELAY_TICKS, TickScalingConfig.getMode());
+            if (!hasAppliedFallVelocity && fallTicks >= scaledFallDelay) {
                 Entity shooter = getShooter();
                 if (shooter != null) {
                     Vec fallVelocity = calculateFallVelocity(getPosition(), shooter.getPosition());
                     setVelocity(fallVelocity);
                     hasAppliedFallVelocity = true;
-                    log.debug("Applied fall velocity to bobber");
                 }
             }
         }
 
         /* TODO: Have this updated to RETRACT the rod after a certain time, not just remove the bobber
-        // Remove if stuck too long
         if (onGround) {
             stuckTime++;
-            if (stuckTime >= 1200) { // 60 seconds
+            int scaledDespawn = TickScaler.scale(ProjectileConstants.FISHING_BOBBER_STUCK_DESPAWN_TICKS, TickScalingConfig.getMode());
+            if (stuckTime >= scaledDespawn) {
                 remove();
                 return;
             }
@@ -378,13 +382,14 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
         double dx = bobberPos.x() - shooterPos.x();
         double dz = bobberPos.z() - shooterPos.z();
         double distance = Math.sqrt(dx * dx + dz * dz);
+        double gravMult = TickScaler.gravityMultiplier(TickScalingConfig.getMode());
 
         if (distance > 0.01) {
             double awayX = (dx / distance) * 0.8;
             double awayZ = (dz / distance) * 0.8;
-            return new Vec(awayX, -0.4 * ServerFlag.SERVER_TICKS_PER_SECOND, awayZ);
+            return new Vec(awayX, -0.4 * gravMult, awayZ);
         } else {
-            return new Vec(0, -0.4 * ServerFlag.SERVER_TICKS_PER_SECOND, 0);
+            return new Vec(0, -0.4 * gravMult, 0);
         }
     }
 
@@ -447,9 +452,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
      */
     @Override
     public boolean canHit(@NotNull Entity entity) {
-        if (entity == pseudoHookedPlayer) {
-            return false;
-        }
+        if (entity == pseudoHookedPlayer) return false;
         return super.canHit(entity);
     }
 

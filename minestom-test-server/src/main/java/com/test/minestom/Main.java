@@ -77,7 +77,7 @@ public class Main {
         System.setProperty( "minestom.enforce-entity-interaction-range", "false");
         System.setProperty("minestom.chunk-view-distance", "12");
         System.setProperty("minestom.entity-view-distance", "5");
-        System.setProperty("minestom.tps", "20");
+        System.setProperty("minestom.tps", "1000");
 
         // Initialize server
         MinecraftServer server;

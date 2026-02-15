@@ -158,7 +158,7 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
                 spawnPos.withView(direction[0], direction[1]));
         bobber.setVelocity(velocity);
 
-        log.debug("Cast fishing bobber for {} at {} with direction yaw={:.2f}, pitch={:.2f}", 
+        log.debug("Cast fishing bobber for {} at {} with direction yaw={:.2f}, pitch={:.2f}",
                 player.getUsername(), spawnPos, direction[0], direction[1]);
     }
 

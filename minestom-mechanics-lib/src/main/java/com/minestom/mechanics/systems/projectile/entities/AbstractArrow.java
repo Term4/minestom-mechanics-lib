@@ -1,6 +1,8 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
 import com.minestom.mechanics.config.constants.ProjectileConstants;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileKnockbackPresets;
 import com.minestom.mechanics.systems.health.HealthSystem;
 
@@ -54,7 +56,9 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 		}
 
 		// ✅ FIX: Prevent immediate pickup (vanilla 1.8 behavior)
-		pickupDelay = ProjectileConstants.ARROW_PICKUP_DELAY_TICKS;
+		pickupDelay = TickScaler.scale(
+				ProjectileConstants.ARROW_PICKUP_DELAY_TICKS,
+				TickScalingConfig.getMode());
 
 		// Initialize with default arrow knockback config
         this.knockbackConfig = ProjectileKnockbackPresets.ARROW;
@@ -149,7 +153,8 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 
 	protected void tickRemoval() {
 		ticks++;
-		if (ticks >= 1200) {
+		int scaledDespawn = TickScaler.scale(ProjectileConstants.ARROW_DESPAWN_TICKS, TickScalingConfig.getMode());
+		if (ticks >= scaledDespawn) {
 			remove();
 		}
 	}
@@ -238,7 +243,7 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
 
 	@Override
 	public boolean onStuck() {
-		pickupDelay = 7;
+		pickupDelay = TickScaler.scale(ProjectileConstants.ARROW_STUCK_PICKUP_DELAY_TICKS, TickScalingConfig.getMode());
 		((AbstractArrowMeta) getEntityMeta()).setInGround(true);
 		setCritical(false);
 		setPiercingLevel((byte) 0);

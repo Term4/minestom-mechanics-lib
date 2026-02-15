@@ -3,6 +3,8 @@ package com.minestom.mechanics.manager;
 import com.minestom.mechanics.config.MechanicsPresets;
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.gameplay.DamageConfig;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
+import com.minestom.mechanics.config.timing.TickScalingMode;
 import com.minestom.mechanics.config.combat.HitDetectionConfig;
 import com.minestom.mechanics.config.gameplay.GameplayConfig;
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
@@ -357,7 +359,10 @@ public class MechanicsManager {
         // Knockback configuration
         private KnockbackConfig knockbackConfig = null;
         private boolean knockbackSyncEnabled = false;
-        
+
+        // Tick scaling (SCALED = real-time durations; UNSCALED = literal tick counts)
+        private TickScalingMode tickScalingMode = TickScalingMode.SCALED;
+
         private ConfigurationBuilder() {}
 
         /**
@@ -432,13 +437,24 @@ public class MechanicsManager {
             this.knockbackSyncEnabled = syncEnabled;
             return this;
         }
-        
+
+        /**
+         * Set tick-scaling mode. SCALED (default) keeps real-time durations consistent across TPS;
+         * UNSCALED uses literal tick counts. Call before {@link #initialize()}.
+         */
+        public ConfigurationBuilder withTickScaling(TickScalingMode mode) {
+            this.tickScalingMode = mode;
+            return this;
+        }
+
         /**
          * Initialize the configured systems
          */
         public MechanicsManager initialize() {
             MechanicsManager manager = MechanicsManager.this;
-            
+
+            TickScalingConfig.initialize(tickScalingMode);
+
             log.info("Initializing...");
             
             int systemCount = 0;

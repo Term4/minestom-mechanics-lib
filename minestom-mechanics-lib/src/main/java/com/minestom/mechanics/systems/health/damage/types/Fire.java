@@ -2,6 +2,8 @@ package com.minestom.mechanics.systems.health.damage.types;
 
 import com.minestom.mechanics.systems.health.damage.DamageTracker;
 import com.minestom.mechanics.config.health.DamageTypeProperties;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.util.BlockContactUtil;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.LivingEntity;
@@ -94,25 +96,30 @@ public final class Fire extends DamageTracker {
     }
 
     private void handleLava(Player player, Config config, Pos pos, long currentTick) {
-        // Lava: always instant ignition + fast damage
+        var mode = TickScalingConfig.getMode();
+        int scaledBurnDuration = TickScaler.scale(config.burnDurationTicks(), mode);
+        int scaledContactInterval = TickScaler.scale(config.contactDamageIntervalTicks(), mode);
         player.removeTag(CONTACT_DAMAGE_COUNT);
-        setFireTicks(player, Math.max(getFireTicks(player), config.burnDurationTicks()));
-        if (intervalElapsed(player, LAST_CONTACT_TICK, currentTick, config.contactDamageIntervalTicks())) {
+        setFireTicks(player, Math.max(getFireTicks(player), scaledBurnDuration));
+        if (intervalElapsed(player, LAST_CONTACT_TICK, currentTick, scaledContactInterval)) {
             player.damage(new Damage(DamageType.LAVA, null, null, pos, config.lavaDamage()));
         }
     }
 
     private void handleFire(Player player, Config config, Pos pos, long currentTick) {
+        var mode = TickScalingConfig.getMode();
+        int scaledContactInterval = TickScaler.scale(config.contactDamageIntervalTicks(), mode);
+        int scaledBurnDuration = TickScaler.scale(config.burnDurationTicks(), mode);
+        int scaledIgnitionDelay = TickScaler.scale(config.ignitionDelayTicks(), mode);
         if (config.ignitionMode() == IgnitionMode.VANILLA) {
             // VANILLA: deal damage immediately, ignite on 2nd damage tick
-            if (intervalElapsed(player, LAST_CONTACT_TICK, currentTick, config.contactDamageIntervalTicks())) {
+            if (intervalElapsed(player, LAST_CONTACT_TICK, currentTick, scaledContactInterval)) {
                 player.damage(new Damage(DamageType.IN_FIRE, null, null, pos, config.fireDamage()));
                 int count = tagOr(player, CONTACT_DAMAGE_COUNT, 0) + 1;
                 player.setTag(CONTACT_DAMAGE_COUNT, count);
 
                 if (count >= 2) {
-                    // Second damage tick — ignite
-                    setFireTicks(player, Math.max(getFireTicks(player), config.burnDurationTicks()));
+                    setFireTicks(player, Math.max(getFireTicks(player), scaledBurnDuration));
                 }
             }
         } else {
@@ -120,9 +127,9 @@ public final class Fire extends DamageTracker {
             int count = tagOr(player, CONTACT_DAMAGE_COUNT, 0) + 1;
             player.setTag(CONTACT_DAMAGE_COUNT, count);
 
-            if (count >= config.ignitionDelayTicks()) {
-                setFireTicks(player, Math.max(getFireTicks(player), config.burnDurationTicks()));
-                if (intervalElapsed(player, LAST_CONTACT_TICK, currentTick, config.contactDamageIntervalTicks())) {
+            if (count >= scaledIgnitionDelay) {
+                setFireTicks(player, Math.max(getFireTicks(player), scaledBurnDuration));
+                if (intervalElapsed(player, LAST_CONTACT_TICK, currentTick, scaledContactInterval)) {
                     player.damage(new Damage(DamageType.IN_FIRE, null, null, pos, config.fireDamage()));
                 }
             }
@@ -130,14 +137,14 @@ public final class Fire extends DamageTracker {
     }
 
     private void handleBurning(Player player, Config config, Pos pos, long currentTick) {
-        // Not in fire/lava — reset contact state, tick down burn
         player.removeTag(CONTACT_DAMAGE_COUNT);
         player.removeTag(LAST_CONTACT_TICK);
 
         int ticks = getFireTicks(player);
         if (ticks > 0) {
             setFireTicks(player, ticks - 1);
-            if (intervalElapsed(player, LAST_BURN_TICK, currentTick, config.burnDamageIntervalTicks())) {
+            int scaledBurnInterval = TickScaler.scale(config.burnDamageIntervalTicks(), TickScalingConfig.getMode());
+            if (intervalElapsed(player, LAST_BURN_TICK, currentTick, scaledBurnInterval)) {
                 player.damage(new Damage(DamageType.ON_FIRE, null, null, pos, config.onFireDamage()));
             }
         } else {

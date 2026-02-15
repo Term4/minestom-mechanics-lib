@@ -1,5 +1,7 @@
 package com.minestom.mechanics.systems.compatibility.legacy_1_8.fix;
 
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 
@@ -32,13 +34,15 @@ public class LegacyInventoryUtil {
     /**
      * Force inventory sync with a delay.
      * Useful when the sync needs to happen after other operations complete.
-     * 
+     * {@code delayTicks} is interpreted as base ticks at 20 TPS and scaled per {@link com.minestom.mechanics.config.timing.TickScalingConfig}.
+     *
      * @param player The player to sync inventory for
-     * @param delayTicks The delay in ticks before syncing
+     * @param delayTicks The delay in base ticks (at 20 TPS) before syncing
      */
     public static void forceInventorySyncDelayed(Player player, int delayTicks) {
+        int scaled = TickScaler.scale(delayTicks, TickScalingConfig.getMode());
         MinecraftServer.getSchedulerManager().buildTask(() -> {
             forceInventorySync(player);
-        }).delay(net.minestom.server.timer.TaskSchedule.tick(delayTicks)).schedule();
+        }).delay(net.minestom.server.timer.TaskSchedule.tick(scaled)).schedule();
     }
 }

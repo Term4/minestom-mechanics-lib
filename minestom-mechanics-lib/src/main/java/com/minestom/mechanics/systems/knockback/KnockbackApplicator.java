@@ -1,6 +1,8 @@
 package com.minestom.mechanics.systems.knockback;
 
 import com.minestom.mechanics.config.knockback.KnockbackConfig;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.util.LogUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -51,8 +53,9 @@ public class KnockbackApplicator {
         // Determine wasSprinting: use provided value when authoritative (e.g. buffered hit); else resolve from current state
         boolean effectiveSprint = wasSprinting;
         if (!trustWasSprinting && attacker instanceof Player p && type != KnockbackSystem.KnockbackType.PROJECTILE) {
-            effectiveSprint = resolved.sprintBufferTicks() > 0
-                    ? KnockbackSystem.isSprintHit(p, resolved.sprintBufferTicks(), KnockbackSystem.getInstance().getCurrentTick())
+            int scaledBuffer = TickScaler.scale(resolved.sprintBufferTicks(), TickScalingConfig.getMode());
+            effectiveSprint = scaledBuffer > 0
+                    ? KnockbackSystem.isSprintHit(p, scaledBuffer, KnockbackSystem.getInstance().getCurrentTick())
                     : p.isSprinting();
         }
 

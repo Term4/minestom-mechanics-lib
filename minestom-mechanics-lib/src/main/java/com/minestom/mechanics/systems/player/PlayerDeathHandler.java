@@ -1,6 +1,8 @@
 package com.minestom.mechanics.systems.player;
 
 import com.minestom.mechanics.InitializableSystem;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.util.LogUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.collision.BoundingBox;
@@ -119,7 +121,8 @@ public class PlayerDeathHandler extends InitializableSystem {
             player.setTag(IS_DEAD, true);
             player.setBoundingBox(ZERO_BOX);
             
-            // Delay hiding the player by ~1 second (20 ticks) so players can see the death animation
+            // Delay hiding the player by ~1 second (20 ticks at 20 TPS) so players can see the death animation
+            int scaledDelay = TickScaler.scale(20, TickScalingConfig.getMode());
             MinecraftServer.getSchedulerManager().buildTask(() -> {
                 // Double-check player is still dead and hasn't respawned
                 if (Boolean.TRUE.equals(player.getTag(IS_DEAD)) && !player.isRemoved()) {
@@ -130,7 +133,7 @@ public class PlayerDeathHandler extends InitializableSystem {
                     
                     log.debug("Sent destroy packet for {} after death animation delay", player.getUsername());
                 }
-            }).delay(TaskSchedule.tick(20)).schedule();
+            }).delay(TaskSchedule.tick(scaledDelay)).schedule();
             
             log.debug("Removed hitbox for {} on death (visibility will be hidden after 1 second)", player.getUsername());
             

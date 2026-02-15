@@ -1,10 +1,11 @@
 package com.minestom.mechanics.systems.projectile.utils;
 
 import com.minestom.mechanics.config.projectiles.advanced.ProjectileVelocityConfig;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.compatibility.hitbox.EyeHeightSystem;
 import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;
 import com.minestom.mechanics.systems.projectile.entities.CustomEntityProjectile;
-import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
@@ -216,14 +217,15 @@ public class ProjectileCalculator {
 
     /**
      * Convert velocity to per-tick velocity for Minestom.
-     * Multiplies by server ticks per second.
+     * Uses tick scaling so real-time projectile speed is consistent regardless of server TPS.
      *
-     * @param velocity The velocity vector
+     * @param velocity The velocity vector (direction * magnitude)
      * @param multiplier Additional multiplier (e.g., 0.75 for fishing rods)
-     * @return The per-tick velocity
+     * @return Velocity in blocks/second format (divided by TPS for per-tick movement)
      */
     public static Vec toPerTickVelocity(Vec velocity, double multiplier) {
-        return velocity.mul(ServerFlag.SERVER_TICKS_PER_SECOND * multiplier);
+        double vm = TickScaler.velocityMultiplier(TickScalingConfig.getMode());
+        return velocity.mul(vm * multiplier);
     }
 
     /**

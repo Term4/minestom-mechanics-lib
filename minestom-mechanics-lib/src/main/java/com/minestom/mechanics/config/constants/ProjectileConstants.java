@@ -81,7 +81,19 @@ public class ProjectileConstants {
      * 20 ticks = 1 second
      */
     public static final int ARROW_PICKUP_DELAY_TICKS = 20;
-    
+
+    /**
+     * Ticks a stuck arrow survives before despawning.
+     * 1200 ticks = 60 seconds at 20 TPS
+     */
+    public static final int ARROW_DESPAWN_TICKS = 1200;
+
+    /**
+     * Ticks to wait before an arrow stuck in a block can be picked up.
+     * 7 ticks = 0.35 seconds at 20 TPS
+     */
+    public static final int ARROW_STUCK_PICKUP_DELAY_TICKS = 7;
+
     // ===========================
     // FISHING BOBBER CONSTANTS
     // ===========================
@@ -97,7 +109,19 @@ public class ProjectileConstants {
      * Applied as additional gravity before normal physics.
      */
     public static final double FISHING_BOBBER_MODERN_GRAVITY = 0.03;
-    
+
+    /**
+     * Ticks to wait before applying fall velocity when bobber lands near player.
+     * 3 ticks = 0.15 seconds at 20 TPS
+     */
+    public static final int FISHING_BOBBER_FALL_DELAY_TICKS = 3;
+
+    /**
+     * Ticks a stuck fishing bobber survives before despawning.
+     * 1200 ticks = 60 seconds at 20 TPS
+     */
+    public static final int FISHING_BOBBER_STUCK_DESPAWN_TICKS = 1200;
+
     // ===========================
     // SYNCHRONIZATION CONSTANTS
     // ===========================

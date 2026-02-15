@@ -2,6 +2,8 @@ package com.minestom.mechanics.systems.health.damage;
 
 import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.config.health.HealthConfig;
+import com.minestom.mechanics.config.timing.TickScaler;
+import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.manager.ArmorManager;
 import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
@@ -344,12 +346,14 @@ public class DamageType {
         if (props.invulnerabilityBufferTicks() > 0 && config.isInvulnerabilityEnabled()) {
             long ticksSince = invulnerability.getTicksSinceLastDamage(victim);
             if (ticksSince >= 0) {
-                long ticksRemaining = config.invulnerabilityTicks() - ticksSince;
-                if (ticksRemaining <= props.invulnerabilityBufferTicks()) {
+                int scaledInvuln = TickScaler.scale(config.invulnerabilityTicks(), TickScalingConfig.getMode());
+                int scaledBuffer = TickScaler.scale(props.invulnerabilityBufferTicks(), TickScalingConfig.getMode());
+                long ticksRemaining = scaledInvuln - ticksSince;
+                if (ticksRemaining <= scaledBuffer) {
                     HealthSystem hs = HealthSystem.getInstance();
                     if (!hs.hasBufferedHit(victim)) {
                         long lastDamageTick = invulnerability.getLastDamageTick(victim);
-                        long applyAtTick = lastDamageTick + config.invulnerabilityTicks();
+                        long applyAtTick = lastDamageTick + scaledInvuln;
                         var dmg = event.getDamage();
                         Entity dmgSource = dmg.getSource();
                         net.minestom.server.coordinate.Point pos = dmg.getSourcePosition();
