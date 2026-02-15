@@ -55,11 +55,14 @@ public record CombatConfig(
         // Knockback reduction: 0 = none, 1 = full (e.g. 0.6 = 60% reduction)
         double blockKnockbackHReduction,
         double blockKnockbackVReduction,
-        boolean showBlockDamageMessages,
-        boolean showBlockEffects,
 
         // Legacy 1.8: when true, suppress sprint metadata/attribute packets for 1.8 clients (hit slowdown fix).
-        boolean fix18HitSlowdown
+        boolean fix18HitSlowdown,
+
+        // Fishing rod: pseudo-hook when bobber hits a player (1.8-style fix).
+        boolean bobberFixEnabled,
+        BobberFixMode bobberFixMode,
+        int bobberFixHookDisplayTicks
 ) {
 
     // Validation
@@ -87,40 +90,52 @@ public record CombatConfig(
             throw new IllegalArgumentException("Block knockback V reduction must be between 0 and 1");
         if (knockbackConfig == null)
             throw new IllegalArgumentException("Knockback config cannot be null");
+        if (bobberFixMode == null)
+            throw new IllegalArgumentException("Bobber fix mode cannot be null");
+        if (bobberFixHookDisplayTicks < 1)
+            throw new IllegalArgumentException("Bobber fix hook display ticks must be >= 1");
+    }
+
+    /** Fishing rod pseudo-hook behavior when bobber hits a player. */
+    public enum BobberFixMode {
+        /** Bobber passes through, falls to ground. Cannot hook others after first hit. */
+        LEGACY,
+        /** Bobber stays at player's face. Does not fall when they stop moving. */
+        MODERN
     }
 
     // ===== KNOCKBACK =====
 
     public CombatConfig withKnockbackConfig(KnockbackConfig knockbackConfig) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withKnockback(double horizontal, double vertical) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withKnockback(double horizontal, double vertical, double verticalLimit) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical, verticalLimit), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockback(horizontal, vertical, verticalLimit), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withSprintBonus(double horizontal, double vertical) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withSprintBonus(horizontal, vertical), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withSprintBonus(horizontal, vertical), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withAirMultipliers(double horizontal, double vertical) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withAirMultipliers(horizontal, vertical), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withAirMultipliers(horizontal, vertical), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withLookWeight(double lookWeight) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withLookWeight(lookWeight), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withLookWeight(lookWeight), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withModern(boolean modern) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withModern(modern), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withModern(modern), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withKnockbackSyncSupported(boolean syncSupported) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockbackSyncSupported(syncSupported), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits, knockbackConfig.withKnockbackSyncSupported(syncSupported), sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     // ===== ATTACK =====
@@ -129,21 +144,21 @@ public record CombatConfig(
         return new CombatConfig(remove, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
-                blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withCriticalMultiplier(float multiplier) {
         return new CombatConfig(removeAttackCooldown, multiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
-                blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withSprintCrits(boolean allow) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allow,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
-                blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     // ===== SPRINT WINDOW =====
@@ -152,35 +167,35 @@ public record CombatConfig(
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, ticks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled,
                 blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withSwingHitWindowTicks(int ticks) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, ticks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withSwingLookCheckTicks(int ticks) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, ticks,
                 victimSwingHitWindowTicks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withVictimSwingHitWindowTicks(int ticks) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks,
                 ticks, victimSwingLookCheckTicks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withVictimSwingLookCheckTicks(int ticks) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks,
                 victimSwingHitWindowTicks, ticks, noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     // ===== HIT QUEUE / DAMAGE REPLACEMENT =====
@@ -189,14 +204,14 @@ public record CombatConfig(
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withAttackerInvulnerabilityBufferTicks(int ticks) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, ticks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     // ===== BLOCKING =====
@@ -205,21 +220,14 @@ public record CombatConfig(
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, reduction, blockKnockbackHReduction, blockKnockbackVReduction,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     public CombatConfig withBlockKnockback(double horizontal, double vertical) {
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, horizontal, vertical,
-                showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
-    }
-
-    public CombatConfig withBlockEffects(boolean showMessages, boolean showEffects) {
-        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
-                knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
-                noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
-                blockKnockbackVReduction, showMessages, showEffects, fix18HitSlowdown);
+                fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
     }
 
     // ===== LEGACY 1.8 =====
@@ -228,6 +236,15 @@ public record CombatConfig(
         return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
                 knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
                 noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
-                blockKnockbackVReduction, showBlockDamageMessages, showBlockEffects, fix18HitSlowdown);
+                blockKnockbackVReduction, fix18HitSlowdown, bobberFixEnabled, bobberFixMode, bobberFixHookDisplayTicks);
+    }
+
+    // ===== FISHING ROD / BOBBER FIX =====
+
+    public CombatConfig withBobberFix(boolean enabled, BobberFixMode mode, int hookDisplayTicks) {
+        return new CombatConfig(removeAttackCooldown, criticalMultiplier, allowSprintCrits,
+                knockbackConfig, sprintWindowTicks, swingHitWindowTicks, swingLookCheckTicks, victimSwingHitWindowTicks, victimSwingLookCheckTicks,
+                noReplacementSameItem, attackerInvulnerabilityBufferTicks, blockingEnabled, blockDamageReduction, blockKnockbackHReduction,
+                blockKnockbackVReduction, fix18HitSlowdown, enabled, mode, hookDisplayTicks);
     }
 }

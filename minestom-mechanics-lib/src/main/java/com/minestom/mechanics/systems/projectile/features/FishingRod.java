@@ -23,6 +23,7 @@ import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.TaskSchedule;
 
 import java.util.Objects;
+import java.util.Set;
 
 // TODO: Fix players not being able to hit themselves with fishing rod
 //  COULD actually generalize the "pull" feature of the rod, could be cool to
@@ -90,16 +91,20 @@ public class FishingRod extends InitializableSystem implements ProjectileFeature
             }).delay(TaskSchedule.tick(1)).schedule();
         });
 
-        // Pseudo-hook: when hit player moves (position only), re-hook bobber for one tick so client sees the line
+        // Pseudo-hook: when hit player moves (position only), re-hook each bobber for one tick so client sees the line
         handler.addListener(PlayerMoveEvent.class, event -> {
             Player moved = event.getPlayer();
-            FishingBobber bobber = moved.getTag(FishingBobber.PSEUDO_HOOKED_BY);
-            if (bobber == null || bobber.isRemoved()) return;
+            Set<FishingBobber> bobbers = moved.getTag(FishingBobber.PSEUDO_HOOKED_BY);
+            if (bobbers == null || bobbers.isEmpty()) return;
             Pos oldPos = moved.getPosition();
             Pos newPos = event.getNewPosition();
             if (oldPos.distanceSquared(newPos) < 1e-6) return; // ignore look-only (pitch/yaw)
-            bobber.hookVisualToPlayer(moved);
-            bobber.scheduleUnhookNextTick();
+            for (FishingBobber bobber : Set.copyOf(bobbers)) {
+                if (!bobber.isRemoved()) {
+                    bobber.hookVisualToPlayer(moved);
+                    bobber.scheduleUnhookNextTick();
+                }
+            }
         });
 
         // Note: PlayerDeathEvent and PlayerDisconnectEvent cleanup handled by ProjectileCreator

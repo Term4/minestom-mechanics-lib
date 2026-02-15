@@ -1,7 +1,8 @@
 package com.minestom.mechanics.systems.projectile.entities;
 
-import com.minestom.mechanics.config.projectiles.ProjectileConfig;
+import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.config.constants.ProjectileConstants;
+import com.minestom.mechanics.config.projectiles.ProjectileConfig;
 import com.minestom.mechanics.config.timing.TickScaler;
 import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
@@ -20,14 +21,16 @@ import net.minestom.server.entity.*;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.entity.metadata.other.FishingHookMeta;
+import com.minestom.mechanics.manager.CombatManager;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
+import java.util.Set;
+
 // TODO: Clean up AI slop
 
-// TODO: Allow multiple bobbers to be hooked to one "victim" as of now new bobbers cause old ones to unhook
-//  (maybe add a configurable "Max bobbers per player" value with a default set in projectile constants? Unsure.
 /**
  * Fishing bobber entity with Minement-style visual hooking.
  * <p>
@@ -66,8 +69,8 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     // Logging
     private static final LogUtil.SystemLogger log = LogUtil.system("FishingBobber");
 
-    /** Tag on the hit player so FishingRod's PlayerMoveEvent can find this bobber for re-hook on move. */
-    public static final Tag<FishingBobber> PSEUDO_HOOKED_BY = Tag.Transient("fishingPseudoHookedBy");
+    /** Tag on the hit player: set of bobbers that have pseudo-hooked them (re-hook on move). */
+    public static final Tag<Set<FishingBobber>> PSEUDO_HOOKED_BY = Tag.Transient("fishingPseudoHookedBy");
 
     public FishingBobber(@Nullable Entity shooter, boolean legacy) {
         super(shooter, EntityType.FISHING_BOBBER);
@@ -103,6 +106,8 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
 
     @Override
     protected void movementTick() {
+        CombatConfig combat = getCombatConfig();
+
         if (currentState == State.HOOKED_ENTITY) {
             if (hookedEntity != null && isHookedEntityValid(hookedEntity, getInstance())) {
                 Pos targetPos = hookedEntity.getPosition().add(0, hookedEntity.getBoundingBox().height() * 0.8, 0);
@@ -112,6 +117,16 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
                     pullEntity(hookedEntity);
                 }
             }
+            return;
+        }
+
+        // MODERN: when pseudo-hooked and IN_AIR, keep bobber at player's face (don't fall)
+        if (combat.bobberFixEnabled() && combat.bobberFixMode() == CombatConfig.BobberFixMode.MODERN
+                && pseudoHookedPlayer != null && currentState == State.IN_AIR) {
+            Pos facePos = pseudoHookedPlayer.getPosition().add(0, pseudoHookedPlayer.getEyeHeight(), 0);
+            teleport(facePos);
+            velocity = Vec.ZERO;
+            setVelocity(Vec.ZERO);
             return;
         }
 
@@ -164,7 +179,10 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
 
     @Override
     public void update(long time) {
-        if (!shouldFallAfterHit && currentState == State.IN_AIR && pseudoHookedPlayer != null) {
+        CombatConfig combat = getCombatConfig();
+        // LEGACY only: fall when near pseudo-hooked player. MODERN keeps bobber at face (handled in movementTick).
+        if (combat.bobberFixEnabled() && combat.bobberFixMode() == CombatConfig.BobberFixMode.LEGACY
+                && !shouldFallAfterHit && currentState == State.IN_AIR && pseudoHookedPlayer != null) {
             // Fall sequence only for pseudo-hooked case: bobber hit a player, unhooked, and is now
             // near them (re-hook on move). Do NOT trigger when merely near the shooter at cast —
             // that would kill cast momentum when stationary (bobber spawns 0.3 in front).
@@ -221,13 +239,20 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
 
             HealthSystem.applyDamage(living, new Damage(DamageType.GENERIC, this, getShooter(), null, 0));
 
-            // Pseudo-hook: hook now (bobber teleports to victim this tick), then unhook next tick so we stop following.
-            // Re-hook on PlayerMoveEvent when they move; canHit excludes this player so bobber can fall when they stand still.
+            CombatConfig combat = getCombatConfig();
+            if (!combat.bobberFixEnabled()) {
+                // Vanilla: stay hooked
+                setHookedEntity(hitPlayer);
+                currentState = State.HOOKED_ENTITY;
+                return false;
+            }
+
+            // Pseudo-hook: hook now (bobber teleports to victim this tick), then unhook after hookDisplayTicks.
             pseudoHookedPlayer = hitPlayer;
-            hitPlayer.setTag(PSEUDO_HOOKED_BY, this);
+            addToPseudoHookedSet(hitPlayer, this);
             setHookedEntity(hitPlayer);
             currentState = State.HOOKED_ENTITY;
-            scheduleUnhookNextTick();
+            scheduleUnhookAfterTicks(combat.bobberFixHookDisplayTicks());
             return false;
         }
 
@@ -264,15 +289,21 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     }
 
     /**
-     * Schedule clearing the visual hook on the next tick so the client sees the
-     * hook for exactly one tick before it disappears.
+     * Schedule clearing the visual hook after the given number of ticks.
      */
-    public void scheduleUnhookNextTick() {
+    public void scheduleUnhookAfterTicks(int ticks) {
+        int scaled = com.minestom.mechanics.config.timing.TickScaler.scale(ticks, TickScalingConfig.getMode());
         MinecraftServer.getSchedulerManager().buildTask(() -> {
             if (!isRemoved()) {
                 clearHookedEntityVisual();
             }
-        }).delay(TaskSchedule.tick(1)).schedule();
+        }).delay(TaskSchedule.tick(scaled)).schedule();
+    }
+
+    /** Convenience: unhook after hook display ticks. */
+    public void scheduleUnhookNextTick() {
+        CombatConfig combat = getCombatConfig();
+        scheduleUnhookAfterTicks(combat.bobberFixEnabled() ? combat.bobberFixHookDisplayTicks() : 1);
     }
 
     @Nullable
@@ -316,8 +347,24 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
 
     private void clearPseudoHookedPlayer() {
         if (pseudoHookedPlayer != null) {
-            pseudoHookedPlayer.removeTag(PSEUDO_HOOKED_BY);
+            removeFromPseudoHookedSet(pseudoHookedPlayer, this);
             pseudoHookedPlayer = null;
+        }
+    }
+
+    static void addToPseudoHookedSet(Player player, FishingBobber bobber) {
+        Set<FishingBobber> set = player.getTag(PSEUDO_HOOKED_BY);
+        if (set == null) set = new HashSet<>();
+        set.add(bobber);
+        player.setTag(PSEUDO_HOOKED_BY, set);
+    }
+
+    static void removeFromPseudoHookedSet(Player player, FishingBobber bobber) {
+        Set<FishingBobber> set = player.getTag(PSEUDO_HOOKED_BY);
+        if (set != null) {
+            set.remove(bobber);
+            if (set.isEmpty()) player.removeTag(PSEUDO_HOOKED_BY);
+            else player.setTag(PSEUDO_HOOKED_BY, set);
         }
     }
 
@@ -447,13 +494,26 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
     // ===========================
 
     /**
-     * Exclude the pseudo-hooked player from collision so the bobber can fall through them
-     * and reach the ground when the victim isn't moving (no re-hook on move).
+     * Exclude the pseudo-hooked player from collision.
+     * LEGACY: also exclude other players once we've pseudo-hooked (rod goes through, can't hook others).
      */
     @Override
     public boolean canHit(@NotNull Entity entity) {
         if (entity == pseudoHookedPlayer) return false;
+        CombatConfig combat = getCombatConfig();
+        if (combat.bobberFixEnabled() && combat.bobberFixMode() == CombatConfig.BobberFixMode.LEGACY
+                && pseudoHookedPlayer != null && entity instanceof Player) {
+            return false; // LEGACY: cannot hook other players after first pseudo-hook
+        }
         return super.canHit(entity);
+    }
+
+    private static CombatConfig getCombatConfig() {
+        try {
+            return CombatManager.getInstance().getCombatConfig();
+        } catch (IllegalStateException e) {
+            return com.minestom.mechanics.config.combat.CombatPresets.MINEMEN;
+        }
     }
 
     // ===========================
