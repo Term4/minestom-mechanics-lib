@@ -23,7 +23,8 @@ public final class CombatPresets {
             1,
             2, 1,
             true, 1,
-            true, 0.5, 0, 0, true, true
+            true, 0.5, 0, 0, true, true,
+            true
     );
 
     /**
@@ -37,7 +38,8 @@ public final class CombatPresets {
             0, 0,
             false, 0,
             true, 0.5, 0,
-            0, true, true
+            0, true, true,
+            true
     );
 
     /**
@@ -50,6 +52,7 @@ public final class CombatPresets {
             0, 0,
             0, 0,
             false, 0,
-            true,0.5, 0, 0, true, true
+            true, 0.5, 0, 0, true, true,
+            true
     );
 }

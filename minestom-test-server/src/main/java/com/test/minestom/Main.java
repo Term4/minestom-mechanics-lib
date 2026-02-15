@@ -14,6 +14,7 @@ import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyInvento
 import com.minestom.mechanics.systems.health.damage.types.Fire;
 import com.minestom.mechanics.systems.misc.ModernStutterFix;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyAnimationFix;
+import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacySprintMetadataSuppression;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.feature.GravitySystem;
@@ -170,6 +171,7 @@ public class Main {
 
         ClientVersionDetector.getInstance();
         LegacyAnimationFix.getInstance();
+        LegacySprintMetadataSuppression.getInstance();
         EntityVisibilityTest.register();
 
         ModernStutterFix.getInstance();

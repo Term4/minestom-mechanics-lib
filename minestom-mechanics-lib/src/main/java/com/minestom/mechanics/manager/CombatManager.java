@@ -69,6 +69,7 @@ public class CombatManager extends AbstractManager<CombatManager> {
         log.debug("Blocking: {} ({}% reduction)",
                 currentConfig.blockDamageReduction() > 0 ? "enabled" : "disabled",
                 (int)(currentConfig.blockDamageReduction() * 100));
+        log.debug("Fix 1.8 Hit Slowdown: {}", currentConfig.fix18HitSlowdown() ? "enabled" : "disabled");
     }
 
     // cleanup(), shutdown(), getStatus() - ALL AUTO-HANDLED by AbstractManager!

@@ -4,12 +4,17 @@ import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
+import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.instance.Instance;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Damage system configuration record.
  * Replaces the old builder-based DamageConfig class.
+ *
+ * <p>To detect replacement hits in custom logic, use
+ * {@link HealthSystem#wasLastDamageReplacement(LivingEntity)} or
+ * {@link com.minestom.mechanics.systems.health.damage.DamageResult#wasReplacement()}.</p>
  *
  * Usage:
  * <pre>
@@ -31,7 +36,6 @@ public record DamageConfig(
         // Damage replacement system
         boolean damageReplacementEnabled,
         boolean knockbackOnReplacement,
-        boolean logReplacementDamage,
         float replacementCutoff,
         boolean hurtEffect
 ) {
@@ -58,32 +62,31 @@ public record DamageConfig(
     public int getInvulnerabilityTicks() { return invulnerabilityTicks; }
     public boolean isDamageReplacementEnabled() { return damageReplacementEnabled; }
     public boolean isKnockbackOnReplacement() { return knockbackOnReplacement; }
-    public boolean isLogReplacementDamage() { return logReplacementDamage; }
 
     // ===== INVULNERABILITY =====
 
     public DamageConfig withInvulnerabilityTicks(int ticks) {
         return new DamageConfig(ticks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withReplacementCutoff(float cutoff) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, cutoff, hurtEffect);
+                knockbackOnReplacement, cutoff, hurtEffect);
     }
 
     public DamageConfig withHurtEffect(boolean hurtEffect) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withNoReplacementSameItem(boolean noReplacementSameItem) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     // ===== FALL DAMAGE =====
@@ -91,19 +94,19 @@ public record DamageConfig(
     public DamageConfig withFallDamage(boolean enabled) {
         return new DamageConfig(invulnerabilityTicks, enabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFallDamage(boolean enabled, float multiplier) {
         return new DamageConfig(invulnerabilityTicks, enabled, multiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFallDamageMultiplier(float multiplier) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, multiplier,
                 fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     // ===== FIRE DAMAGE =====
@@ -111,19 +114,19 @@ public record DamageConfig(
     public DamageConfig withFireDamage(boolean enabled) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 enabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFireDamage(boolean enabled, float multiplier) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 enabled, multiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     public DamageConfig withFireDamageMultiplier(float multiplier) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, multiplier, damageReplacementEnabled,
-                knockbackOnReplacement, logReplacementDamage, replacementCutoff, hurtEffect);
+                knockbackOnReplacement, replacementCutoff, hurtEffect);
     }
 
     // ===== DAMAGE REPLACEMENT =====
@@ -131,13 +134,7 @@ public record DamageConfig(
     public DamageConfig withDamageReplacement(boolean enabled, boolean knockback) {
         return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
                 fireDamageEnabled, fireDamageMultiplier, enabled, knockback,
-                logReplacementDamage, replacementCutoff, hurtEffect);
-    }
-
-    public DamageConfig withLogReplacementDamage(boolean log) {
-        return new DamageConfig(invulnerabilityTicks, fallDamageEnabled, fallDamageMultiplier,
-                fireDamageEnabled, fireDamageMultiplier, damageReplacementEnabled,
-                knockbackOnReplacement, log, replacementCutoff, hurtEffect);
+                replacementCutoff, hurtEffect);
     }
 
     // ===== INVULNERABILITY BUFFER APPLICATION =====

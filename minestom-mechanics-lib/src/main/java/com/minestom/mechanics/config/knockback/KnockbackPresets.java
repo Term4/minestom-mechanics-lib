@@ -45,7 +45,7 @@ public final class KnockbackPresets {
                 0.4, 0.4, 0.4,
                 0.0, 0.0,
                 1.0, 1.0,
-                0.0, null,
+                0.0, 1.0,
                 false, false,
                 LEGACY_FRICTION, LEGACY_FRICTION,
                 KnockbackSystem.VelocityApplyMode.SET
@@ -58,7 +58,7 @@ public final class KnockbackPresets {
                 0.42, 0.36, 0.38,
                 0.08, 0.04,
                 1.0, 1.0,
-                0.0, null,  // lookWeight, sprintLookWeight
+                0.0, 1.0,
                 false, false,
                 LEGACY_FRICTION, LEGACY_FRICTION,
                 KnockbackSystem.VelocityApplyMode.SET,
@@ -66,49 +66,5 @@ public final class KnockbackPresets {
                 RANGE_START_PVP, RANGE_START_PVP, RANGE_FACTOR_H_PVP, RANGE_FACTOR_V_PVP, RANGE_MAX, RANGE_MAX,
                 SPRINT_BUFFER_TICKS
         );
-    }
-
-    /**
-     * Pure knockback: ignore old velocity (friction=0), SET result.
-     */
-    public static KnockbackConfig zeroOldVelocity() {
-        return KnockbackConfig.validated(
-                0.4, 0.4, 0.4,
-                0.0, 0.0,
-                1.0, 1.0,
-                0.0, null,
-                false, false,
-                0, 0,  // friction 0 = ignore old
-                KnockbackSystem.VelocityApplyMode.SET
-        );
-    }
-
-    /**
-     * Add knockback to current velocity: ignore old (friction=0), ADD result.
-     */
-    public static KnockbackConfig addToVelocity() {
-        return KnockbackConfig.validated(
-                0.4, 0.4, 0.4,
-                0.0, 0.0,
-                1.0, 1.0,
-                0.0, null,
-                false, false,
-                0, 0,
-                KnockbackSystem.VelocityApplyMode.ADD
-        );
-    }
-
-    /**
-     * Example preset with state overrides: reduced vertical when falling.
-     */
-    public static KnockbackConfig withFallingOverride(KnockbackConfig base) {
-        var fallOverride = new KnockbackSystem.KnockbackStateOverride(
-                null, null, null,
-                1.0, 0.6,  // 60% vertical when falling
-                null
-        );
-        return base.withStateOverrides(Map.of(
-                KnockbackSystem.KnockbackVictimState.FALLING, fallOverride
-        ));
     }
 }

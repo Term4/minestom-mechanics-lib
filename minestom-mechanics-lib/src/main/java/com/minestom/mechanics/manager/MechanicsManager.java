@@ -457,7 +457,7 @@ public class MechanicsManager {
                 // Convert DamageConfig to HealthConfig
                 HealthConfig healthConfig = new HealthConfig(
                         damageConfig.getInvulnerabilityTicks(),
-                        damageConfig.isLogReplacementDamage(),
+                        false,  // logDamage: no built-in replacement logging; use HealthSystem.wasLastDamageReplacement() to detect
                         false, 0.0f, 0  // Regeneration (disabled)
                 );
                 manager.healthSystem = HealthSystem.initialize(healthConfig);
