@@ -3,17 +3,21 @@ package com.minestom.mechanics.systems.blocking;
 import com.minestom.mechanics.InitializableSystem;
 import com.minestom.mechanics.util.LogUtil;
 import com.minestom.mechanics.config.combat.CombatConfig;
-import com.minestom.mechanics.config.blocking.BlockingPreferences;
-
 import com.minestom.mechanics.systems.blocking.tags.BlockableTagValue;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
+import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyAnimationFix;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.attribute.AttributeModifier;
 import net.minestom.server.entity.attribute.AttributeOperation;
 import net.minestom.server.event.inventory.InventoryItemChangeEvent;
+import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
+import net.minestom.server.event.player.PlayerDeathEvent;
+import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.item.ItemStack;
+import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
+import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,16 +27,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.minestom.mechanics.config.constants.CombatConstants.LEGACY_BLOCKING_SPEED_MULTIPLIER;
 
-// TODO: Update to use TAG based tracking instead of a hashmap
-
 /**
- * Main blocking system orchestrator - coordinates all blocking components.
- * Replaces the monolithic BlockingFeature with focused component architecture.
+ * Blocking system - state tracking only. Gives blocking tag to players currently blocking,
+ * removes it when they stop. Damage/knockback reduction is applied by damage and knockback systems.
  */
 public class BlockingSystem extends InitializableSystem {
     private static BlockingSystem instance;
 
     private static final LogUtil.SystemLogger log = LogUtil.system("BlockingSystem");
+
+    /** Player tag: true when blocking. Source of truth for blocking state. */
+    public static final Tag<Boolean> BLOCKING = Tag.Boolean("blocking").defaultValue(false);
 
     /** Serialized tag for items — presence marks item as blockable. */
     public static final Tag<BlockableTagValue> BLOCKABLE =
@@ -41,26 +46,11 @@ public class BlockingSystem extends InitializableSystem {
     /** Applied legacy slowdown modifiers so we can remove by modifier reference. */
     private final Map<UUID, AttributeModifier> legacySlowdownModifiers = new ConcurrentHashMap<>();
 
-    // Component references
-    private final BlockingState stateManager;
-    private final BlockingInputHandler inputHandler;
-    private final BlockingModifiers modifiers;
-    private final BlockingVisualEffects visualEffects;
-
-    // Configuration
     private final CombatConfig config;
-
-    // Runtime state
     private boolean runtimeEnabled = true;
 
     private BlockingSystem(CombatConfig config) {
         this.config = config;
-
-        // Initialize components
-        this.stateManager = new BlockingState(config);
-        this.inputHandler = new BlockingInputHandler(config, this);
-        this.modifiers = new BlockingModifiers(this, stateManager);
-        this.visualEffects = new BlockingVisualEffects(config, stateManager);
     }
 
     // ===========================
@@ -91,20 +81,40 @@ public class BlockingSystem extends InitializableSystem {
     private void registerListeners() {
         var handler = MinecraftServer.getGlobalEventHandler();
 
-        // Register input handler
-        inputHandler.registerListeners();
+        // Input: start blocking on use item, stop on release
+        handler.addListener(PlayerPacketEvent.class, this::handlePlayerPacket);
+        handler.addListener(PlayerChangeHeldSlotEvent.class, event -> {
+            if (isBlocking(event.getPlayer())) stopBlocking(event.getPlayer());
+        });
+        handler.addListener(PlayerDeathEvent.class, event -> {
+            if (isBlocking(event.getPlayer())) stopBlocking(event.getPlayer());
+        });
+        // Cleanup on disconnect is handled by CombatManager.cleanupPlayer via system registry
 
-        // Blocking damage reduction is applied inside HealthSystem's damage pipeline (DamageType.processDamage)
-        // so it runs after weapon damage is calculated. Do NOT add EntityDamageEvent here - that runs before
-        // the health pipeline and would see amount=0 for melee attacks.
-
-        // When a player inventory slot is set with a plain sword (or other auto-preset material), apply blockable preset
+        // Auto-apply blockable preset to sword/etc when placed in inventory
         handler.addListener(InventoryItemChangeEvent.class, this::onInventoryItemChange);
+    }
+
+    private void handlePlayerPacket(PlayerPacketEvent event) {
+        if (!config.blockingEnabled()) return;
+
+        Player player = event.getPlayer();
+
+        if (event.getPacket() instanceof ClientUseItemPacket) {
+            ItemStack mainHand = player.getItemInMainHand();
+            if (mainHand != null && !mainHand.isAir() && mainHand.getTag(BLOCKABLE) != null
+                    && !isBlocking(player)) {
+                startBlocking(player);
+            }
+        } else if (event.getPacket() instanceof ClientPlayerActionPacket digging) {
+            if (digging.status() == ClientPlayerActionPacket.Status.UPDATE_ITEM_STATE && isBlocking(player)) {
+                stopBlocking(player);
+            }
+        }
     }
 
     private void onInventoryItemChange(InventoryItemChangeEvent event) {
         if (!config.blockingEnabled() || !runtimeEnabled) return;
-        // Only apply auto-preset when the inventory is a player's own inventory
         var inv = event.getInventory();
         boolean isPlayerInventory = false;
         for (Player p : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
@@ -114,7 +124,6 @@ public class BlockingSystem extends InitializableSystem {
             }
         }
         if (!isPlayerInventory) return;
-        // Item in slot after the change (event fires when setItemStack is invoked)
         ItemStack item = event.getInventory().getItemStack(event.getSlot());
         ItemStack replacement = BlockableItem.applyPresetIfNeeded(item);
         if (replacement != item) {
@@ -128,62 +137,43 @@ public class BlockingSystem extends InitializableSystem {
 
     public void setRuntimeEnabled(boolean enabled) {
         this.runtimeEnabled = enabled;
-
-        // If disabling, stop all active blocks
         if (!enabled) {
             for (Player player : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
-                if (isBlocking(player)) {
-                    stopBlocking(player);
-                }
+                if (isBlocking(player)) stopBlocking(player);
             }
         }
         log.debug("Runtime blocking toggle: {}", enabled);
     }
 
     // ===========================
-    // BLOCKING MECHANICS
+    // BLOCKING MECHANICS (state tracking)
     // ===========================
 
-    /**
-     * Start blocking for a player
-     */
     public void startBlocking(Player player) {
         if (!config.blockingEnabled()) return;
-        if (stateManager.isBlocking(player)) return;
+        if (isBlocking(player)) return;
 
-        stateManager.startBlocking(player);
-        visualEffects.showBlockingMessage(player, true);
-        visualEffects.sendBlockingEffects(player);
+        player.setTag(BLOCKING, true);
+        LegacyAnimationFix.getInstance().registerAnimation(player, "blocking", this::isBlocking);
         applyLegacyBlockingSlowdownIfNeeded(player);
 
         log.debug("{} started blocking", player.getUsername());
     }
 
-    /**
-     * Stop blocking for a player
-     */
     public void stopBlocking(Player player) {
-        if (!stateManager.isBlocking(player)) return;
+        if (!isBlocking(player)) return;
 
         removeLegacyBlockingSlowdown(player);
-        stateManager.stopBlocking(player);
-        visualEffects.showBlockingMessage(player, false);
-        visualEffects.stopBlockingEffects(player);
+        LegacyAnimationFix.getInstance().unregisterAnimation(player);
+        player.setTag(BLOCKING, false);
 
         log.debug("{} stopped blocking", player.getUsername());
     }
 
-    /**
-     * Check if a player is blocking
-     */
     public boolean isBlocking(Player player) {
-        return stateManager.isBlocking(player);
+        return Boolean.TRUE.equals(player.getTag(BLOCKING));
     }
 
-    /**
-     * For legacy clients blocking with an item that has {@link BlockableTagValue#applyLegacySlowdown()} == true, apply movement slowdown.
-     * Sword preset uses false (no slowdown); items like stick can set true in the tag.
-     */
     private void applyLegacyBlockingSlowdownIfNeeded(Player player) {
         if (ClientVersionDetector.getInstance().getClientVersion(player) != ClientVersionDetector.ClientVersion.LEGACY) return;
         ItemStack mainHand = player.getItemInMainHand();
@@ -191,9 +181,7 @@ public class BlockingSystem extends InitializableSystem {
         BlockableTagValue tag = mainHand.getTag(BLOCKABLE);
         if (tag == null || tag.applyLegacySlowdown() != Boolean.TRUE) return;
 
-        double multiplier = LEGACY_BLOCKING_SPEED_MULTIPLIER;
-        // ADD_MULTIPLIED_TOTAL: final = total * (1 + amount), so amount = multiplier - 1 to get total * multiplier
-        double amount = multiplier - 1.0;
+        double amount = LEGACY_BLOCKING_SPEED_MULTIPLIER - 1.0;
         AttributeModifier modifier = new AttributeModifier("blocking_slowdown", amount, AttributeOperation.ADD_MULTIPLIED_TOTAL);
         player.getAttribute(Attribute.MOVEMENT_SPEED).addModifier(modifier);
         legacySlowdownModifiers.put(player.getUuid(), modifier);
@@ -207,26 +195,12 @@ public class BlockingSystem extends InitializableSystem {
     }
 
     // ===========================
-    // PREFERENCES MANAGEMENT
-    // ===========================
-
-    public void setPlayerPreferences(Player player, BlockingPreferences preferences) {
-        player.setTag(BlockingState.PREFERENCES, preferences);
-    }
-
-    public BlockingPreferences getPlayerPreferences(Player player) {
-        return player.getTag(BlockingState.PREFERENCES);
-    }
-
-    // ===========================
     // CONFIGURATION ACCESS
     // ===========================
 
     private Double damageReductionOverride = null;
     private Double knockbackHMultiplierOverride = null;
     private Double knockbackVMultiplierOverride = null;
-    private Boolean showDamageMessagesOverride = null;
-    private Boolean showBlockEffectsOverride = null;
 
     public CombatConfig getConfig() {
         return config;
@@ -236,18 +210,9 @@ public class BlockingSystem extends InitializableSystem {
         return config.blockingEnabled() && runtimeEnabled;
     }
 
-    // TODO: Make reductions appear consistent. Seeinng 1 - reduction can be confusing.
-    //  Just have 0.95 reduce by 95% (0.95), and whenever we present the user with the option to
-    //  configure this, we present it like that. Now, we can use it HERE however we want to, but
-    //  it's confusing to present the user with two different ways of presenting the same information.
-
-    /**
-     * Resolve damage reduction for a blocking player. When player is null or not blocking, returns config default.
-     * When blocking, uses the main-hand item's BLOCKABLE tag if present, else config.
-     */
     public double getDamageReduction(@Nullable Player player) {
         double configReduction = damageReductionOverride != null ? damageReductionOverride : config.blockDamageReduction();
-        if (player == null || !stateManager.isBlocking(player)) return configReduction;
+        if (player == null || !isBlocking(player)) return configReduction;
         ItemStack mainHand = player.getItemInMainHand();
         if (mainHand == null || mainHand.isAir()) return configReduction;
         BlockableTagValue tag = mainHand.getTag(BLOCKABLE);
@@ -255,14 +220,9 @@ public class BlockingSystem extends InitializableSystem {
         return tag.damageReduction() != null ? tag.damageReduction() : configReduction;
     }
 
-    /**
-     * Resolve horizontal knockback reduction for a blocking player. When player is null or not blocking, returns config default.
-     * Return value is "reduction" (0 = no reduction, 1 = full reduction).
-     * Config stores reduction directly; item tag stores multiplier (what we keep), converted to reduction.
-     */
     public double getKnockbackHorizontalReduction(@Nullable Player player) {
         double configReduction = knockbackHMultiplierOverride != null ? 1.0 - knockbackHMultiplierOverride : config.blockKnockbackHReduction();
-        if (player == null || !stateManager.isBlocking(player)) return configReduction;
+        if (player == null || !isBlocking(player)) return configReduction;
         ItemStack mainHand = player.getItemInMainHand();
         if (mainHand == null || mainHand.isAir()) return configReduction;
         BlockableTagValue tag = mainHand.getTag(BLOCKABLE);
@@ -271,13 +231,9 @@ public class BlockingSystem extends InitializableSystem {
         return configReduction;
     }
 
-    /**
-     * Resolve vertical knockback reduction for a blocking player. When player is null or not blocking, returns config default.
-     * Return value is "reduction" (0 = no reduction, 1 = full reduction).
-     */
     public double getKnockbackVerticalReduction(@Nullable Player player) {
         double configReduction = knockbackVMultiplierOverride != null ? 1.0 - knockbackVMultiplierOverride : config.blockKnockbackVReduction();
-        if (player == null || !stateManager.isBlocking(player)) return configReduction;
+        if (player == null || !isBlocking(player)) return configReduction;
         ItemStack mainHand = player.getItemInMainHand();
         if (mainHand == null || mainHand.isAir()) return configReduction;
         BlockableTagValue tag = mainHand.getTag(BLOCKABLE);
@@ -286,26 +242,6 @@ public class BlockingSystem extends InitializableSystem {
         return configReduction;
     }
 
-    public boolean shouldShowDamageMessages() {
-        return showDamageMessagesOverride != null ? showDamageMessagesOverride : config.showBlockDamageMessages();
-    }
-
-    public boolean shouldShowBlockEffects() {
-        return showBlockEffectsOverride != null ? showBlockEffectsOverride : config.showBlockEffects();
-    }
-
-    /**
-     * Apply blocking damage reduction and feedback. Called from the damage pipeline (DamageType)
-     * after weapon damage is calculated, so blocking sees the correct amount.
-     *
-     * @return the reduced damage amount, or the original if not blocking / not applicable
-     */
-    public float applyBlockingDamageReduction(Player victim, float currentAmount,
-                                              net.minestom.server.registry.RegistryKey<?> damageType) {
-        return modifiers.applyBlockingReduction(victim, currentAmount, damageType);
-    }
-
-    // Setters for runtime configuration
     public void setDamageReduction(double reduction) {
         this.damageReductionOverride = reduction;
     }
@@ -318,52 +254,36 @@ public class BlockingSystem extends InitializableSystem {
         this.knockbackVMultiplierOverride = 1.0 - reduction;
     }
 
-    public void setShowDamageMessages(boolean show) {
-        this.showDamageMessagesOverride = show;
-    }
-
-    public void setShowBlockEffects(boolean show) {
-        this.showBlockEffectsOverride = show;
-    }
-
     // ===========================
     // CLEANUP
     // ===========================
 
-    /**
-     * Clean up player data when they disconnect
-     */
     public void cleanup(Player player) {
         removeLegacyBlockingSlowdown(player);
-        stateManager.cleanup(player);
-        visualEffects.cleanup(player);
-        log.debug("Cleaned up blocking data for: {}", player.getUsername());
+        if (isBlocking(player)) stopBlocking(player);
+        player.removeTag(BLOCKING);
+        log.debug("Cleaned up blocking state for: {}", player.getUsername());
     }
 
-    /**
-     * Get active player count (for memory leak checking)
-     */
+    @Override
+    public void cleanupPlayer(Player player) {
+        cleanup(player);
+    }
+
     public int getActiveCount() {
-        return stateManager.getActiveCount();
+        int count = 0;
+        for (Player p : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
+            if (isBlocking(p)) count++;
+        }
+        return count;
     }
 
-    /**
-     * Shutdown the blocking system
-     */
     public void shutdown() {
         log.info("Shutting down BlockingSystem");
-
-        // Stop all active blocking
         for (Player player : MinecraftServer.getConnectionManager().getOnlinePlayers()) {
-            if (isBlocking(player)) {
-                stopBlocking(player);
-            }
+            if (isBlocking(player)) stopBlocking(player);
             cleanup(player);
         }
-
-        // Clean up visual effects
-        visualEffects.shutdown();
-
         log.info("BlockingSystem shutdown complete");
     }
 }

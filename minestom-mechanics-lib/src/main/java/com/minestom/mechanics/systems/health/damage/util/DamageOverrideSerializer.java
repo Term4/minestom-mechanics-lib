@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.health.damage.util;
 
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.tag.TagReadable;
 import net.minestom.server.tag.TagSerializer;

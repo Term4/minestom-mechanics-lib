@@ -1,6 +1,5 @@
 package com.minestom.mechanics.config.health;
 
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
 
 /**
  * Health system presets for common server configurations.

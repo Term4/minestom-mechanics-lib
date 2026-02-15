@@ -406,7 +406,7 @@ public class FishingBobber extends CustomEntityProjectile implements ProjectileB
             net.minestom.server.item.ItemStack rodItem = (shooterEntity instanceof Player p) ? p.getItemInMainHand() : null;
             var props = dt != null
                     ? dt.resolveProperties(this, shooterEntity, (LivingEntity) entity, rodItem)
-                    : com.minestom.mechanics.systems.health.damage.DamageTypeProperties.ATTACK_DEFAULT;
+                    : com.minestom.mechanics.config.health.DamageTypeProperties.ATTACK_DEFAULT;
             if (!props.bypassCreative()) return false;
         }
 

@@ -2,6 +2,7 @@ package com.test.minestom.commands;
 
 import com.test.minestom.commands.combat.BlockingCommand;
 import com.test.minestom.commands.combat.BlockingConfigCommand;
+import com.test.minestom.commands.combat.DrCommand;
 import com.test.minestom.commands.combat.KnockbackCommand;
 import com.test.minestom.gui.views.BlockingSettingsGui;
 import com.minestom.mechanics.manager.CombatManager;
@@ -99,13 +100,15 @@ public class CommandRegistry {
         // Setup join message with command info
         setupJoinMessages();
 
-        // Initialize BlockingSettingsGui with BlockingSystem reference
+        // Initialize BlockingSettingsGui and damage reduction display hook
         try {
             var blocking = CombatManager.getInstance().getBlockingSystem();
             BlockingSettingsGui.setBlockingSystem(blocking);
             log.debug("[CommandRegistry] BlockingSettingsGui initialized");
+            DrCommand.registerListener();
+            log.debug("[CommandRegistry] Damage reduction display listener registered");
         } catch (Exception e) {
-            log.warn("[CommandRegistry] Could not initialize BlockingSettingsGui: " + e.getMessage());
+            log.warn("[CommandRegistry] Could not initialize blocking features: " + e.getMessage());
         }
 
         log.debug("[CommandRegistry] Successfully registered " + COMMAND_LIST.size() + " commands");
@@ -137,6 +140,15 @@ public class CommandRegistry {
                 "Configure blocking system (Admin)",
                 true,
                 "blockconfig", "bconfig"
+        ));
+
+        // Damage reduction display (blocked hits above hotbar)
+        COMMAND_LIST.add(new CommandInfo(
+                new DrCommand(),
+                CommandCategory.COMBAT,
+                "Toggle blocking damage reduction display above hotbar",
+                true,
+                "dr"
         ));
     }
 

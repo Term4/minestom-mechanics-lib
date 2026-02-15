@@ -1,6 +1,6 @@
 package com.minestom.mechanics.systems.health.damage.util;
 
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;

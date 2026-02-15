@@ -1,5 +1,6 @@
 package com.minestom.mechanics.systems.health.damage;
 
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;

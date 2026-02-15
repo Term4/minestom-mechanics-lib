@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.health.damage.types;
 
 import com.minestom.mechanics.systems.health.damage.DamageTracker;
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.util.BlockContactUtil;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;

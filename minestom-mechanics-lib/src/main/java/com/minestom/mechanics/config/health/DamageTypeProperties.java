@@ -1,4 +1,4 @@
-package com.minestom.mechanics.systems.health.damage;
+package com.minestom.mechanics.config.health;
 
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import net.minestom.server.item.ItemStack;
@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Unified properties for a damage type.
- * Each {@link DamageType} carries a default set of these properties,
+ * Each {@link com.minestom.mechanics.systems.health.damage.DamageType} carries a default set of these properties,
  * which can be overridden per item/entity/world via {@link DamageOverride} tags.
  *
  * <p>Usage:</p>
@@ -44,7 +44,7 @@ public record DamageTypeProperties(
 
     /** Default properties for environmental damage (fall, fire, cactus, etc.) — no invuln buffer */
     public static final DamageTypeProperties ENVIRONMENTAL_DEFAULT = new DamageTypeProperties(
-            true, 1.0f, false, true, false, false, true, false, 0f, false, 0, false
+            true, 1.0f, false, false, false, false, true, false, 0f, false, 0, false
     );
 
     /** Default properties for attack damage (melee, projectile, etc.) — no invuln buffer by default */

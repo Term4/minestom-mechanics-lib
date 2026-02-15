@@ -2,7 +2,7 @@ package com.minestom.mechanics.config.gameplay;
 
 import com.minestom.mechanics.config.combat.CombatConfig;
 import com.minestom.mechanics.systems.health.HealthSystem;
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.instance.Instance;

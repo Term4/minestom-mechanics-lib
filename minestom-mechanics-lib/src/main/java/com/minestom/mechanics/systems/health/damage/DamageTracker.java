@@ -1,5 +1,7 @@
 package com.minestom.mechanics.systems.health.damage;
 
+import com.minestom.mechanics.config.health.DamageTypeProperties;
+
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.registry.RegistryKey;

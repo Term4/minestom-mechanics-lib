@@ -7,7 +7,9 @@ import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyHurtSuppression;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.systems.health.damage.*;
+import com.minestom.mechanics.systems.health.events.BlockingDamageEvent;
 import net.minestom.server.item.ItemStack;
 import com.minestom.mechanics.systems.health.damage.types.*;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
@@ -302,8 +304,14 @@ public class HealthSystem extends InitializableSystem {
         if (victim instanceof Player victimPlayer && props.blockable()) {
             try {
                 BlockingSystem blocking = BlockingSystem.getInstance();
-                if (blocking.isEnabled())
-                    damageAmount = blocking.applyBlockingDamageReduction(victimPlayer, damageAmount, damage.getType());
+                if (blocking.isEnabled() && blocking.isBlocking(victimPlayer) && isBlockingApplicable(damage.getType(), victimPlayer)) {
+                    float originalAmount = damageAmount;
+                    double reduction = blocking.getDamageReduction(victimPlayer);
+                    damageAmount = (float) (originalAmount * (1.0 - reduction));
+                    if (originalAmount > damageAmount) {
+                        MinecraftServer.getGlobalEventHandler().call(new BlockingDamageEvent(victimPlayer, originalAmount, damageAmount, damage.getType()));
+                    }
+                }
             } catch (IllegalStateException ignored) {}
         }
 

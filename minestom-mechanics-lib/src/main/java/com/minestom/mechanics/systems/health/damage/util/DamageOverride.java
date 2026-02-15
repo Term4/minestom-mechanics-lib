@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.health.damage.util;
 
 import com.minestom.mechanics.systems.ConfigTagWrapper;
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

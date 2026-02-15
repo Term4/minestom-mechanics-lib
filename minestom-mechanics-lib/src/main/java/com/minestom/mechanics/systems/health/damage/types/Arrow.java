@@ -1,7 +1,7 @@
 package com.minestom.mechanics.systems.health.damage.types;
 
 import com.minestom.mechanics.systems.health.damage.DamageTracker;
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.registry.RegistryKey;
 

@@ -16,6 +16,9 @@ import net.minestom.server.instance.block.Block;
 //  right when they enter causes stuttering and is hacky at best
 //  If there's a native way to prevent poses, would also shorten this by allowing
 //  the removal of corrective velocity measures
+// TODO: For modern clients, the metadata modifier (sendPacketToViewers(getMetadataPacket())) should
+//  ONLY block/modify metadata for specific things (e.g. pose) rather than sending full packet.
+//  Find out what metadata index/values need to be blocked for pose correction to be more surgical.
 
 /**
  * MovementRestrictionSystem - Controls which movement mechanics are allowed.

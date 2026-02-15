@@ -2,7 +2,7 @@ package com.test.minestom;
 
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.health.damage.DamageType;
-import com.minestom.mechanics.systems.health.damage.DamageTypeProperties;
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.config.knockback.KnockbackPresets;
 import com.minestom.mechanics.systems.knockback.KnockbackSystem;
 import com.minestom.mechanics.systems.projectile.components.ProjectileVelocity;

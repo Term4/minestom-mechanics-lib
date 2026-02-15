@@ -6,7 +6,6 @@ import com.minestom.mechanics.config.gameplay.DamagePresets;
 import com.minestom.mechanics.config.gameplay.GameplayPresets;
 import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.blocking.BlockableItem;
-import com.minestom.mechanics.systems.blocking.BlockingState;
 import com.minestom.mechanics.systems.blocking.tags.BlockableTagValue;
 import com.minestom.mechanics.config.projectiles.ProjectilePresets;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
@@ -272,10 +271,6 @@ public class Main {
 
             // Clean up GUI
             GuiManager.getInstance().cleanup(player);
-
-            // Force aggressive cleanup
-            player.removeTag(BlockingState.BLOCKING);
-            player.removeTag(BlockingState.PREFERENCES);
 
             MinecraftServer.LOGGER.info("Cleaned up all data for: {}", player.getUsername());
         });

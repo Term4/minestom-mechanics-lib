@@ -1,15 +1,18 @@
 package com.minestom.mechanics.systems.health.damage;
 
+import com.minestom.mechanics.config.health.DamageTypeProperties;
 import com.minestom.mechanics.config.health.HealthConfig;
 import com.minestom.mechanics.manager.ArmorManager;
 import com.minestom.mechanics.manager.MechanicsManager;
 import com.minestom.mechanics.systems.blocking.BlockingSystem;
+import com.minestom.mechanics.systems.health.events.BlockingDamageEvent;
 import com.minestom.mechanics.systems.health.HealthSystem;
 import com.minestom.mechanics.systems.health.InvulnerabilityTracker;
 import com.minestom.mechanics.systems.health.damage.util.DamageCalculator;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverride;
 import com.minestom.mechanics.systems.health.damage.util.DamageOverrideSerializer;
 import com.minestom.mechanics.util.LogUtil;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
@@ -279,14 +282,19 @@ public class DamageType {
             damageAmount = modified;
         }
 
-        // 3b. Apply blocking reduction (must run after damage is calculated; BlockingModifiers
-        //     used to listen on EntityDamageEvent but ran before this pipeline and saw amount=0)
+        // 3b. Apply blocking reduction (must run after damage is calculated)
         if (victim instanceof Player victimPlayer && props.blockable()) {
             try {
                 BlockingSystem blocking = BlockingSystem.getInstance();
-                if (blocking.isEnabled()) {
-                    damageAmount = blocking.applyBlockingDamageReduction(victimPlayer, damageAmount, mcType);
+                HealthSystem hs = HealthSystem.getInstance();
+                if (blocking.isEnabled() && blocking.isBlocking(victimPlayer) && hs.isBlockingApplicable(mcType, victimPlayer)) {
+                    float originalAmount = damageAmount;
+                    double reduction = blocking.getDamageReduction(victimPlayer);
+                    damageAmount = (float) (originalAmount * (1.0 - reduction));
                     event.getDamage().setAmount(damageAmount);
+                    if (originalAmount > damageAmount) {
+                        MinecraftServer.getGlobalEventHandler().call(new BlockingDamageEvent(victimPlayer, originalAmount, damageAmount, mcType));
+                    }
                 }
             } catch (IllegalStateException ignored) {}
         }

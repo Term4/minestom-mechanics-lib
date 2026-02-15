@@ -93,30 +93,6 @@ public class BlockingConfigCommand extends Command {
                     String.format("%.0f%%", reduction * 100)));
         }, vKnockbackArg, vKnockbackValueArg);
 
-        // Toggle damage messages
-        addSyntax((sender, context) -> {
-            if (!(sender instanceof Player player)) return;
-
-            BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            boolean newState = !blocking.shouldShowDamageMessages();
-            blocking.setShowDamageMessages(newState);
-
-            player.sendMessage(Component.text("Damage messages ", LABEL)
-                    .append(status(newState)));
-        }, ArgumentType.Literal("messages"));
-
-        // Toggle block effects
-        addSyntax((sender, context) -> {
-            if (!(sender instanceof Player player)) return;
-
-            BlockingSystem blocking = CombatManager.getInstance().getBlockingSystem();
-            boolean newState = !blocking.shouldShowBlockEffects();
-            blocking.setShowBlockEffects(newState);
-
-            player.sendMessage(Component.text("Block effects ", LABEL)
-                    .append(status(newState)));
-        }, ArgumentType.Literal("effects"));
-
         // Presets
         var presetArg = ArgumentType.Literal("preset");
         var presetTypeArg = ArgumentType.Word("type").from("vanilla", "reduced", "minimal", "maximum");
@@ -168,11 +144,8 @@ public class BlockingConfigCommand extends Command {
                 .addUsage("/blockconfig damage <0.0-1.0>", "Set damage reduction (0.5 = 50%)")
                 .addUsage("/blockconfig hkb <0.0-1.0>", "Set horizontal KB reduction")
                 .addUsage("/blockconfig vkb <0.0-1.0>", "Set vertical KB reduction")
-                .addUsage("/blockconfig messages", "Toggle damage messages")
-                .addUsage("/blockconfig effects", "Toggle block effects")
                 .addUsage("/blockconfig preset <type>", "Apply preset (vanilla/reduced/minimal/maximum)")
                 .addNote("Changes apply immediately to all players")
-                .addNote("Use /block to configure personal preferences")
                 .send(sender);
     }
 
@@ -198,14 +171,6 @@ public class BlockingConfigCommand extends Command {
                 String.format("%.0f%%", blocking.getKnockbackHorizontalReduction(null) * 100)));
         player.sendMessage(labelValue("Vertical KB Reduction",
                 String.format("%.0f%%", blocking.getKnockbackVerticalReduction(null) * 100)));
-
-        player.sendMessage(Component.empty());
-
-        // Options
-        player.sendMessage(Component.text("Show Messages: ", LABEL)
-                .append(toggle(blocking.shouldShowDamageMessages())));
-        player.sendMessage(Component.text("Show Effects: ", LABEL)
-                .append(toggle(blocking.shouldShowBlockEffects())));
 
         player.sendMessage(Component.empty());
         player.sendMessage(Component.text("Use ", LABEL)
