@@ -4,18 +4,16 @@ A production-ready mechanics library for Minestom servers, providing comprehensi
 
 ## Features
 
-- **Cross-Version Support**: Works with ViaVersion and Velocity proxy for multi-version servers
-- **Comprehensive Combat System**: Full 1.8-style PvP with modern enhancements
+- **Cross-Version Support**: Works with ViaVersion (viaversion, viabackwards, & viarewind) and Velocity proxy for multi-version networks
+- **Comprehensive Combat System**: Full 1.8-style PvP for legacy and modern users (working on modern pvp for both versions as well)
 - **Multiple Combat Modes**: Pre-configured modes for different server types (MinemanClub, Vanilla, Hypixel, etc.)
 - **Advanced Hit Detection**: Server-side raycasting with configurable reach and hitbox expansion
 - **Knockback System**: Multiple knockback profiles with sync support
-- **Blocking System**: Complete blocking mechanics with damage reduction and visual effects
+- **Blocking System**: Complete blocking mechanics with damage reduction and visual effects (for both legacy and modern clients)
 - **Projectile Support**: Full projectile system with bow, fishing rod, and throwable items
-- **Damage System**: Environmental damage handling with invulnerability frames
-- **Client Version Detection**: Via ViaVersion channels `vv:mod_details` (client mods) or `vv:proxy_details` (Velocity/Bungee with send-player-details); requires ViaVersion in the pipeline for version-aware behavior
-- **Legacy Mechanics**: Support for older Minecraft mechanics (1.8, 1.9, etc.)
-- **GUI System**: Built-in GUI framework for mechanics settings
-- **Extensive Configuration**: Highly configurable with preset support
+- **Damage System**: Full damage system with a lot of damage types (not all, least not yet. Bite me)
+- **Legacy Mechanics**: Support for older Minecraft mechanics (1.7, 1.8, and some bug fixes on modern versions as well. IDEALLY we'll get up to having modern mechanics on legacy versions)
+- **Extensive Configuration**: Highly configurable with preset support (like extremely configurable, configurable to the point where the configurability is configurable. This was so painful)
 
 ## Quick Start
 
@@ -75,9 +73,6 @@ The library includes several pre-configured combat modes:
 - **Vanilla**: Classic 1.8 PvP mechanics
 - **Hypixel**: Hypixel network combat style
 - **Lunar**: Lunar Network combat style
-- **Intave/Grim**: Modern anticheat compatible combat
-- **Balanced**: Middle ground for general play
-- **Debug**: Testing mode with extreme values
 
 ## Configuration
 
