@@ -4,14 +4,15 @@ package com.minestom.mechanics.config.health;
 /**
  * Simplified health system configuration.
  * Contains only global settings. Per-damage-type settings now live on
- * {@link DamageTypeProperties} attached to each
- * {@link com.minestom.mechanics.systems.health.DamageHandler}.
+ * {@link com.minestom.mechanics.systems.health.damage.DamageType} via
+ * {@link DamageTypeProperties}.
  *
- * <p>Usage:</p>
+ * <p>Example (customize after initialization):</p>
  * <pre>
- * HealthConfig config = HealthPresets.MINEMEN
- *     .withInvulnerabilityTicks(15)
- *     .withLogDamage(false);
+ * var system = HealthSystem.initialize(HealthPresets.MINEMEN);
+ * DamageType.get("fall").setDefaults(
+ *     DamageTypeProperties.ENVIRONMENTAL_DEFAULT.withBlockable(true).withDamageReplacement(true)
+ * );
  * </pre>
  */
 public record HealthConfig(

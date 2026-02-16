@@ -6,13 +6,13 @@ package com.minestom.mechanics.config.health;
  * These provide the global {@link HealthConfig} settings.
  *
  * <p>Per-damage-type settings are configured separately on each
- * {@link com.minestom.mechanics.systems.health.DamageHandler} via
+ * {@link com.minestom.mechanics.systems.health.damage.DamageType} via
  * {@link DamageTypeProperties}.</p>
  *
  * <p>Example (customize after initialization):</p>
  * <pre>
  * var system = HealthSystem.initialize(HealthPresets.MINEMEN);
- * system.getHandler(FallDamageHandler.class).setDefaults(
+ * DamageType.get("fall").setDefaults(
  *     DamageTypeProperties.ENVIRONMENTAL_DEFAULT.withBlockable(true).withDamageReplacement(true)
  * );
  * </pre>
