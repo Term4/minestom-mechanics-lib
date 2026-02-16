@@ -5,7 +5,7 @@
 ch-qos-logback-logback-classic = "1.5.27"
 com-google-code-gson-gson = "2.11.0"
 it-unimi-dsi-fastutil = "8.5.18"
-net-minestom-minestom = "2026.01.08-1.21.11"
+net-minestom-minestom = "2026.02.09-1.21.11"
 
 [libraries]
 ch-qos-logback-logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "ch-qos-logback-logback-classic" }

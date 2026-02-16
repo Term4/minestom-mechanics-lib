@@ -416,7 +416,7 @@ public abstract class CustomEntityProjectile extends Entity {
                     yaw = prevYaw;
                     pitch = prevPitch;
                 } else {
-                    Vec displacement = Vec.fromPoint(newPosition.sub(position));
+                    Vec displacement = newPosition.sub(position).asVec();
 
                     if (displacement.lengthSquared() > 1e-8) {
                         double horizontalLength = Math.sqrt(displacement.x() * displacement.x() + displacement.z() * displacement.z());
