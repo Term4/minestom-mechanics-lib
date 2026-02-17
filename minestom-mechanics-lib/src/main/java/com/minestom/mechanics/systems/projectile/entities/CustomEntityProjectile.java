@@ -4,7 +4,7 @@ import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.timing.TickScaler;
 import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
-import com.minestom.mechanics.systems.compatibility.legacy_1_8.LegacyProjectileCompat;
+import com.minestom.mechanics.systems.compatibility.legacy_1_8.fix.LegacyProjectileCompat;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileUtil;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.collision.*;

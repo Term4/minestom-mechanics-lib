@@ -1,4 +1,4 @@
-package com.minestom.mechanics.systems.compatibility.legacy_1_8;
+package com.minestom.mechanics.systems.compatibility.legacy_1_8.fix;
 
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import net.minestom.server.MinecraftServer;
@@ -100,6 +100,7 @@ public class LegacyProjectileCompat {
      * Uses the block's collision shape extent, so fences/slabs work correctly
      * (full blocks use 0.5 half-width; fences use ~0.0625).
      */
+    // TODO: this doesn't filter properly
     private static double edgeThreshold = 0.35;
 
     // =========================================================================
