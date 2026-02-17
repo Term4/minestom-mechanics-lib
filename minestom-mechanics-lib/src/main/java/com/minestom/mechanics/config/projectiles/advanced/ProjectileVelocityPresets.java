@@ -12,7 +12,7 @@ public class ProjectileVelocityPresets {
 
     /** Default arrow velocity (3.0 speed, normal gravity) */
     public static final ProjectileVelocityConfig ARROW =
-            new ProjectileVelocityConfig(3.0, 3.0, 1.0, 0.05, 0.99, 0.99);
+            new ProjectileVelocityConfig(3.0, 3.0, 0, 0.05, 0.99, 0.99);
 
     /** Default snowball velocity (1.5 speed, light gravity) */
     public static final ProjectileVelocityConfig SNOWBALL =

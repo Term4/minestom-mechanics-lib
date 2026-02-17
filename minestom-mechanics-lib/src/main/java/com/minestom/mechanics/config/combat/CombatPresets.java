@@ -21,7 +21,8 @@ public final class CombatPresets {
             6,
             12,
             1,
-            2, 1,
+            // Update to where victim can only get fake hits after they've been combod for x amount of hits
+            0, 0,
             true, 1,
             true, 0.5, 0, 0, true,
             true, CombatConfig.BobberFixMode.LEGACY, 1

@@ -22,7 +22,7 @@ public final class KnockbackPresets {
     /** Minemen-style with sprint look weight 0.5, vector addition, range reduction, sprint buffer. */
     public static KnockbackConfig minemen() {
         return KnockbackConfig.validated(
-                0.52, 0.4, 0.365,
+                0.525, 0.4, 0.365,
                 0.3534, 0.0,
                 1.0, 1.0,
                 0.5, 0.5,
@@ -34,7 +34,7 @@ public final class KnockbackPresets {
                 6.0, 6.5,
                 KnockbackSystem.VelocityApplyMode.SET,
                 0, 0, 0, 0, 0, 0,
-                3, 0, 0.2, 0, 0.4, 0,
+                4, 0, 0.25, 0, 0.4, 0,
                 8
         );
     }

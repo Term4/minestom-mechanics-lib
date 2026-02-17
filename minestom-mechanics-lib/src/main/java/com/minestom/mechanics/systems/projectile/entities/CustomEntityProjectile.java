@@ -26,6 +26,8 @@ import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUtils;
 import net.minestom.server.collision.CollisionUtils;
 import net.minestom.server.collision.EntityCollisionResult;
+import net.minestom.server.MinecraftServer;
+import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,6 +86,24 @@ public abstract class CustomEntityProjectile extends Entity {
      * packets to legacy viewers from tick() and updateNewViewer().
      */
     private static final double STUCK_VELOCITY_HINT = 1.0;
+
+    /**
+     * Vanilla 1.8 arrow pullback distance (0.05 blocks along flight direction).
+     * After sticking, the server sends a ONE-TIME delayed teleport to legacy
+     * clients that nudges the arrow 0.05 blocks back along its flight path.
+     * This moves the client-side position off the exact block boundary so the
+     * 1.8 client's raycast reliably detects the surface.
+     *
+     * Only sent to legacy clients. Modern clients don't need this.
+     * Only sent ONCE, a few ticks after sticking (not continuously).
+     */
+    private static final double STUCK_PULLBACK = 0.1;
+
+    /** Ticks to wait after sticking before sending the legacy pullback teleport. */
+    private static final int STUCK_PULLBACK_DELAY_TICKS = 20;
+
+    /** After the delayed pullback teleport fires, hints switch to face-normal for reliable raycast. */
+    private boolean pullbackHintSent = false;
 
     // Core projectile state
     protected Vec velocity = Vec.ZERO;
@@ -262,6 +282,7 @@ public abstract class CustomEntityProjectile extends Entity {
                 collisionDirection = null;
                 stuckCollisionPoint = null;
                 stuckPacketVelocity = Vec.ZERO;
+                pullbackHintSent = false;
                 setNoGravity(false);
                 onUnstuck();
             }
@@ -314,7 +335,7 @@ public abstract class CustomEntityProjectile extends Entity {
                     EventDispatcher.call(event);
                     if (!event.isCancelled()) {
                         if (onHit(collided.entity())) {
-                            scheduler().scheduleNextProcess(this::remove);
+                            remove();
                             return;
                         }
                     }
@@ -325,10 +346,37 @@ public abstract class CustomEntityProjectile extends Entity {
             if (!ChunkUtils.isLoaded(finalChunk)) return;
 
             boolean justBecameStuck = false;
+            // Debug capture — only valid when justBecameStuck=true
+            int dbgHitAxis = -1;
+            Point dbgHitPoint = null;
+            Point dbgBlockLookup = null;
+            Block dbgHitBlock = null;
+            Vec dbgCollisionDir = null;
 
             // =================================================================
             // BLOCK COLLISION DETECTION
             // =================================================================
+
+            // DEBUG: What's actually in collisionShapes?
+            if (physicsResult.hasCollision()) {
+                Shape[] shapes = physicsResult.collisionShapes();
+                Point[] points = physicsResult.collisionPoints();
+                System.out.println("[ARROW DEBUG] === COLLISION SHAPES ===");
+                System.out.println("[ARROW DEBUG] collisionX=" + physicsResult.collisionX()
+                        + " collisionY=" + physicsResult.collisionY()
+                        + " collisionZ=" + physicsResult.collisionZ());
+                if (shapes != null) {
+                    for (int i = 0; i < shapes.length; i++) {
+                        System.out.println("[ARROW DEBUG] shapes[" + i + "] = "
+                                + (shapes[i] == null ? "null" : shapes[i].getClass().getName())
+                                + " instanceof ShapeImpl=" + (shapes[i] instanceof ShapeImpl)
+                                + " point=" + (points != null && points.length > i ? points[i] : "N/A"));
+                    }
+                } else {
+                    System.out.println("[ARROW DEBUG] shapes array is NULL");
+                }
+            }
+
             if (physicsResult.hasCollision() && !isStuck()) {
                 boolean cx = physicsResult.collisionX();
                 boolean cy = physicsResult.collisionY();
@@ -381,9 +429,15 @@ public abstract class CustomEntityProjectile extends Entity {
                             this.collisionDirection = collisionDir;
                             this.stuckCollisionPoint = stuckPosition;
                             justBecameStuck = true;
+                            dbgHitAxis = hitAxis;
+                            dbgHitPoint = hitPoint;
+                            dbgBlockLookup = blockLookup;
+                            dbgHitBlock = hitBlock;
+                            dbgCollisionDir = collisionDir;
 
                             if (onStuck()) {
-                                scheduler().scheduleNextProcess(this::remove);
+                                remove();
+                                return;
                             }
                         }
                     }
@@ -469,6 +523,69 @@ public abstract class CustomEntityProjectile extends Entity {
                 // which is after movementTick(). On the stick tick, this provides
                 // an additional hint reinforcement for legacy after any periodic
                 // sync zero. No global scheduler needed.
+
+                // =============================================================
+                // DELAYED LEGACY PULLBACK (vanilla 0.05 inward nudge)
+                // =============================================================
+                // Vanilla 1.8 always pulls the arrow 0.05 blocks back along its
+                // flight path from the hit point. This moves the position off
+                // the exact block boundary. The server sends this as a one-time
+                // teleport a few ticks after sticking.
+                //
+                // On the 1.8 client: the arrow sticks (via hint), the client
+                // briefly renders it at its predicted position, then a few ticks
+                // later receives this teleport which snaps it to the correct
+                // pulled-back position. At edges this naturally corrects the
+                // visual because the pullback moves the arrow onto the face.
+                //
+                // Modern clients don't need this — they render correctly from
+                // the initial stick packets with zero velocity.
+                // =============================================================
+                final int entityId = getEntityId();
+                final Pos pullbackPos;
+                if (stuckPacketVelocity.lengthSquared() > 0.0001) {
+                    Vec flightDir = stuckPacketVelocity.normalize();
+                    Vec pullback = flightDir.mul(STUCK_PULLBACK);
+                    pullbackPos = finalPos.sub(pullback.x(), pullback.y(), pullback.z());
+                } else {
+                    pullbackPos = finalPos;
+                }
+                final Vec hintVel = stuckPacketVelocity;
+
+                // DEBUG: Log stick details
+                String faceName = switch (dbgHitAxis) {
+                    case 0 -> (dbgCollisionDir.x() > 0 ? "EAST face (+X)" : "WEST face (-X)");
+                    case 1 -> (dbgCollisionDir.y() > 0 ? "UP face (+Y)" : "DOWN face (-Y)");
+                    case 2 -> (dbgCollisionDir.z() > 0 ? "SOUTH face (+Z)" : "NORTH face (-Z)");
+                    default -> "UNKNOWN";
+                };
+                System.out.println("[ARROW DEBUG] === STUCK ===");
+                System.out.println("[ARROW DEBUG] hitAxis=" + dbgHitAxis + " face=" + faceName);
+                System.out.println("[ARROW DEBUG] collisionDir=" + dbgCollisionDir);
+                System.out.println("[ARROW DEBUG] hitPoint=" + dbgHitPoint);
+                System.out.println("[ARROW DEBUG] stuckPosition (server)=" + stuckCollisionPoint);
+                System.out.println("[ARROW DEBUG] finalPos (sent to clients)=" + finalPos);
+                System.out.println("[ARROW DEBUG] pullbackPos (legacy teleport)=" + pullbackPos);
+                System.out.println("[ARROW DEBUG] stuckPacketVelocity (hint)=" + stuckPacketVelocity);
+                System.out.println("[ARROW DEBUG] blockLookup=" + dbgBlockLookup);
+                System.out.println("[ARROW DEBUG] hitBlock=" + dbgHitBlock);
+
+                MinecraftServer.getSchedulerManager().buildTask(() -> {
+                    if (isRemoved() || !isStuck()) return;
+                    pullbackHintSent = true;
+                    // Switch hint to face-normal — guaranteed raycast hit
+                    // from any position on the face, even edges.
+                    stuckPacketVelocity = collisionDirection.mul(STUCK_VELOCITY_HINT);
+                    for (Player viewer : getViewers()) {
+                        if (isLegacyClient(viewer)) {
+                            viewer.sendPacket(new EntityTeleportPacket(
+                                    entityId, pullbackPos, stuckPacketVelocity, 0, true
+                            ));
+                            // Send new hint immediately so next raycast uses face-normal
+                            viewer.sendPacket(new EntityVelocityPacket(entityId, stuckPacketVelocity));
+                        }
+                    }
+                }).delay(TaskSchedule.tick(STUCK_PULLBACK_DELAY_TICKS)).schedule();
             }
         }
     }
