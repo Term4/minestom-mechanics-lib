@@ -119,6 +119,10 @@ public class ClientVersionDetector {
         return protocol < LEGACY_PROTOCOL_THRESHOLD ? ClientVersion.LEGACY : ClientVersion.MODERN;
     }
 
+    public boolean isLegacy(Player player) {
+        return getClientVersion(player) == ClientVersion.LEGACY;
+    }
+
     /**
      * Raw protocol version when provided by ViaVersion.
      * e.g. 47 = 1.8.x, 107 = 1.9. Returns null if ViaVersion has not sent details yet.

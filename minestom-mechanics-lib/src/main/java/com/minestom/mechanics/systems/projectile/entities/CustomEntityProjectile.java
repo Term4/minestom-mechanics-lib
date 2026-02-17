@@ -4,6 +4,7 @@ import com.minestom.mechanics.config.constants.ProjectileConstants;
 import com.minestom.mechanics.config.timing.TickScaler;
 import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
+import com.minestom.mechanics.systems.compatibility.legacy_1_8.LegacyProjectileCompat;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileUtil;
 import net.minestom.server.collision.*;
 import net.minestom.server.coordinate.BlockVec;
@@ -18,92 +19,45 @@ import net.minestom.server.event.entity.projectile.ProjectileCollideWithEntityEv
 import net.minestom.server.event.entity.projectile.ProjectileUncollideEvent;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.network.packet.server.play.EntityTeleportPacket;
-import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
-import net.minestom.server.utils.PacketSendingUtils;
 import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUtils;
 import net.minestom.server.collision.CollisionUtils;
 import net.minestom.server.collision.EntityCollisionResult;
-import net.minestom.server.MinecraftServer;
-import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 
-// TODO: When I add the entity tracker system create an entry for each projectile entity!!! Necessary for proper cleanup / tracking
-
-// TODO: Potentially add a feature to prevent modern clients from sending
-//  arm swing packets when throwing projectiles? UNSURE if this is possible
-
-// TODO: LOOOONNG way off, but add a couple extra projectile methods to the public API, like getting where
-//  the projectile landed, the direction it ended up, etc. Could make for easier
-//  custom projectiles (think rideable pearls, etc)
-//  ALSO make the legacy fix optional / configurable.
-
 /**
  * Base class for all custom projectile entities in the mechanics system.
  * Provides proper 1.8-style physics, collision detection, and projectile behavior.
  *
- * <h2>Stuck arrow rendering strategy (version-branched):</h2>
+ * <h2>Collision detection:</h2>
+ * <p>Uses zero-size bounding box (matching MinestomPVP's POINT_BOX) with combined
+ * collision direction + {@code newPosition} for block lookup. Zero bbox ensures
+ * collision points land exactly on block boundaries, and {@code newPosition} is
+ * the fully-resolved coordinate that both 1.8 and 1.21 clients agree with.</p>
  *
- * <p><b>Problem:</b> Legacy (1.8) clients need a velocity "hint" pointing into the
- * block so their flying-branch raycast detects the surface and sets {@code inGround=true}.
- * There might be a better way to do this (NBT data maybe), but I haven't gotten that to work,
- * if you DO get that to work, please submit a PR.
- * Modern (1.21+) clients apply velocity before checking collisions, so any non-zero
- * velocity causes the arrow to slide off.</p>
+ * <h2>Stuck arrow rendering — version-branched:</h2>
  *
- * <p><b>Solution — "last-word hint":</b></p>
- * <ul>
- *   <li>{@code getVelocityForPacket()} always returns zero when stuck. All internal
- *       Minestom syncs (periodic sync, setVelocity broadcasts) send zero.</li>
- *   <li>{@code super.tick()} runs normally even when stuck — no freeze. The periodic
- *       sync fires on schedule and sends zero to everyone.</li>
- *   <li><b>After</b> {@code super.tick()} returns, our {@code tick()} override sends
- *       the velocity hint to legacy viewers only. This is always the LAST velocity
- *       packet legacy receives each tick, guaranteeing it overwrites any zero.</li>
- *   <li>Modern clients never receive the hint — they only see zero from internal syncs.</li>
- *   <li>On relog, legacy gets the hint in the spawn packet, plus the per-tick hint
- *       reinforcement from {@code tick()}. No race conditions possible.</li>
- * </ul>
+ * <h3>Modern (1.21+) — radio silence:</h3>
+ * <p>When stuck, {@code super.tick()} is NOT called. No periodic velocity or
+ * position syncs reach the client. The {@code inGround=true} metadata (set by
+ * subclass in {@code onStuck()}) tells the client to stop flight physics.
+ * Radio silence ensures nothing disturbs this state.</p>
+ *
+ * <h3>Legacy (1.8) — delegated to {@link LegacyProjectileCompat}:</h3>
+ * <p>All legacy-specific hint, pullback, and relog logic is handled by the
+ * {@link LegacyProjectileCompat} instance. See that class for the two-phase
+ * hint system (natural prediction → pullback + per-tick hints).</p>
+ *
+ * <p>Legacy compat can be disabled entirely via
+ * {@link LegacyProjectileCompat#setEnabled(boolean)}, in which case only
+ * modern (radio silence) behavior applies.</p>
  */
 public abstract class CustomEntityProjectile extends Entity {
     private static final BoundingBox UNSTUCK_BOX = new BoundingBox(0.12, 0.6, 0.12);
-
-    /**
-     * Velocity hint magnitude for LEGACY (1.8) clients ONLY, in the FLIGHT DIRECTION.
-     *
-     * The 1.8 client's EntityArrow.onUpdate() flying branch raycasts from pos to
-     * pos+motion to detect blocks. For walls/ceilings, gravity goes AWAY from
-     * the surface, so without a hint the client never detects the block.
-     *
-     * NEVER sent to modern (1.21+) clients — they apply velocity before processing
-     * inGround metadata, causing the arrow to slide off the block.
-     * NEVER returned from getVelocityForPacket — only sent via explicit per-player
-     * packets to legacy viewers from tick() and updateNewViewer().
-     */
-    private static final double STUCK_VELOCITY_HINT = 1.0;
-
-    /**
-     * Vanilla 1.8 arrow pullback distance (0.05 blocks along flight direction).
-     * After sticking, the server sends a ONE-TIME delayed teleport to legacy
-     * clients that nudges the arrow 0.05 blocks back along its flight path.
-     * This moves the client-side position off the exact block boundary so the
-     * 1.8 client's raycast reliably detects the surface.
-     *
-     * Only sent to legacy clients. Modern clients don't need this.
-     * Only sent ONCE, a few ticks after sticking (not continuously).
-     */
-    private static final double STUCK_PULLBACK = 0.1;
-
-    /** Ticks to wait after sticking before sending the legacy pullback teleport. */
-    private static final int STUCK_PULLBACK_DELAY_TICKS = 20;
-
-    /** After the delayed pullback teleport fires, hints switch to face-normal for reliable raycast. */
-    private boolean pullbackHintSent = false;
 
     // Core projectile state
     protected Vec velocity = Vec.ZERO;
@@ -116,15 +70,21 @@ public abstract class CustomEntityProjectile extends Entity {
 
     // Physics state
     protected boolean noClip = false;
-    protected Vec collisionDirection = null;
-    /** Hit point from PhysicsResult (arrow tip with tiny bbox). Used for position and unstuck check. */
-    protected Point stuckCollisionPoint = null;
+
     /**
-     * Stored flight direction * STUCK_VELOCITY_HINT.
-     * ONLY sent to legacy clients via explicit per-player packets.
-     * NEVER returned from getVelocityForPacket.
+     * Single-axis collision direction (face-normal of the primary hit surface).
+     * Non-null when stuck. Used for unstuck checks.
      */
-    private Vec stuckPacketVelocity = Vec.ZERO;
+    protected Vec collisionDirection = null;
+
+    /**
+     * The physics-resolved position where the arrow stuck ({@code physicsResult.newPosition()}).
+     * Fully-resolved after all three axes — the coordinate both clients agree with.
+     */
+    protected Point stuckCollisionPoint = null;
+
+    // Legacy compatibility handler
+    private final LegacyProjectileCompat legacyCompat = new LegacyProjectileCompat();
 
     // Track previous physics result for better collision
     private PhysicsResult previousPhysicsResult = null;
@@ -150,7 +110,10 @@ public abstract class CustomEntityProjectile extends Entity {
             ((ProjectileMeta) getEntityMeta()).setShooter(shooter);
         }
         setSynchronizationTicks(getUpdateInterval());
-        setBoundingBox(0.01, 0.01, 0.01);
+        // Zero-size bbox — collision resolves exactly on block boundaries.
+        // Critical: even 0.01 causes overshoot that breaks 1.21 client's
+        // floor(pos) → block lookup → inGround check.
+        setBoundingBox(0, 0, 0);
     }
 
     // =========================================================================
@@ -179,19 +142,20 @@ public abstract class CustomEntityProjectile extends Entity {
         super.setVelocity(velocity);
     }
 
+    /** Called when the projectile hits an entity. Return true to remove the projectile. */
     public boolean onHit(@NotNull Entity entity) {
         return false;
     }
 
+    /** Called when the projectile sticks in a block. Return true to remove the projectile. */
     public boolean onStuck() {
         return false;
     }
 
+    /** Called when the projectile unsticks (block broken). */
     public void onUnstuck() {
     }
 
-    // TODO: Turn this into a property (any entity can have "canHit" not just these fucking shitty presets)
-    //  will simplify codebase a FUCK tone
     public boolean canHit(@NotNull Entity entity) {
         if (!(entity instanceof LivingEntity livingEntity)) return false;
         if (entity instanceof Player player) {
@@ -241,52 +205,84 @@ public abstract class CustomEntityProjectile extends Entity {
         return useKnockbackHandler;
     }
 
+    /**
+     * @return the legacy compatibility handler for this projectile
+     */
+    @NotNull
+    public LegacyProjectileCompat getLegacyCompat() {
+        return legacyCompat;
+    }
+
     // =========================================================================
-    // Velocity packet override — ALWAYS returns zero when stuck.
-    // Internal Minestom syncs use this, so zero goes to everyone.
-    // Legacy gets the hint AFTER via explicit sends in tick().
+    // Velocity packet override
+    //
+    // Returns current velocity scaled for packets. When stuck, velocity is
+    // Vec.ZERO so this returns zero. Safety net — during radio silence
+    // super.tick() doesn't run, but anything else querying this gets zero.
     // =========================================================================
 
     @Override
     protected Vec getVelocityForPacket() {
-        // velocity is Vec.ZERO when stuck, so this naturally returns zero.
         return velocity.div(TickScaler.velocityPacketDivisor(TickScalingConfig.getMode()));
     }
 
     // =========================================================================
-    // Tick — NO FREEZE. super.tick() always runs.
-    // After super.tick() (and any internal syncs it does), we send the hint
-    // to legacy viewers. This is always the LAST velocity packet they receive
-    // this tick, guaranteeing it overwrites any zero the internal sync sent.
+    // Tick — RADIO SILENCE when stuck.
+    //
+    // When stuck, super.tick() is NOT called. This prevents ALL of Minestom's
+    // internal periodic syncs from reaching any client.
+    //
+    //   Modern clients: absolute silence. inGround metadata persists.
+    //
+    //   Legacy clients: LegacyProjectileCompat handles per-tick hints
+    //   (only after the pullback delay — during natural prediction phase,
+    //   legacy also receives nothing).
+    //
+    // Subclass update(time) still runs for pickup, stuck time, removal, etc.
     // =========================================================================
 
     @Override
     public void tick(long time) {
+        if (isStuck()) {
+            if (isRemoved()) return;
+
+            // Subclass update — pickup, stuck time, removal timer.
+            // AbstractArrow.update() does NOT call super.update(), so no
+            // Minestom internals are triggered.
+            update(time);
+            if (isRemoved()) return;
+
+            // Legacy hint — delegates to LegacyProjectileCompat.
+            // During natural prediction phase, this is a no-op.
+            // After pullback delay, sends per-tick hint to legacy viewers.
+            legacyCompat.tickStuck(getEntityId(), getViewers());
+
+            // Check if the block was broken
+            if (shouldUnstuck()) {
+                unstick();
+            }
+            return;
+        }
+
+        // Not stuck — normal tick with all Minestom internals
         super.tick(time);
         if (isRemoved()) return;
+    }
 
-        if (isStuck()) {
-            // "Last word" hint: sent AFTER super.tick() so it overwrites any
-            // zero that the periodic sync might have sent this tick.
-            // Only legacy viewers receive this. Modern never sees the hint.
-            if (stuckPacketVelocity.lengthSquared() > 0) {
-                PacketSendingUtils.sendGroupedPacket(
-                        getViewers(),
-                        new EntityVelocityPacket(getEntityId(), stuckPacketVelocity),
-                        this::isLegacyClient
-                );
-            }
+    /**
+     * Reset all stuck state and resume normal physics.
+     */
+    private void unstick() {
+        EventDispatcher.call(new ProjectileUncollideEvent(this));
 
-            if (shouldUnstuck()) {
-                EventDispatcher.call(new ProjectileUncollideEvent(this));
-                collisionDirection = null;
-                stuckCollisionPoint = null;
-                stuckPacketVelocity = Vec.ZERO;
-                pullbackHintSent = false;
-                setNoGravity(false);
-                onUnstuck();
-            }
-        }
+        // Let legacy compat clean up and send zero velocity
+        legacyCompat.onUnstick(getEntityId(), getViewers());
+
+        collisionDirection = null;
+        stuckCollisionPoint = null;
+        setNoGravity(false);
+
+        onUnstuck();
     }
 
     // =========================================================================
@@ -298,300 +294,225 @@ public abstract class CustomEntityProjectile extends Entity {
         this.gravityTickCount = isStuck() ? 0 : gravityTickCount + 1;
         if (vehicle != null) return;
 
-        if (!isStuck()) {
-            Vec diff = velocity.div(TickScaler.velocityDivisor());
+        if (isStuck()) return; // Radio silence — no movement processing
 
-            if (instance.isInVoid(position)) {
-                scheduler().scheduleNextProcess(this::remove);
-                return;
-            }
+        Vec diff = velocity.div(TickScaler.velocityDivisor());
 
-            ChunkCache blockGetter = new ChunkCache(instance, currentChunk, Block.AIR);
-            PhysicsResult physicsResult = ProjectileUtil.simulateMovement(
-                    position, diff, getBoundingBox(), instance.getWorldBorder(), blockGetter,
-                    true, previousPhysicsResult, true
+        if (instance.isInVoid(position)) {
+            scheduler().scheduleNextProcess(this::remove);
+            return;
+        }
+
+        ChunkCache blockGetter = new ChunkCache(instance, currentChunk, Block.AIR);
+        PhysicsResult physicsResult = ProjectileUtil.simulateMovement(
+                position, diff, getBoundingBox(), instance.getWorldBorder(), blockGetter,
+                true, previousPhysicsResult, true
+        );
+        this.previousPhysicsResult = physicsResult;
+
+        Pos newPosition = physicsResult.newPosition();
+
+        // --- Entity collision ---
+        if (!noClip) {
+            int scaledDelay = TickScaler.scale(ProjectileConstants.SHOOTER_COLLISION_DELAY_TICKS, TickScalingConfig.getMode());
+            boolean noCollideShooter = getAliveTicks() < scaledDelay;
+            Collection<EntityCollisionResult> entityResult = CollisionUtils.checkEntityCollisions(
+                    instance, boundingBox.expand(0.1, 0.3, 0.1),
+                    position.add(0, -0.3, 0), diff, 3, e -> {
+                        if (noCollideShooter && e == shooter) return false;
+                        return e != this && canHit(e);
+                    }, physicsResult
             );
-            this.previousPhysicsResult = physicsResult;
 
-            Pos newPosition = physicsResult.newPosition();
-
-            // --- Entity collision ---
-            if (!noClip) {
-                int scaledDelay = TickScaler.scale(ProjectileConstants.SHOOTER_COLLISION_DELAY_TICKS, TickScalingConfig.getMode());
-                boolean noCollideShooter = getAliveTicks() < scaledDelay;
-                Collection<EntityCollisionResult> entityResult = CollisionUtils.checkEntityCollisions(
-                        instance, boundingBox.expand(0.1, 0.3, 0.1),
-                        position.add(0, -0.3, 0), diff, 3, e -> {
-                            if (noCollideShooter && e == shooter) return false;
-                            return e != this && canHit(e);
-                        }, physicsResult
+            if (!entityResult.isEmpty()) {
+                EntityCollisionResult collided = entityResult.stream().findFirst().orElse(null);
+                var event = new ProjectileCollideWithEntityEvent(
+                        this, new Pos(collided.collisionPoint()), collided.entity()
                 );
-
-                if (!entityResult.isEmpty()) {
-                    EntityCollisionResult collided = entityResult.stream().findFirst().orElse(null);
-                    var event = new ProjectileCollideWithEntityEvent(
-                            this, new Pos(collided.collisionPoint()), collided.entity()
-                    );
-                    EventDispatcher.call(event);
-                    if (!event.isCancelled()) {
-                        if (onHit(collided.entity())) {
-                            remove();
-                            return;
-                        }
+                EventDispatcher.call(event);
+                if (!event.isCancelled()) {
+                    if (onHit(collided.entity())) {
+                        remove();
+                        return;
                     }
                 }
             }
+        }
 
-            Chunk finalChunk = ChunkUtils.retrieve(instance, currentChunk, physicsResult.newPosition());
-            if (!ChunkUtils.isLoaded(finalChunk)) return;
+        Chunk finalChunk = ChunkUtils.retrieve(instance, currentChunk, physicsResult.newPosition());
+        if (!ChunkUtils.isLoaded(finalChunk)) return;
 
-            boolean justBecameStuck = false;
-            // Debug capture — only valid when justBecameStuck=true
-            int dbgHitAxis = -1;
-            Point dbgHitPoint = null;
-            Point dbgBlockLookup = null;
-            Block dbgHitBlock = null;
-            Vec dbgCollisionDir = null;
+        boolean justBecameStuck = false;
+        // Yaw/pitch computed from flight velocity at impact — used for both
+        // the arrow's final rotation and the legacy pullback teleport.
+        float stuckYaw = 0, stuckPitch = 0;
 
-            // =================================================================
-            // BLOCK COLLISION DETECTION
-            // =================================================================
+        // =================================================================
+        // BLOCK COLLISION — MinestomPVP approach.
+        //
+        // Combined collision direction from ALL colliding axes, added to
+        // newPosition and floored to find the block. newPosition is the
+        // fully-resolved coordinate after all axes are processed — the
+        // only position that both 1.8 and 1.21 clients agree with.
+        //
+        // Zero bbox ensures newPosition lands exactly on boundaries.
+        // =================================================================
+        if (physicsResult.hasCollision()) {
+            double signumX = physicsResult.collisionX() ? Math.signum(velocity.x()) : 0;
+            double signumY = physicsResult.collisionY() ? Math.signum(velocity.y()) : 0;
+            double signumZ = physicsResult.collisionZ() ? Math.signum(velocity.z()) : 0;
+            Vec combinedDir = new Vec(signumX, signumY, signumZ);
 
-            // DEBUG: What's actually in collisionShapes?
-            if (physicsResult.hasCollision()) {
-                Shape[] shapes = physicsResult.collisionShapes();
-                Point[] points = physicsResult.collisionPoints();
-                System.out.println("[ARROW DEBUG] === COLLISION SHAPES ===");
-                System.out.println("[ARROW DEBUG] collisionX=" + physicsResult.collisionX()
-                        + " collisionY=" + physicsResult.collisionY()
-                        + " collisionZ=" + physicsResult.collisionZ());
-                if (shapes != null) {
-                    for (int i = 0; i < shapes.length; i++) {
-                        System.out.println("[ARROW DEBUG] shapes[" + i + "] = "
-                                + (shapes[i] == null ? "null" : shapes[i].getClass().getName())
-                                + " instanceof ShapeImpl=" + (shapes[i] instanceof ShapeImpl)
-                                + " point=" + (points != null && points.length > i ? points[i] : "N/A"));
-                    }
+            Point collidedPosition = combinedDir.add(physicsResult.newPosition()).apply(Vec.Operator.FLOOR);
+            Block hitBlock = instance.getBlock(collidedPosition, Block.Getter.Condition.TYPE);
+
+            // Primary axis — dominant collision axis by velocity magnitude
+            Vec primaryDir = computePrimaryAxis(physicsResult);
+
+            var event = new ProjectileCollideWithBlockEvent(
+                    this, new Pos(newPosition.x(), newPosition.y(), newPosition.z()), hitBlock);
+            EventDispatcher.call(event);
+            if (!event.isCancelled()) {
+                // Capture flight velocity BEFORE zeroing — needed for legacy
+                // hint direction and for computing the stuck rotation.
+                Vec flightVelocity = velocity;
+
+                // Compute stuck rotation from flight velocity. This is done
+                // here (before velocity is zeroed) because the rotation section
+                // below can't access the pre-zero velocity.
+                if (flightVelocity.lengthSquared() > 1e-8) {
+                    double hl = Math.sqrt(flightVelocity.x() * flightVelocity.x()
+                            + flightVelocity.z() * flightVelocity.z());
+                    stuckYaw = (float) Math.toDegrees(Math.atan2(flightVelocity.x(), flightVelocity.z()));
+                    stuckPitch = (float) Math.toDegrees(Math.atan2(flightVelocity.y(), hl));
                 } else {
-                    System.out.println("[ARROW DEBUG] shapes array is NULL");
+                    // Near-zero velocity — keep current rotation
+                    stuckYaw = prevYaw;
+                    stuckPitch = prevPitch;
+                }
+
+                setNoGravity(true);
+                setVelocity(Vec.ZERO);
+                this.collisionDirection = primaryDir;
+                this.stuckCollisionPoint = newPosition;
+                justBecameStuck = true;
+
+                // Notify legacy compat — schedules pullback, does NOT send
+                // any immediate packets (natural prediction phase).
+                // Passes the stuck rotation so the pullback teleport preserves
+                // the arrow's visual angle instead of snapping to face-normal.
+                Pos stuckPos = new Pos(newPosition.x(), newPosition.y(), newPosition.z());
+                legacyCompat.onStick(getEntityId(), stuckPos, flightVelocity,
+                        primaryDir, stuckYaw, stuckPitch, getViewers());
+
+                if (onStuck()) {
+                    remove();
+                    return;
                 }
             }
+        }
 
-            if (physicsResult.hasCollision() && !isStuck()) {
-                boolean cx = physicsResult.collisionX();
-                boolean cy = physicsResult.collisionY();
-                boolean cz = physicsResult.collisionZ();
+        // =================================================================
+        // DRAG / GRAVITY
+        // =================================================================
+        Aerodynamics aerodynamics = getAerodynamics();
+        var mode = TickScalingConfig.getMode();
+        double hDrag = TickScaler.dragPerTick(aerodynamics.horizontalAirResistance(), mode);
+        double vDrag = TickScaler.dragPerTick(aerodynamics.verticalAirResistance(), mode);
+        double gravMult = TickScaler.gravityMultiplier(mode);
+        velocity = velocity.mul(hDrag, vDrag, hDrag)
+                .sub(0, hasNoGravity() ? 0 : getAerodynamics().gravity() * gravMult, 0);
 
-                double vx = Math.abs(velocity.x());
-                double vy = Math.abs(velocity.y());
-                double vz = Math.abs(velocity.z());
+        super.setVelocity(velocity);
+        onGround = physicsResult.isOnGround();
 
-                int hitAxis = -1;
-                if (cx && vx >= vy && vx >= vz) hitAxis = 0;
-                else if (cy && vy >= vx && vy >= vz) hitAxis = 1;
-                else if (cz && vz >= vx && vz >= vy) hitAxis = 2;
-                else if (cy) hitAxis = 1;
-                else if (cx) hitAxis = 0;
-                else if (cz) hitAxis = 2;
+        // =================================================================
+        // ROTATION — displacement-based
+        // =================================================================
+        float yaw = position.yaw();
+        float pitch = position.pitch();
 
-                if (hitAxis != -1) {
-                    Vec collisionDir = switch (hitAxis) {
-                        case 0 -> new Vec(Math.signum(velocity.x()), 0, 0);
-                        case 1 -> new Vec(0, Math.signum(velocity.y()), 0);
-                        case 2 -> new Vec(0, 0, Math.signum(velocity.z()));
-                        default -> Vec.ZERO;
-                    };
-
-                    Point[] points = physicsResult.collisionPoints();
-                    Point hitPoint = (points != null && points.length > hitAxis && points[hitAxis] != null)
-                            ? points[hitAxis]
-                            : physicsResult.newPosition();
-
-                    Point blockLookup = hitPoint.add(collisionDir.mul(0.5));
-                    Block hitBlock = instance.getBlock(blockLookup, Block.Getter.Condition.TYPE);
-
-                    if (hitBlock != null && !hitBlock.isAir()) {
-                        Point stuckPosition = hitPoint;
-
-                        var event = new ProjectileCollideWithBlockEvent(
-                                this, new Pos(stuckPosition.x(), stuckPosition.y(), stuckPosition.z()), hitBlock);
-                        EventDispatcher.call(event);
-                        if (!event.isCancelled()) {
-                            // Compute hint BEFORE zeroing velocity
-                            if (velocity.lengthSquared() > 0.0001) {
-                                this.stuckPacketVelocity = velocity.normalize().mul(STUCK_VELOCITY_HINT);
-                            } else {
-                                this.stuckPacketVelocity = collisionDir.mul(STUCK_VELOCITY_HINT);
-                            }
-
-                            setNoGravity(true);
-                            setVelocity(Vec.ZERO);
-                            this.collisionDirection = collisionDir;
-                            this.stuckCollisionPoint = stuckPosition;
-                            justBecameStuck = true;
-                            dbgHitAxis = hitAxis;
-                            dbgHitPoint = hitPoint;
-                            dbgBlockLookup = blockLookup;
-                            dbgHitBlock = hitBlock;
-                            dbgCollisionDir = collisionDir;
-
-                            if (onStuck()) {
-                                remove();
-                                return;
-                            }
-                        }
-                    }
+        if (!noClip) {
+            if (isStuck() && !justBecameStuck) {
+                // Already stuck from a previous tick — freeze rotation
+                yaw = prevYaw;
+                pitch = prevPitch;
+            } else if (justBecameStuck) {
+                // Just stuck this tick — use the rotation we computed from
+                // the flight velocity above (before it was zeroed)
+                yaw = stuckYaw;
+                pitch = stuckPitch;
+            } else {
+                // In flight — compute from displacement
+                Vec displacement = newPosition.sub(position).asVec();
+                if (displacement.lengthSquared() > 1e-8) {
+                    double hl = Math.sqrt(displacement.x() * displacement.x() + displacement.z() * displacement.z());
+                    yaw = (float) Math.toDegrees(Math.atan2(displacement.x(), displacement.z()));
+                    pitch = (float) Math.toDegrees(Math.atan2(displacement.y(), hl));
                 }
+                // else: near-zero displacement, keep previous yaw/pitch
             }
+        }
 
-            // =================================================================
-            // DRAG / GRAVITY
-            // =================================================================
-            Aerodynamics aerodynamics = getAerodynamics();
-            var mode = TickScalingConfig.getMode();
-            double hDrag = TickScaler.dragPerTick(aerodynamics.horizontalAirResistance(), mode);
-            double vDrag = TickScaler.dragPerTick(aerodynamics.verticalAirResistance(), mode);
-            double gravMult = TickScaler.gravityMultiplier(mode);
-            velocity = velocity.mul(hDrag, vDrag, hDrag)
-                    .sub(0, hasNoGravity() ? 0 : getAerodynamics().gravity() * gravMult, 0);
+        this.prevYaw = yaw;
+        this.prevPitch = pitch;
 
-            super.setVelocity(velocity);
+        // =================================================================
+        // POSITION UPDATE
+        // =================================================================
+        Pos finalPos = (justBecameStuck && stuckCollisionPoint != null)
+                ? new Pos(stuckCollisionPoint.x(), stuckCollisionPoint.y(), stuckCollisionPoint.z(), yaw, pitch)
+                : newPosition.withView(yaw, pitch);
 
-            onGround = physicsResult.isOnGround();
+        refreshPosition(finalPos, noClip, false);
 
-            // =================================================================
-            // ROTATION
-            // =================================================================
-            float yaw = position.yaw();
-            float pitch = position.pitch();
-
-            if (!noClip) {
-                if (isStuck() && !justBecameStuck) {
-                    yaw = prevYaw;
-                    pitch = prevPitch;
-                } else {
-                    Vec displacement = newPosition.sub(position).asVec();
-
-                    if (displacement.lengthSquared() > 1e-8) {
-                        double horizontalLength = Math.sqrt(displacement.x() * displacement.x() + displacement.z() * displacement.z());
-                        yaw = (float) Math.toDegrees(Math.atan2(displacement.x(), displacement.z()));
-                        pitch = (float) Math.toDegrees(Math.atan2(displacement.y(), horizontalLength));
-                    } else if (justBecameStuck && stuckPacketVelocity.lengthSquared() > 1e-8) {
-                        Vec dir = stuckPacketVelocity;
-                        double hl = Math.sqrt(dir.x() * dir.x() + dir.z() * dir.z());
-                        yaw = (float) Math.toDegrees(Math.atan2(dir.x(), dir.z()));
-                        pitch = (float) Math.toDegrees(Math.atan2(dir.y(), hl));
-                    }
-                }
-            }
-
-            this.prevYaw = yaw;
-            this.prevPitch = pitch;
-
-            // =================================================================
-            // POSITION UPDATE
-            // =================================================================
-            Pos finalPos = (justBecameStuck && stuckCollisionPoint != null)
-                    ? new Pos(stuckCollisionPoint.x(), stuckCollisionPoint.y(), stuckCollisionPoint.z(), yaw, pitch)
-                    : newPosition.withView(yaw, pitch);
-
-            refreshPosition(finalPos, noClip, false);
-
-            // =================================================================
-            // INITIAL STICK PACKETS
-            // =================================================================
-            // On the stick tick, send version-branched teleports. The "last word"
-            // hint in tick() will also fire after super.tick() returns, but these
-            // explicit sends give the correct position immediately.
-            // =================================================================
-            if (justBecameStuck) {
-                for (Player viewer : getViewers()) {
-                    if (isLegacyClient(viewer)) {
-                        viewer.sendPacket(new EntityVelocityPacket(getEntityId(), stuckPacketVelocity));
-                        viewer.sendPacket(new EntityTeleportPacket(
-                                getEntityId(), finalPos, stuckPacketVelocity, 0, onGround
-                        ));
-                    } else {
-                        viewer.sendPacket(new EntityVelocityPacket(getEntityId(), Vec.ZERO));
-                        viewer.sendPacket(new EntityTeleportPacket(
-                                getEntityId(), finalPos, Vec.ZERO, 0, onGround
-                        ));
-                    }
-                }
-                this.lastSyncedPosition = finalPos;
-                // Note: tick()'s "last word" hint fires after super.tick() returns,
-                // which is after movementTick(). On the stick tick, this provides
-                // an additional hint reinforcement for legacy after any periodic
-                // sync zero. No global scheduler needed.
-
-                // =============================================================
-                // DELAYED LEGACY PULLBACK (vanilla 0.05 inward nudge)
-                // =============================================================
-                // Vanilla 1.8 always pulls the arrow 0.05 blocks back along its
-                // flight path from the hit point. This moves the position off
-                // the exact block boundary. The server sends this as a one-time
-                // teleport a few ticks after sticking.
-                //
-                // On the 1.8 client: the arrow sticks (via hint), the client
-                // briefly renders it at its predicted position, then a few ticks
-                // later receives this teleport which snaps it to the correct
-                // pulled-back position. At edges this naturally corrects the
-                // visual because the pullback moves the arrow onto the face.
-                //
-                // Modern clients don't need this — they render correctly from
-                // the initial stick packets with zero velocity.
-                // =============================================================
-                final int entityId = getEntityId();
-                final Pos pullbackPos;
-                if (stuckPacketVelocity.lengthSquared() > 0.0001) {
-                    Vec flightDir = stuckPacketVelocity.normalize();
-                    Vec pullback = flightDir.mul(STUCK_PULLBACK);
-                    pullbackPos = finalPos.sub(pullback.x(), pullback.y(), pullback.z());
-                } else {
-                    pullbackPos = finalPos;
-                }
-                final Vec hintVel = stuckPacketVelocity;
-
-                // DEBUG: Log stick details
-                String faceName = switch (dbgHitAxis) {
-                    case 0 -> (dbgCollisionDir.x() > 0 ? "EAST face (+X)" : "WEST face (-X)");
-                    case 1 -> (dbgCollisionDir.y() > 0 ? "UP face (+Y)" : "DOWN face (-Y)");
-                    case 2 -> (dbgCollisionDir.z() > 0 ? "SOUTH face (+Z)" : "NORTH face (-Z)");
-                    default -> "UNKNOWN";
-                };
-                System.out.println("[ARROW DEBUG] === STUCK ===");
-                System.out.println("[ARROW DEBUG] hitAxis=" + dbgHitAxis + " face=" + faceName);
-                System.out.println("[ARROW DEBUG] collisionDir=" + dbgCollisionDir);
-                System.out.println("[ARROW DEBUG] hitPoint=" + dbgHitPoint);
-                System.out.println("[ARROW DEBUG] stuckPosition (server)=" + stuckCollisionPoint);
-                System.out.println("[ARROW DEBUG] finalPos (sent to clients)=" + finalPos);
-                System.out.println("[ARROW DEBUG] pullbackPos (legacy teleport)=" + pullbackPos);
-                System.out.println("[ARROW DEBUG] stuckPacketVelocity (hint)=" + stuckPacketVelocity);
-                System.out.println("[ARROW DEBUG] blockLookup=" + dbgBlockLookup);
-                System.out.println("[ARROW DEBUG] hitBlock=" + dbgHitBlock);
-
-                MinecraftServer.getSchedulerManager().buildTask(() -> {
-                    if (isRemoved() || !isStuck()) return;
-                    pullbackHintSent = true;
-                    // Switch hint to face-normal — guaranteed raycast hit
-                    // from any position on the face, even edges.
-                    stuckPacketVelocity = collisionDirection.mul(STUCK_VELOCITY_HINT);
-                    for (Player viewer : getViewers()) {
-                        if (isLegacyClient(viewer)) {
-                            viewer.sendPacket(new EntityTeleportPacket(
-                                    entityId, pullbackPos, stuckPacketVelocity, 0, true
-                            ));
-                            // Send new hint immediately so next raycast uses face-normal
-                            viewer.sendPacket(new EntityVelocityPacket(entityId, stuckPacketVelocity));
-                        }
-                    }
-                }).delay(TaskSchedule.tick(STUCK_PULLBACK_DELAY_TICKS)).schedule();
-            }
+        // =================================================================
+        // INITIAL STICK — no explicit packets needed!
+        //
+        // Modern: radio silence. refreshPosition() updated position
+        // internally, inGround metadata (set by onStuck()) handles client.
+        //
+        // Legacy: natural prediction phase. LegacyProjectileCompat.onStick()
+        // already scheduled the pullback — no immediate packets. The 1.8
+        // client continues predicting with its own physics (gravity, drag)
+        // until the pullback teleport arrives.
+        // =================================================================
+        if (justBecameStuck) {
+            this.lastSyncedPosition = finalPos;
         }
     }
 
+    /**
+     * Compute the primary (dominant) collision axis from the physics result.
+     * Returns a single-axis unit vector in the direction of travel on that axis.
+     */
+    private Vec computePrimaryAxis(PhysicsResult result) {
+        double vx = Math.abs(velocity.x());
+        double vy = Math.abs(velocity.y());
+        double vz = Math.abs(velocity.z());
+
+        if (result.collisionY() && vy >= vx && vy >= vz) {
+            return new Vec(0, Math.signum(velocity.y()), 0);
+        }
+        if (result.collisionX() && vx >= vy && vx >= vz) {
+            return new Vec(Math.signum(velocity.x()), 0, 0);
+        }
+        if (result.collisionZ()) {
+            return new Vec(0, 0, Math.signum(velocity.z()));
+        }
+        // Fallback: any colliding axis
+        if (result.collisionY()) return new Vec(0, Math.signum(velocity.y()), 0);
+        if (result.collisionX()) return new Vec(Math.signum(velocity.x()), 0, 0);
+
+        // Defensive — should never reach here if hasCollision() is true
+        double sx = result.collisionX() ? Math.signum(velocity.x()) : 0;
+        double sy = result.collisionY() ? Math.signum(velocity.y()) : 0;
+        double sz = result.collisionZ() ? Math.signum(velocity.z()) : 0;
+        return new Vec(sx, sy, sz);
+    }
+
     // =========================================================================
-    // Unstuck check
+    // Unstuck check — is the block still there?
     // =========================================================================
 
     private boolean shouldUnstuck() {
@@ -608,10 +529,9 @@ public abstract class CustomEntityProjectile extends Entity {
     }
 
     // =========================================================================
-    // Position sync — suppress position correction when stuck (we already
-    // sent the correct position in justBecameStuck). The periodic velocity
-    // sync in tick() still fires (sends zero via getVelocityPacket), but
-    // our "last word" hint in tick() overwrites it for legacy.
+    // Position sync — suppressed when stuck.
+    // During radio silence super.tick() doesn't run so this is rarely
+    // reached. Safety net in case anything else triggers a sync.
     // =========================================================================
 
     @Override
@@ -624,12 +544,6 @@ public abstract class CustomEntityProjectile extends Entity {
     @Override
     protected void synchronizePosition() {
         if (isStuck()) {
-            // No-op the position sync — arrow doesn't move.
-            // IMPORTANT: we do NOT call super, so nextSynchronizationTick is
-            // never advanced. This means the periodic sync's condition
-            // (ticks >= nextSynchronizationTick) stays true every tick, and
-            // sendPacketToViewers(getVelocityPacket()) sends zero every tick.
-            // That's fine — our "last word" hint in tick() always follows it.
             this.lastSyncedPosition = getPosition();
             return;
         }
@@ -638,63 +552,46 @@ public abstract class CustomEntityProjectile extends Entity {
 
     // =========================================================================
     // New viewer (relog / chunk enter) — version-branched spawn packets.
-    // The per-tick "last word" hint in tick() will reinforce on the next tick.
+    //
+    // Legacy stuck: delegated to LegacyProjectileCompat (hint in spawn
+    //               packet, immediate reinforcement, zero view for rotation).
+    //
+    // Modern stuck: real position + zero velocity. inGround metadata handles
+    //               the rest on the client side.
+    //
+    // Not stuck: standard spawn for both versions.
     // =========================================================================
 
     @Override
     public void updateNewViewer(@NotNull Player player) {
-        int data = (shooter != null) ? shooter.getEntityId() : 0;
-        boolean isLegacy = isLegacyClient(player);
+        int shooterData = (shooter != null) ? shooter.getEntityId() : 0;
 
-        // Legacy stuck: data > 0 ensures ViaVersion includes velocity bytes
-        // in the 1.8 SpawnObject packet.
-        if (isStuck() && isLegacy) {
-            data = player.getEntityId();
+        if (isStuck() && LegacyProjectileCompat.isEnabled()
+                && ClientVersionDetector.getInstance().isLegacy(player)) {
+            // Legacy relog/chunk enter — delegate to compat handler.
+            // Sends hint velocity + zero view + data > 0 for ViaVersion.
+            legacyCompat.sendStuckSpawnPackets(
+                    player, getEntityId(), getUuid(), getEntityType(),
+                    getPosition(), shooterData
+            );
+            player.sendPacket(getMetadataPacket());
+            return;
         }
 
-        Pos spawnPos;
-        Vec spawnVelocity;
-
-        if (isStuck()) {
-            if (isLegacy) {
-                // Legacy relog: hint velocity so the 1.8 flying branch raycasts
-                // into the block on first tick → inGround=true.
-                // Zero view (0,0) triggers the 1.8 init block that computes
-                // rotation from the velocity direction.
-                spawnPos = getPosition().withView(0f, 0f);
-                spawnVelocity = stuckPacketVelocity;
-            } else {
-                // Modern relog: real position + view + zero velocity.
-                spawnPos = getPosition();
-                spawnVelocity = Vec.ZERO;
-            }
-        } else {
-            spawnPos = getPosition();
-            spawnVelocity = getVelocityForPacket();
-        }
+        // Modern (stuck or not) + legacy (not stuck) — standard spawn
+        Pos spawnPos = getPosition();
+        Vec spawnVelocity = isStuck() ? Vec.ZERO : getVelocityForPacket();
 
         player.sendPacket(new SpawnEntityPacket(
                 getEntityId(), getUuid(), getEntityType(),
-                spawnPos, spawnPos.yaw(), data, spawnVelocity
+                spawnPos, spawnPos.yaw(), shooterData, spawnVelocity
         ));
         player.sendPacket(getMetadataPacket());
-
-        // Immediate hint reinforcement after spawn for legacy.
-        // Even if something overwrites the spawn packet's velocity, this
-        // separate EntityVelocityPacket re-establishes the hint.
-        // And on the next server tick, tick()'s "last word" hint fires too.
-        if (isStuck() && isLegacy) {
-            player.sendPacket(new EntityVelocityPacket(getEntityId(), stuckPacketVelocity));
-        }
     }
 
     // =========================================================================
     // Utility
     // =========================================================================
-
-    protected boolean isLegacyClient(@NotNull Player player) {
-        return ClientVersionDetector.getInstance().getClientVersion(player) == ClientVersionDetector.ClientVersion.LEGACY;
-    }
 
     protected int getUpdateInterval() {
         return ProjectileConstants.POSITION_UPDATE_INTERVAL;

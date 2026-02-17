@@ -30,249 +30,255 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public abstract class AbstractArrow extends CustomEntityProjectile {
 
-	protected int pickupDelay;
-	protected int stuckTime;
-	protected PickupMode pickupMode = PickupMode.DISALLOWED;
-	protected int ticks;
-	private double baseDamage = ProjectileConstants.ARROW_BASE_DAMAGE;
-	private int knockback;
-	
-	// Knockback configuration - now uses the main KnockbackHandler
-	private boolean useKnockbackHandler = true;
-	private ProjectileKnockbackConfig knockbackConfig;
+    protected int pickupDelay;
+    protected int stuckTime;
+    protected PickupMode pickupMode = PickupMode.DISALLOWED;
+    protected int ticks;
+    private double baseDamage = ProjectileConstants.ARROW_BASE_DAMAGE;
+    private int knockback;
 
-	private final Set<Integer> piercingIgnore = new HashSet<>();
-	private int fireTicksLeft = 0;
+    // Knockback configuration - now uses the main KnockbackHandler
+    private boolean useKnockbackHandler = true;
+    private ProjectileKnockbackConfig knockbackConfig;
 
-	// Track if we were in water last tick
-	private boolean wasInWater = false;
+    private final Set<Integer> piercingIgnore = new HashSet<>();
+    private int fireTicksLeft = 0;
 
-	public AbstractArrow(@Nullable Entity shooter, @NotNull EntityType entityType) {
-		super(shooter, entityType);
+    // Track if we were in water last tick
+    private boolean wasInWater = false;
 
-		if (shooter instanceof Player) {
-			pickupMode = ((Player) shooter).getGameMode() == GameMode.CREATIVE ?
-					PickupMode.CREATIVE_ONLY : PickupMode.ALLOWED;
-		}
+    public AbstractArrow(@Nullable Entity shooter, @NotNull EntityType entityType) {
+        super(shooter, entityType);
 
-		// ✅ FIX: Prevent immediate pickup (vanilla 1.8 behavior)
-		pickupDelay = TickScaler.scale(
-				ProjectileConstants.ARROW_PICKUP_DELAY_TICKS,
-				TickScalingConfig.getMode());
+        if (shooter instanceof Player) {
+            pickupMode = ((Player) shooter).getGameMode() == GameMode.CREATIVE ?
+                    PickupMode.CREATIVE_ONLY : PickupMode.ALLOWED;
+        }
 
-		// Initialize with default arrow knockback config
+        // Prevent immediate pickup (vanilla 1.8 behavior)
+        pickupDelay = TickScaler.scale(
+                ProjectileConstants.ARROW_PICKUP_DELAY_TICKS,
+                TickScalingConfig.getMode());
+
+        // Initialize with default arrow knockback config
         this.knockbackConfig = ProjectileKnockbackPresets.ARROW;
     }
 
-	@Override
-	public void tick(long time) {
-		// Check if arrow just entered water
-		boolean inWaterNow = isInWater();
+    @Override
+    public void tick(long time) {
+        // When stuck, skip water checks entirely — go straight to
+        // radio silence in super.tick(). Prevents block lookups every
+        // tick for stuck arrows (potential lag with many stuck arrows).
+        if (isStuck()) {
+            super.tick(time);
+            return;
+        }
 
-		// Play water splash sound if entering water
-		if (!wasInWater && inWaterNow) {
-			onEnterWater();
-		}
+        // Check if arrow just entered water
+        boolean inWaterNow = isInWater();
 
-		wasInWater = inWaterNow;
+        // Play water splash sound if entering water
+        if (!wasInWater && inWaterNow) {
+            onEnterWater();
+        }
 
-		super.tick(time);
-	}
+        wasInWater = inWaterNow;
 
-	@Override
-	public void update(long time) {
-		if (onGround) {
-			stuckTime++;
-		} else {
-			stuckTime = 0;
-		}
+        super.tick(time);
+    }
 
-		if (pickupDelay > 0) {
-			pickupDelay--;
-		}
+    @Override
+    public void update(long time) {
+        if (onGround) {
+            stuckTime++;
+        } else {
+            stuckTime = 0;
+        }
 
-		if (fireTicksLeft > 0) {
-			// Extinguish fire in water
-			if (isInWater()) {
-				fireTicksLeft = 0;
-				entityMeta.setOnFire(false);
-			} else if (entityMeta.isOnFire()) {
-				fireTicksLeft--;
-				if (fireTicksLeft == 0) {
-					entityMeta.setOnFire(false);
-				}
-			} else {
-				fireTicksLeft = 0;
-			}
-		}
+        if (pickupDelay > 0) {
+            pickupDelay--;
+        }
 
-		// Pickup logic
-		if (canBePickedUp(null)) {
-			instance.getEntityTracker().nearbyEntities(position, 5,
-					net.minestom.server.instance.EntityTracker.Target.PLAYERS, player -> {
-						if (!player.canPickupItem()) return;
-						if (!isViewer(player)) return;
-						if (isRemoved() || !canBePickedUp(player)) return;
-						
-						// Don't allow dead players to pick up arrows
-						if (Boolean.TRUE.equals(player.getTag(com.minestom.mechanics.systems.player.PlayerDeathHandler.IS_DEAD))) {
-							return;
-						}
+        if (fireTicksLeft > 0) {
+            // Extinguish fire in water
+            if (isInWater()) {
+                fireTicksLeft = 0;
+                entityMeta.setOnFire(false);
+            } else if (entityMeta.isOnFire()) {
+                fireTicksLeft--;
+                if (fireTicksLeft == 0) {
+                    entityMeta.setOnFire(false);
+                }
+            } else {
+                fireTicksLeft = 0;
+            }
+        }
 
-						if (player.getBoundingBox().expand(1, 0.5f, 1)
-								.intersectEntity(player.getPosition(), this)) {
-							if (pickup(player)) {
-								player.sendPacketToViewersAndSelf(new CollectItemPacket(
-										getEntityId(), player.getEntityId(), 1
-								));
-								remove();
-							}
-						}
-					});
-		}
+        // Pickup logic
+        if (canBePickedUp(null)) {
+            instance.getEntityTracker().nearbyEntities(position, 5,
+                    net.minestom.server.instance.EntityTracker.Target.PLAYERS, player -> {
+                        if (!player.canPickupItem()) return;
+                        if (!isViewer(player)) return;
+                        if (isRemoved() || !canBePickedUp(player)) return;
 
-		tickRemoval();
-	}
+                        // Don't allow dead players to pick up arrows
+                        if (Boolean.TRUE.equals(player.getTag(com.minestom.mechanics.systems.player.PlayerDeathHandler.IS_DEAD))) {
+                            return;
+                        }
 
-	// Called when arrow enters water
-	protected void onEnterWater() {
-		// Could play splash sound here if you want
-		// The water drag will automatically slow the arrow significantly
-	}
+                        if (player.getBoundingBox().expand(1, 0.5f, 1)
+                                .intersectEntity(player.getPosition(), this)) {
+                            if (pickup(player)) {
+                                player.sendPacketToViewersAndSelf(new CollectItemPacket(
+                                        getEntityId(), player.getEntityId(), 1
+                                ));
+                                remove();
+                            }
+                        }
+                    });
+        }
 
-	// Check if arrow is currently in water
-	private boolean isInWater() {
-		var block = instance.getBlock(position);
-		return block.compare(net.minestom.server.instance.block.Block.WATER);
-	}
+        tickRemoval();
+    }
 
-	public void setFireTicksLeft(int fireTicksLeft) {
-		this.fireTicksLeft = fireTicksLeft;
-		if (fireTicksLeft > 0) entityMeta.setOnFire(true);
-	}
+    // Called when arrow enters water
+    protected void onEnterWater() {
+        // Could play splash sound here if you want
+        // The water drag will automatically slow the arrow significantly
+    }
 
-	protected void tickRemoval() {
-		ticks++;
-		int scaledDespawn = TickScaler.scale(ProjectileConstants.ARROW_DESPAWN_TICKS, TickScalingConfig.getMode());
-		if (ticks >= scaledDespawn) {
-			remove();
-		}
-	}
+    // Check if arrow is currently in water
+    private boolean isInWater() {
+        var block = instance.getBlock(position);
+        return block.compare(net.minestom.server.instance.block.Block.WATER);
+    }
 
-	@Override
-	public void onUnstuck() {
-		((AbstractArrowMeta) getEntityMeta()).setInGround(false);
-		ThreadLocalRandom random = ThreadLocalRandom.current();
-		setVelocity(velocity.mul(
-				random.nextDouble() * 0.2,
-				random.nextDouble() * 0.2,
-				random.nextDouble() * 0.2
-		));
-		ticks = 0;
-	}
+    public void setFireTicksLeft(int fireTicksLeft) {
+        this.fireTicksLeft = fireTicksLeft;
+        if (fireTicksLeft > 0) entityMeta.setOnFire(true);
+    }
 
-	@Override
-	public boolean canHit(Entity entity) {
-		return super.canHit(entity) && !piercingIgnore.contains(entity.getEntityId());
-	}
+    protected void tickRemoval() {
+        ticks++;
+        int scaledDespawn = TickScaler.scale(ProjectileConstants.ARROW_DESPAWN_TICKS, TickScalingConfig.getMode());
+        if (ticks >= scaledDespawn) {
+            remove();
+        }
+    }
 
-	@Override
-	public boolean onHit(@NotNull Entity entity) {
-		if (piercingIgnore.contains(entity.getEntityId())) return false;
-		if (!(entity instanceof LivingEntity living)) return false;
+    @Override
+    public void onUnstuck() {
+        ((AbstractArrowMeta) getEntityMeta()).setInGround(false);
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        setVelocity(velocity.mul(
+                random.nextDouble() * 0.2,
+                random.nextDouble() * 0.2,
+                random.nextDouble() * 0.2
+        ));
+        ticks = 0;
+    }
 
-		ThreadLocalRandom random = ThreadLocalRandom.current();
+    @Override
+    public boolean canHit(Entity entity) {
+        return super.canHit(entity) && !piercingIgnore.contains(entity.getEntityId());
+    }
 
-		// Calculate damage based on velocity
-		double movementSpeed = getVelocity().length() / ServerFlag.SERVER_TICKS_PER_SECOND;
-		int damage = (int) Math.ceil(MathUtils.clamp(
-				movementSpeed * baseDamage, 0.0, 2.147483647E9D));
+    @Override
+    public boolean onHit(@NotNull Entity entity) {
+        if (piercingIgnore.contains(entity.getEntityId())) return false;
+        if (!(entity instanceof LivingEntity living)) return false;
 
-		if (getPiercingLevel() > 0) {
-			if (piercingIgnore.size() >= getPiercingLevel() + 1) {
-				return true;
-			}
-			piercingIgnore.add(entity.getEntityId());
-		}
+        ThreadLocalRandom random = ThreadLocalRandom.current();
 
-		if (isCritical()) {
-			int randomDamage = random.nextInt(damage / 2 + 2);
-			damage = (int) Math.min(randomDamage + damage, 2147483647L);
-		}
+        // Calculate damage based on velocity
+        double movementSpeed = getVelocity().length() / ServerFlag.SERVER_TICKS_PER_SECOND;
+        int damage = (int) Math.ceil(MathUtils.clamp(
+                movementSpeed * baseDamage, 0.0, 2.147483647E9D));
 
-		Entity shooter = getShooter();
-		Damage damageObj = new Damage(
-				DamageType.ARROW,
-				this, Objects.requireNonNullElse(shooter, this),
-				null, damage
-		);
+        if (getPiercingLevel() > 0) {
+            if (piercingIgnore.size() >= getPiercingLevel() + 1) {
+                return true;
+            }
+            piercingIgnore.add(entity.getEntityId());
+        }
 
-		if (HealthSystem.applyDamage(living, damageObj)) {
-			if (entity.getEntityType() == EntityType.ENDERMAN) return false;
+        if (isCritical()) {
+            int randomDamage = random.nextInt(damage / 2 + 2);
+            damage = (int) Math.min(randomDamage + damage, 2147483647L);
+        }
 
-			if (isOnFire()) {
-				living.setFireTicks(5 * ServerFlag.SERVER_TICKS_PER_SECOND);
-			}
+        Entity shooter = getShooter();
+        Damage damageObj = new Damage(
+                DamageType.ARROW,
+                this, Objects.requireNonNullElse(shooter, this),
+                null, damage
+        );
 
-			if (getPiercingLevel() <= 0) {
-				living.setArrowCount(living.getArrowCount() + 1);
-			}
+        if (HealthSystem.applyDamage(living, damageObj)) {
+            if (entity.getEntityType() == EntityType.ENDERMAN) return false;
 
-			// Knockback is now handled by the damage pipeline via DamageResult
+            if (isOnFire()) {
+                living.setFireTicks(5 * ServerFlag.SERVER_TICKS_PER_SECOND);
+            }
 
-			onHurt(living);
+            if (getPiercingLevel() <= 0) {
+                living.setArrowCount(living.getArrowCount() + 1);
+            }
 
-			return getPiercingLevel() <= 0;
-		} else {
-			// Bounce off if hit was blocked
-			Pos position = getPosition();
-			setVelocity(getVelocity().mul(-0.5 * 0.2));
-			refreshPosition(position.withYaw(position.yaw() + 170.0f + 20.0f *
-					ThreadLocalRandom.current().nextFloat()));
+            // Knockback is now handled by the damage pipeline via DamageResult
 
-			if (getVelocity().lengthSquared() < 1.0E-7D) {
-				if (pickupMode == PickupMode.ALLOWED) {
-					spawnItemAtLocation(getPickupItem());
-				}
-			return true;
-		}
-	}
+            onHurt(living);
 
-		return false;
-	}
+            return getPiercingLevel() <= 0;
+        } else {
+            // Bounce off if hit was blocked
+            Pos position = getPosition();
+            setVelocity(getVelocity().mul(-0.5 * 0.2));
+            refreshPosition(position.withYaw(position.yaw() + 170.0f + 20.0f *
+                    ThreadLocalRandom.current().nextFloat()));
 
-	@Override
-	public boolean onStuck() {
-		pickupDelay = TickScaler.scale(ProjectileConstants.ARROW_STUCK_PICKUP_DELAY_TICKS, TickScalingConfig.getMode());
-		((AbstractArrowMeta) getEntityMeta()).setInGround(true);
-		setCritical(false);
-		setPiercingLevel((byte) 0);
-		piercingIgnore.clear();
+            if (getVelocity().lengthSquared() < 1.0E-7D) {
+                if (pickupMode == PickupMode.ALLOWED) {
+                    spawnItemAtLocation(getPickupItem());
+                }
+                return true;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	public boolean canBePickedUp(@Nullable Player player) {
-		if (pickupDelay > 0) return false;
+    @Override
+    public boolean onStuck() {
+        pickupDelay = TickScaler.scale(ProjectileConstants.ARROW_STUCK_PICKUP_DELAY_TICKS, TickScalingConfig.getMode());
+        ((AbstractArrowMeta) getEntityMeta()).setInGround(true);
+        setCritical(false);
+        setPiercingLevel((byte) 0);
+        piercingIgnore.clear();
 
-		return switch (pickupMode) {
-			case ALLOWED -> true;
-			case CREATIVE_ONLY -> player != null && player.getGameMode() == GameMode.CREATIVE;
-			case DISALLOWED -> false;
-		};
-	}
+        return false;
+    }
 
-    // TODO: for legacy clients, they may need their inventory force updated
-    //  Could also be an issue when I add normal pickups of dropped items
-	private boolean pickup(Player player) {
-		if (!canBePickedUp(player)) return false;
+    public boolean canBePickedUp(@Nullable Player player) {
+        if (pickupDelay > 0) return false;
 
-		ItemStack pickupItem = getPickupItem();
-		if (pickupItem.isAir()) return false;
+        return switch (pickupMode) {
+            case ALLOWED -> true;
+            case CREATIVE_ONLY -> player != null && player.getGameMode() == GameMode.CREATIVE;
+            case DISALLOWED -> false;
+        };
+    }
 
-		// Try to add to inventory
-		return player.getInventory().addItemStack(pickupItem);
-	}
+    private boolean pickup(Player player) {
+        if (!canBePickedUp(player)) return false;
+
+        ItemStack pickupItem = getPickupItem();
+        if (pickupItem.isAir()) return false;
+
+        // Try to add to inventory
+        return player.getInventory().addItemStack(pickupItem);
+    }
 
     private void spawnItemAtLocation(ItemStack stack) {
         if (stack.isAir()) return;
@@ -283,68 +289,69 @@ public abstract class AbstractArrow extends CustomEntityProjectile {
         // If item spawning is needed in the future, create an ItemEntity here
     }
 
-	protected abstract ItemStack getPickupItem();
+    protected abstract ItemStack getPickupItem();
 
-	protected void onHurt(LivingEntity entity) {
-		// Override in subclasses to add potion effects, etc.
-	}
+    protected void onHurt(LivingEntity entity) {
+        // Override in subclasses to add potion effects, etc.
+    }
 
-	// Getters and setters
-	public double getBaseDamage() {
-		return baseDamage;
-	}
+    // Getters and setters
+    public double getBaseDamage() {
+        return baseDamage;
+    }
 
-	public void setBaseDamage(double baseDamage) {
-		this.baseDamage = baseDamage;
-	}
+    public void setBaseDamage(double baseDamage) {
+        this.baseDamage = baseDamage;
+    }
 
-	public int getKnockback() {
-		return knockback;
-	}
+    public int getKnockback() {
+        return knockback;
+    }
 
-	public void setKnockback(int knockback) {
-		this.knockback = knockback;
-	}
-	
-	public void setUseKnockbackHandler(boolean useKnockbackHandler) {
-		this.useKnockbackHandler = useKnockbackHandler;
-	}
+    public void setKnockback(int knockback) {
+        this.knockback = knockback;
+    }
 
-	public void setKnockbackConfig(ProjectileKnockbackConfig config) {
-		this.knockbackConfig = config;
-	}
+    public void setUseKnockbackHandler(boolean useKnockbackHandler) {
+        this.useKnockbackHandler = useKnockbackHandler;
+    }
 
-	public boolean isCritical() {
-		return ((AbstractArrowMeta) getEntityMeta()).isCritical();
-	}
+    public void setKnockbackConfig(ProjectileKnockbackConfig config) {
+        this.knockbackConfig = config;
+    }
 
-	public void setCritical(boolean critical) {
-		((AbstractArrowMeta) getEntityMeta()).setCritical(critical);
-	}
+    public boolean isCritical() {
+        return ((AbstractArrowMeta) getEntityMeta()).isCritical();
+    }
 
-	public byte getPiercingLevel() {
-		return ((AbstractArrowMeta) getEntityMeta()).getPiercingLevel();
-	}
+    public void setCritical(boolean critical) {
+        ((AbstractArrowMeta) getEntityMeta()).setCritical(critical);
+    }
 
-	public void setPiercingLevel(byte level) {
-		((AbstractArrowMeta) getEntityMeta()).setPiercingLevel(level);
-	}
+    public byte getPiercingLevel() {
+        return ((AbstractArrowMeta) getEntityMeta()).getPiercingLevel();
+    }
 
-	public PickupMode getPickupMode() {
-		return pickupMode;
-	}
+    public void setPiercingLevel(byte level) {
+        ((AbstractArrowMeta) getEntityMeta()).setPiercingLevel(level);
+    }
 
-	public void setPickupMode(PickupMode pickupMode) {
-		this.pickupMode = pickupMode;
-	}
+    public PickupMode getPickupMode() {
+        return pickupMode;
+    }
 
-	public boolean isOnFire() {
-		return fireTicksLeft > 0;
-	}
+    public void setPickupMode(PickupMode pickupMode) {
+        this.pickupMode = pickupMode;
+    }
 
-	public enum PickupMode {
-		DISALLOWED,
-		ALLOWED,
-		CREATIVE_ONLY
-	}
+    public boolean isOnFire() {
+        return fireTicksLeft > 0;
+    }
+
+    // Todo: at some point probably replace this with tags / maybe gamerules? This is fine for now
+    public enum PickupMode {
+        DISALLOWED,
+        ALLOWED,
+        CREATIVE_ONLY
+    }
 }
