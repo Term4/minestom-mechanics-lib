@@ -26,28 +26,33 @@ import java.util.UUID;
  * without a velocity "hint" pointing into the block, the client never
  * detects the collision and the arrow floats/slides.</p>
  *
- * <h2>Solution — two-phase hint system:</h2>
+ * <h2>Solution — edge-aware hint system:</h2>
  *
- * <h3>Phase 1: Natural prediction (stick tick → pullback delay)</h3>
+ * <h3>Center hits (nearEdge = false):</h3>
+ * <p>The flight direction raycast works reliably from the center of a block
+ * face. No teleport or pullback is needed. Per-tick hints activate immediately
+ * using the flight direction. This is the common case (especially ground hits)
+ * and produces no visual correction — the arrow simply stops.</p>
+ *
+ * <h3>Edge hits (nearEdge = true) — two-phase system:</h3>
+ *
+ * <p><b>Phase 1: Natural prediction (stick tick → pullback delay)</b></p>
  * <p>When the server detects collision, NO packets are sent to legacy clients.
  * The 1.8 client continues simulating the arrow with its own physics (gravity,
  * drag) — exactly like vanilla. The arrow follows a natural arc rather than
  * flying in a straight line with static velocity.</p>
  *
- * <h3>Phase 2: Hint cycle (after pullback delay)</h3>
- * <p>After {@link #pullbackDelayTicks}, a one-time teleport snaps the arrow to
- * the pulled-back position (slightly off the block boundary for reliable raycast)
- * and switches the velocity hint to the face-normal direction. The teleport
- * preserves the arrow's original flight yaw/pitch so the visual rotation
- * doesn't snap to the face-normal. From this point, a per-tick velocity hint
- * is sent to legacy viewers so the raycast continues to detect the block.</p>
+ * <p><b>Phase 2: Pullback + hint cycle (after pullback delay)</b></p>
+ * <p>A one-time teleport snaps the arrow to the pulled-back position (slightly
+ * off the block boundary) and switches the velocity hint to the face-normal
+ * direction. The teleport preserves the arrow's original flight yaw/pitch.
+ * From this point, a per-tick velocity hint is sent to legacy viewers so the
+ * raycast continues to detect the block surface.</p>
  *
  * <h3>Relog handling:</h3>
  * <p>When a legacy player joins/relogs while an arrow is stuck, they receive
  * the hint immediately in the spawn packet — they don't need to see the
- * "natural prediction" phase since they weren't watching the arrow fly.
- * The spawn uses zero view (0,0) which triggers the 1.8 client's init
- * block to compute rotation from the hint velocity direction.</p>
+ * "natural prediction" phase since they weren't watching the arrow fly.</p>
  *
  * <h2>Modern clients:</h2>
  * <p>Modern (1.21+) clients are completely unaffected. They never receive
@@ -73,28 +78,41 @@ public class LegacyProjectileCompat {
      * How far (blocks) to pull back the arrow along its flight path.
      * Moves the position off the exact block boundary so the 1.8 client's
      * raycast reliably detects the surface — especially important at edges.
+     * Only used for edge hits.
      */
     private static double pullbackDistance = 0.1;
 
     /**
      * Ticks to wait after sticking before sending the pullback teleport
-     * and activating the per-tick hint cycle. During this delay, the 1.8
-     * client predicts the arrow with normal physics (gravity + drag),
-     * matching vanilla behavior.
+     * and activating the per-tick hint cycle. Only used for edge hits.
+     * During this delay, the 1.8 client predicts the arrow with normal
+     * physics (gravity + drag), matching vanilla behavior.
      */
     private static int pullbackDelayTicks = 20;
+
+    /**
+     * How close to the edge of a block face an arrow must be to trigger
+     * the full pullback teleport. Measured as distance from face center
+     * on each free axis (0.0 = dead center, 0.5 = edge). Arrows within
+     * the center zone skip the teleport entirely.
+     *
+     * <p>Default 0.35 means the center ~30% of the face skips pullback.
+     * Ground hits (common case) almost always skip it.</p>
+     */
+    private static double edgeThreshold = 0.35;
 
     // =========================================================================
     // Per-instance state — one LegacyProjectileCompat per projectile
     // =========================================================================
 
     /**
-     * Current velocity hint vector. Initially flight direction * hintMagnitude,
-     * switches to face-normal * hintMagnitude after pullback.
+     * Current velocity hint vector. For center hits, this stays as the
+     * flight direction. For edge hits, it switches to face-normal after
+     * the pullback fires.
      */
     private Vec hintVelocity = Vec.ZERO;
 
-    /** Face-normal direction — stored for the switch after pullback fires. */
+    /** Face-normal direction — stored for edge hits' face-normal switch. */
     private Vec faceNormal = Vec.ZERO;
 
     /**
@@ -104,8 +122,8 @@ public class LegacyProjectileCompat {
     private float stuckYaw, stuckPitch;
 
     /**
-     * Whether per-tick hints are being sent. False during the natural
-     * prediction phase (stick tick → pullback delay). True after pullback.
+     * Whether per-tick hints are being sent. For center hits, this is
+     * true immediately. For edge hits, it becomes true after the pullback.
      */
     private boolean hintActive = false;
 
@@ -153,6 +171,14 @@ public class LegacyProjectileCompat {
         LegacyProjectileCompat.pullbackDelayTicks = ticks;
     }
 
+    public static double getEdgeThreshold() {
+        return edgeThreshold;
+    }
+
+    public static void setEdgeThreshold(double threshold) {
+        LegacyProjectileCompat.edgeThreshold = threshold;
+    }
+
     // =========================================================================
     // Lifecycle methods — called by CustomEntityProjectile
     // =========================================================================
@@ -160,13 +186,15 @@ public class LegacyProjectileCompat {
     /**
      * Called when the projectile sticks in a block.
      *
-     * <p>Does NOT send any packets to legacy clients immediately. The 1.8
-     * client continues predicting with its own physics (gravity, drag) —
-     * matching vanilla behavior where the arrow follows a natural arc until
-     * the server correction arrives.</p>
+     * <p><b>Center hits ({@code nearEdge = false}):</b> Per-tick hints activate
+     * immediately using the flight direction. No teleport, no pullback, no
+     * natural prediction phase. The 1.8 client's raycast works reliably from
+     * the center of a block face with the flight direction hint.</p>
      *
-     * <p>Schedules a delayed pullback teleport that snaps the arrow into
-     * place and activates the per-tick hint cycle.</p>
+     * <p><b>Edge hits ({@code nearEdge = true}):</b> No packets sent immediately.
+     * The 1.8 client continues predicting with its own physics. After
+     * {@link #pullbackDelayTicks}, a teleport snaps the arrow to the pullback
+     * position and switches hints to face-normal.</p>
      *
      * @param entityId       the projectile's entity ID
      * @param stuckPos       the server-side stuck position
@@ -174,19 +202,19 @@ public class LegacyProjectileCompat {
      * @param collisionDir   the primary collision face-normal (single-axis unit vector)
      * @param yaw            the arrow's yaw at time of impact (preserved for pullback)
      * @param pitch          the arrow's pitch at time of impact (preserved for pullback)
+     * @param nearEdge       whether the hit point is near the edge of the block face
      * @param viewers        current viewers of the projectile
      */
     public void onStick(int entityId, @NotNull Pos stuckPos, @NotNull Vec flightVelocity,
                         @NotNull Vec collisionDir, float yaw, float pitch,
-                        @NotNull Collection<Player> viewers) {
+                        boolean nearEdge, @NotNull Collection<Player> viewers) {
         if (!enabled) return;
 
         this.faceNormal = collisionDir;
         this.stuckYaw = yaw;
         this.stuckPitch = pitch;
-        this.hintActive = false;
 
-        // Compute initial hint from flight direction
+        // Compute hint from flight direction
         if (flightVelocity.lengthSquared() > 0.0001) {
             this.hintVelocity = flightVelocity.normalize().mul(hintMagnitude);
         } else {
@@ -195,6 +223,19 @@ public class LegacyProjectileCompat {
 
         // Increment generation — invalidates any pending pullback from a previous stick
         final int generation = ++stickGeneration;
+
+        if (!nearEdge) {
+            // CENTER HIT — flight direction raycast works reliably.
+            // Activate per-tick hints immediately, no teleport needed.
+            // The 1.8 client gets the hint on the next tick and its
+            // raycast detects the block from the center of the face.
+            hintActive = true;
+            return;
+        }
+
+        // EDGE HIT — full two-phase system.
+        // Phase 1 is NOW: no packets. 1.8 client predicts naturally.
+        hintActive = false;
 
         // Compute pullback position (slightly off block boundary)
         final Pos pullbackPos;
@@ -205,10 +246,7 @@ public class LegacyProjectileCompat {
             pullbackPos = stuckPos;
         }
 
-        // Phase 1 is NOW: no packets sent. 1.8 client predicts naturally with
-        // gravity + drag, just like vanilla. Arrow follows a natural arc.
-
-        // Schedule Phase 2: pullback teleport + hint activation
+        // Schedule Phase 2: pullback teleport + face-normal switch
         final var detector = ClientVersionDetector.getInstance();
         MinecraftServer.getSchedulerManager().buildTask(() -> {
             if (stickGeneration != generation) return; // Stale — arrow unstuck since scheduled
@@ -218,12 +256,10 @@ public class LegacyProjectileCompat {
 
     /**
      * Called every server tick while the projectile is stuck.
-     * Sends the velocity hint to legacy viewers if the hint cycle is active
-     * (i.e., the pullback delay has elapsed).
+     * Sends the velocity hint to legacy viewers if the hint cycle is active.
      *
-     * <p>During the natural prediction phase (first ~{@link #pullbackDelayTicks}
-     * ticks after sticking), this is a no-op. Legacy clients receive nothing
-     * and continue predicting with their own physics.</p>
+     * <p>For center hits, this is active from the first tick after sticking.
+     * For edge hits, this is a no-op until the pullback fires.</p>
      *
      * @param entityId the projectile's entity ID
      * @param viewers  current viewers of the projectile
@@ -268,13 +304,11 @@ public class LegacyProjectileCompat {
      * Write spawn/relog packets for a legacy viewer when the arrow is stuck.
      *
      * <p>Always sends the hint immediately on relog — the player wasn't
-     * watching the arrow fly, so "natural prediction" doesn't apply. They
-     * need the arrow to appear stuck from the first frame.</p>
+     * watching the arrow fly, so neither "natural prediction" nor "center
+     * skip" applies. They need the arrow to appear stuck from the first frame.</p>
      *
      * <p>Uses zero view (0,0) which triggers the 1.8 client's init block
-     * that computes yaw/pitch from the velocity direction. This is correct
-     * for relog — the player never saw the flight, so rotation from the
-     * hint direction is the best approximation.</p>
+     * that computes yaw/pitch from the velocity direction.</p>
      *
      * @param player     the legacy viewer
      * @param entityId   the projectile's entity ID
@@ -306,6 +340,41 @@ public class LegacyProjectileCompat {
     }
 
     /**
+     * Determine whether a collision point is near the edge of a block face.
+     *
+     * <p>Checks the two "free" axes (the axes perpendicular to the collision
+     * face) to see if the fractional block coordinate is far from center.
+     * For example, an arrow hitting the east face (X collision) checks how
+     * far the Y and Z coordinates are from the center of the face.</p>
+     *
+     * <p>Uses {@link #edgeThreshold} — default 0.35 means the center ~30%
+     * of the face is considered "center" and skips pullback. Arrows near
+     * the block's edge or corner need the pullback for reliable raycast.</p>
+     *
+     * @param point   the collision point
+     * @param hitAxis 0=X, 1=Y, 2=Z — the axis of the primary collision
+     * @return true if the point is near the edge of the block face
+     */
+    public static boolean isNearEdge(@NotNull net.minestom.server.coordinate.Point point, int hitAxis) {
+        double fracX = point.x() - Math.floor(point.x());
+        double fracY = point.y() - Math.floor(point.y());
+        double fracZ = point.z() - Math.floor(point.z());
+
+        // Distance from center (0.5) on each axis — 0.0 = dead center, 0.5 = edge
+        double distX = Math.abs(fracX - 0.5);
+        double distY = Math.abs(fracY - 0.5);
+        double distZ = Math.abs(fracZ - 0.5);
+
+        // Only check the two FREE axes (not the collision axis)
+        return switch (hitAxis) {
+            case 0 -> distY > edgeThreshold || distZ > edgeThreshold;  // X collision — check Y,Z
+            case 1 -> distX > edgeThreshold || distZ > edgeThreshold;  // Y collision — check X,Z
+            case 2 -> distX > edgeThreshold || distY > edgeThreshold;  // Z collision — check X,Y
+            default -> true; // Unknown axis — assume edge, send pullback
+        };
+    }
+
+    /**
      * @return the current hint velocity (for debugging or external use)
      */
     @NotNull
@@ -325,8 +394,8 @@ public class LegacyProjectileCompat {
     // =========================================================================
 
     /**
-     * Phase 2: fire the delayed pullback teleport. Switches hint to
-     * face-normal and activates the per-tick hint cycle.
+     * Phase 2 (edge hits only): fire the delayed pullback teleport.
+     * Switches hint to face-normal and activates the per-tick hint cycle.
      *
      * <p>The teleport position uses the original flight yaw/pitch so the
      * arrow's visual rotation is preserved. The hint velocity (face-normal)
@@ -343,8 +412,6 @@ public class LegacyProjectileCompat {
         hintActive = true;
 
         // Preserve the arrow's original flight angle on the pullback teleport.
-        // Without this, the arrow snaps to face perpendicular into the block
-        // (the face-normal direction) which looks wrong.
         Pos viewCorrectedPos = pullbackPos.withView(stuckYaw, stuckPitch);
 
         for (Player viewer : viewers) {

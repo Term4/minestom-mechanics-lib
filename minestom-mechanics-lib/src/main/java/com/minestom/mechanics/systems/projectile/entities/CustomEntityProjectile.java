@@ -49,8 +49,9 @@ import java.util.Collection;
  *
  * <h3>Legacy (1.8) — delegated to {@link LegacyProjectileCompat}:</h3>
  * <p>All legacy-specific hint, pullback, and relog logic is handled by the
- * {@link LegacyProjectileCompat} instance. See that class for the two-phase
- * hint system (natural prediction → pullback + per-tick hints).</p>
+ * {@link LegacyProjectileCompat} instance. See that class for the edge-aware
+ * hint system (center hits → immediate hints, edge hits → natural prediction
+ * → pullback + face-normal hints).</p>
  *
  * <p>Legacy compat can be disabled entirely via
  * {@link LegacyProjectileCompat#setEnabled(boolean)}, in which case only
@@ -234,9 +235,9 @@ public abstract class CustomEntityProjectile extends Entity {
     //
     //   Modern clients: absolute silence. inGround metadata persists.
     //
-    //   Legacy clients: LegacyProjectileCompat handles per-tick hints
-    //   (only after the pullback delay — during natural prediction phase,
-    //   legacy also receives nothing).
+    //   Legacy clients: LegacyProjectileCompat handles per-tick hints.
+    //   For center hits, hints are active immediately. For edge hits,
+    //   hints are a no-op until the pullback fires.
     //
     // Subclass update(time) still runs for pickup, stuck time, removal, etc.
     // =========================================================================
@@ -253,8 +254,8 @@ public abstract class CustomEntityProjectile extends Entity {
             if (isRemoved()) return;
 
             // Legacy hint — delegates to LegacyProjectileCompat.
-            // During natural prediction phase, this is a no-op.
-            // After pullback delay, sends per-tick hint to legacy viewers.
+            // Center hits: active from first tick (flight direction hint).
+            // Edge hits: no-op until pullback fires (natural prediction).
             legacyCompat.tickStuck(getEntityId(), getViewers());
 
             // Check if the block was broken
@@ -343,8 +344,6 @@ public abstract class CustomEntityProjectile extends Entity {
         if (!ChunkUtils.isLoaded(finalChunk)) return;
 
         boolean justBecameStuck = false;
-        // Yaw/pitch computed from flight velocity at impact — used for both
-        // the arrow's final rotation and the legacy pullback teleport.
         float stuckYaw = 0, stuckPitch = 0;
 
         // =================================================================
@@ -366,44 +365,50 @@ public abstract class CustomEntityProjectile extends Entity {
             Point collidedPosition = combinedDir.add(physicsResult.newPosition()).apply(Vec.Operator.FLOOR);
             Block hitBlock = instance.getBlock(collidedPosition, Block.Getter.Condition.TYPE);
 
-            // Primary axis — dominant collision axis by velocity magnitude
-            Vec primaryDir = computePrimaryAxis(physicsResult);
+            // Primary axis — dominant collision axis by velocity magnitude.
+            // Also returns the axis index (0/1/2) for edge detection.
+            int hitAxis = computePrimaryAxisIndex(physicsResult);
+            Vec primaryDir = computePrimaryAxis(hitAxis);
 
             var event = new ProjectileCollideWithBlockEvent(
                     this, new Pos(newPosition.x(), newPosition.y(), newPosition.z()), hitBlock);
             EventDispatcher.call(event);
             if (!event.isCancelled()) {
-                // Capture flight velocity BEFORE zeroing — needed for legacy
-                // hint direction and for computing the stuck rotation.
+                // Capture flight velocity BEFORE zeroing
                 Vec flightVelocity = velocity;
 
-                // Compute stuck rotation from flight velocity. This is done
-                // here (before velocity is zeroed) because the rotation section
-                // below can't access the pre-zero velocity.
+                // Compute stuck rotation from flight velocity before zeroing
                 if (flightVelocity.lengthSquared() > 1e-8) {
                     double hl = Math.sqrt(flightVelocity.x() * flightVelocity.x()
                             + flightVelocity.z() * flightVelocity.z());
                     stuckYaw = (float) Math.toDegrees(Math.atan2(flightVelocity.x(), flightVelocity.z()));
                     stuckPitch = (float) Math.toDegrees(Math.atan2(flightVelocity.y(), hl));
                 } else {
-                    // Near-zero velocity — keep current rotation
                     stuckYaw = prevYaw;
                     stuckPitch = prevPitch;
                 }
 
                 setNoGravity(true);
-                setVelocity(Vec.ZERO);
+                // Set internal velocity without broadcasting. Legacy clients keep
+                // their last known velocity and continue predicting with normal
+                // physics (gravity + drag) — matching vanilla visual behavior.
+                // Radio silence begins next tick. Modern clients get inGround
+                // metadata from onStuck() which overrides velocity anyway.
+                this.velocity = Vec.ZERO;
                 this.collisionDirection = primaryDir;
                 this.stuckCollisionPoint = newPosition;
                 justBecameStuck = true;
 
-                // Notify legacy compat — schedules pullback, does NOT send
-                // any immediate packets (natural prediction phase).
-                // Passes the stuck rotation so the pullback teleport preserves
-                // the arrow's visual angle instead of snapping to face-normal.
+                // Determine if the hit point is near the edge of the block face.
+                // Center hits skip the pullback teleport entirely — the flight
+                // direction raycast works reliably from the center. Edge hits
+                // get the full two-phase system (natural prediction → pullback).
+                boolean nearEdge = LegacyProjectileCompat.isNearEdge(newPosition, hitAxis);
+
+                // Notify legacy compat
                 Pos stuckPos = new Pos(newPosition.x(), newPosition.y(), newPosition.z());
                 legacyCompat.onStick(getEntityId(), stuckPos, flightVelocity,
-                        primaryDir, stuckYaw, stuckPitch, getViewers());
+                        primaryDir, stuckYaw, stuckPitch, nearEdge, getViewers());
 
                 if (onStuck()) {
                     remove();
@@ -423,7 +428,9 @@ public abstract class CustomEntityProjectile extends Entity {
         velocity = velocity.mul(hDrag, vDrag, hDrag)
                 .sub(0, hasNoGravity() ? 0 : getAerodynamics().gravity() * gravMult, 0);
 
-        super.setVelocity(velocity);
+        if (!justBecameStuck) {
+            super.setVelocity(velocity);
+        }
         onGround = physicsResult.isOnGround();
 
         // =================================================================
@@ -434,23 +441,18 @@ public abstract class CustomEntityProjectile extends Entity {
 
         if (!noClip) {
             if (isStuck() && !justBecameStuck) {
-                // Already stuck from a previous tick — freeze rotation
                 yaw = prevYaw;
                 pitch = prevPitch;
             } else if (justBecameStuck) {
-                // Just stuck this tick — use the rotation we computed from
-                // the flight velocity above (before it was zeroed)
                 yaw = stuckYaw;
                 pitch = stuckPitch;
             } else {
-                // In flight — compute from displacement
                 Vec displacement = newPosition.sub(position).asVec();
                 if (displacement.lengthSquared() > 1e-8) {
                     double hl = Math.sqrt(displacement.x() * displacement.x() + displacement.z() * displacement.z());
                     yaw = (float) Math.toDegrees(Math.atan2(displacement.x(), displacement.z()));
                     pitch = (float) Math.toDegrees(Math.atan2(displacement.y(), hl));
                 }
-                // else: near-zero displacement, keep previous yaw/pitch
             }
         }
 
@@ -472,10 +474,11 @@ public abstract class CustomEntityProjectile extends Entity {
         // Modern: radio silence. refreshPosition() updated position
         // internally, inGround metadata (set by onStuck()) handles client.
         //
-        // Legacy: natural prediction phase. LegacyProjectileCompat.onStick()
-        // already scheduled the pullback — no immediate packets. The 1.8
-        // client continues predicting with its own physics (gravity, drag)
-        // until the pullback teleport arrives.
+        // Legacy center: LegacyProjectileCompat activated hints immediately.
+        // Next tick's tickStuck() will send the first hint.
+        //
+        // Legacy edge: LegacyProjectileCompat scheduled the pullback.
+        // No packets until it fires — 1.8 client predicts naturally.
         // =================================================================
         if (justBecameStuck) {
             this.lastSyncedPosition = finalPos;
@@ -483,32 +486,41 @@ public abstract class CustomEntityProjectile extends Entity {
     }
 
     /**
-     * Compute the primary (dominant) collision axis from the physics result.
-     * Returns a single-axis unit vector in the direction of travel on that axis.
+     * Compute the axis index (0=X, 1=Y, 2=Z) of the primary (dominant)
+     * collision axis from the physics result. Prefers the collision axis
+     * with the highest velocity component.
      */
-    private Vec computePrimaryAxis(PhysicsResult result) {
+    private int computePrimaryAxisIndex(PhysicsResult result) {
         double vx = Math.abs(velocity.x());
         double vy = Math.abs(velocity.y());
         double vz = Math.abs(velocity.z());
 
-        if (result.collisionY() && vy >= vx && vy >= vz) {
-            return new Vec(0, Math.signum(velocity.y()), 0);
-        }
-        if (result.collisionX() && vx >= vy && vx >= vz) {
-            return new Vec(Math.signum(velocity.x()), 0, 0);
-        }
-        if (result.collisionZ()) {
-            return new Vec(0, 0, Math.signum(velocity.z()));
-        }
+        if (result.collisionY() && vy >= vx && vy >= vz) return 1;
+        if (result.collisionX() && vx >= vy && vx >= vz) return 0;
+        if (result.collisionZ()) return 2;
         // Fallback: any colliding axis
-        if (result.collisionY()) return new Vec(0, Math.signum(velocity.y()), 0);
-        if (result.collisionX()) return new Vec(Math.signum(velocity.x()), 0, 0);
+        if (result.collisionY()) return 1;
+        if (result.collisionX()) return 0;
+        return -1; // Should never happen if hasCollision() is true
+    }
 
-        // Defensive — should never reach here if hasCollision() is true
-        double sx = result.collisionX() ? Math.signum(velocity.x()) : 0;
-        double sy = result.collisionY() ? Math.signum(velocity.y()) : 0;
-        double sz = result.collisionZ() ? Math.signum(velocity.z()) : 0;
-        return new Vec(sx, sy, sz);
+    /**
+     * Convert an axis index to a single-axis unit vector in the direction
+     * of travel on that axis.
+     */
+    private Vec computePrimaryAxis(int hitAxis) {
+        return switch (hitAxis) {
+            case 0 -> new Vec(Math.signum(velocity.x()), 0, 0);
+            case 1 -> new Vec(0, Math.signum(velocity.y()), 0);
+            case 2 -> new Vec(0, 0, Math.signum(velocity.z()));
+            default -> {
+                // Defensive fallback — combined direction
+                double sx = Math.signum(velocity.x());
+                double sy = Math.signum(velocity.y());
+                double sz = Math.signum(velocity.z());
+                yield new Vec(sx, sy, sz);
+            }
+        };
     }
 
     // =========================================================================
@@ -569,7 +581,6 @@ public abstract class CustomEntityProjectile extends Entity {
         if (isStuck() && LegacyProjectileCompat.isEnabled()
                 && ClientVersionDetector.getInstance().isLegacy(player)) {
             // Legacy relog/chunk enter — delegate to compat handler.
-            // Sends hint velocity + zero view + data > 0 for ViaVersion.
             legacyCompat.sendStuckSpawnPackets(
                     player, getEntityId(), getUuid(), getEntityType(),
                     getPosition(), shooterData
