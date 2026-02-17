@@ -169,7 +169,7 @@ public class Main {
 
         ClientVersionDetector.getInstance();
         LegacyAnimationFix.getInstance();
-        LegacySprintMetadataSuppression.getInstance();
+        //LegacySprintMetadataSuppression.getInstance();
         EntityVisibilityTest.register();
 
         ModernStutterFix.getInstance();
