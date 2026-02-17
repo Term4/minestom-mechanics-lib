@@ -91,13 +91,14 @@ public class LegacyProjectileCompat {
     private static int pullbackDelayTicks = 20;
 
     /**
-     * How close to the edge of a block face an arrow must be to trigger
-     * the full pullback teleport. Measured as distance from face center
-     * on each free axis (0.0 = dead center, 0.5 = edge). Arrows within
-     * the center zone skip the teleport entirely.
-     *
-     * <p>Default 0.35 means the center ~30% of the face skips pullback.
-     * Ground hits (common case) almost always skip it.</p>
+     * Edge sensitivity for pullback teleport. Range 0–1, shape-relative.
+     * <ul>
+     *   <li><b>0</b> — Never pullback (treat all hits as center)</li>
+     *   <li><b>1</b> — Always pullback (even dead center)</li>
+     *   <li><b>0.5</b> — Pullback when hit is past halfway to the shape edge</li>
+     * </ul>
+     * Uses the block's collision shape extent, so fences/slabs work correctly
+     * (full blocks use 0.5 half-width; fences use ~0.0625).
      */
     private static double edgeThreshold = 0.35;
 
@@ -175,8 +176,11 @@ public class LegacyProjectileCompat {
         return edgeThreshold;
     }
 
+    /**
+     * @param threshold 0–1: 0=never pullback, 1=always pullback. Clamped to [0,1].
+     */
     public static void setEdgeThreshold(double threshold) {
-        LegacyProjectileCompat.edgeThreshold = threshold;
+        LegacyProjectileCompat.edgeThreshold = Math.max(0, Math.min(1, threshold));
     }
 
     // =========================================================================
@@ -226,9 +230,6 @@ public class LegacyProjectileCompat {
 
         if (!nearEdge) {
             // CENTER HIT — flight direction raycast works reliably.
-            // Activate per-tick hints immediately, no teleport needed.
-            // The 1.8 client gets the hint on the next tick and its
-            // raycast detects the block from the center of the face.
             hintActive = true;
             return;
         }
@@ -341,37 +342,71 @@ public class LegacyProjectileCompat {
 
     /**
      * Determine whether a collision point is near the edge of a block face.
-     *
-     * <p>Checks the two "free" axes (the axes perpendicular to the collision
-     * face) to see if the fractional block coordinate is far from center.
-     * For example, an arrow hitting the east face (X collision) checks how
-     * far the Y and Z coordinates are from the center of the face.</p>
-     *
-     * <p>Uses {@link #edgeThreshold} — default 0.35 means the center ~30%
-     * of the face is considered "center" and skips pullback. Arrows near
-     * the block's edge or corner need the pullback for reliable raycast.</p>
+     * Uses the block's collision shape extent so fences/slabs work correctly.
      *
      * @param point   the collision point
      * @param hitAxis 0=X, 1=Y, 2=Z — the axis of the primary collision
-     * @return true if the point is near the edge of the block face
+     * @param block   the hit block (for collision shape extent)
+     * @return true if the point is near the edge (trigger pullback)
      */
-    public static boolean isNearEdge(@NotNull net.minestom.server.coordinate.Point point, int hitAxis) {
+    public static boolean isNearEdge(@NotNull net.minestom.server.coordinate.Point point,
+                                    int hitAxis,
+                                    @NotNull net.minestom.server.instance.block.Block block) {
+        if (edgeThreshold <= 0) return false;
+        if (edgeThreshold >= 1) return true;
+
         double fracX = point.x() - Math.floor(point.x());
         double fracY = point.y() - Math.floor(point.y());
         double fracZ = point.z() - Math.floor(point.z());
 
-        // Distance from center (0.5) on each axis — 0.0 = dead center, 0.5 = edge
-        double distX = Math.abs(fracX - 0.5);
-        double distY = Math.abs(fracY - 0.5);
-        double distZ = Math.abs(fracZ - 0.5);
+        // Shape extent on the two FREE axes (perpendicular to collision face)
+        double centerA, halfWidthA, centerB, halfWidthB;
+        double distA, distB;
 
-        // Only check the two FREE axes (not the collision axis)
-        return switch (hitAxis) {
-            case 0 -> distY > edgeThreshold || distZ > edgeThreshold;  // X collision — check Y,Z
-            case 1 -> distX > edgeThreshold || distZ > edgeThreshold;  // Y collision — check X,Z
-            case 2 -> distX > edgeThreshold || distY > edgeThreshold;  // Z collision — check X,Y
-            default -> true; // Unknown axis — assume edge, send pullback
-        };
+        var shape = block.registry().collisionShape();
+        if (!(shape instanceof net.minestom.server.collision.ShapeImpl shapeImpl)) {
+            // Fallback: full block (0.5 half-width)
+            double dX = Math.abs(fracX - 0.5), dY = Math.abs(fracY - 0.5), dZ = Math.abs(fracZ - 0.5);
+            return switch (hitAxis) {
+                case 0 -> dY >= edgeThreshold * 0.5 || dZ >= edgeThreshold * 0.5;
+                case 1 -> dX >= edgeThreshold * 0.5 || dZ >= edgeThreshold * 0.5;
+                case 2 -> dX >= edgeThreshold * 0.5 || dY >= edgeThreshold * 0.5;
+                default -> true;
+            };
+        } else {
+            double minX = 1, maxX = 0, minY = 1, maxY = 0, minZ = 1, maxZ = 0;
+            for (var bbox : shapeImpl.boundingBoxes()) {
+                var s = bbox.relativeStart();
+                var e = bbox.relativeEnd();
+                minX = Math.min(minX, s.x()); maxX = Math.max(maxX, e.x());
+                minY = Math.min(minY, s.y()); maxY = Math.max(maxY, e.y());
+                minZ = Math.min(minZ, s.z()); maxZ = Math.max(maxZ, e.z());
+            }
+            switch (hitAxis) {
+                case 0 -> {  // X collision — free axes Y, Z
+                    centerA = (minY + maxY) / 2; halfWidthA = Math.max(1e-6, (maxY - minY) / 2);
+                    centerB = (minZ + maxZ) / 2; halfWidthB = Math.max(1e-6, (maxZ - minZ) / 2);
+                    distA = Math.abs(fracY - centerA);
+                    distB = Math.abs(fracZ - centerB);
+                }
+                case 1 -> {  // Y collision — free axes X, Z
+                    centerA = (minX + maxX) / 2; halfWidthA = Math.max(1e-6, (maxX - minX) / 2);
+                    centerB = (minZ + maxZ) / 2; halfWidthB = Math.max(1e-6, (maxZ - minZ) / 2);
+                    distA = Math.abs(fracX - centerA);
+                    distB = Math.abs(fracZ - centerB);
+                }
+                case 2 -> {  // Z collision — free axes X, Y
+                    centerA = (minX + maxX) / 2; halfWidthA = Math.max(1e-6, (maxX - minX) / 2);
+                    centerB = (minY + maxY) / 2; halfWidthB = Math.max(1e-6, (maxY - minY) / 2);
+                    distA = Math.abs(fracX - centerA);
+                    distB = Math.abs(fracY - centerB);
+                }
+                default -> { return true; }
+            }
+        }
+
+        // threshold 0–1: near edge when dist >= threshold * halfWidth on either free axis
+        return distA >= edgeThreshold * halfWidthA || distB >= edgeThreshold * halfWidthB;
     }
 
     /**

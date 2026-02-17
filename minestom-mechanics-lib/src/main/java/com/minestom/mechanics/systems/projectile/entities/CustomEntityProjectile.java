@@ -6,6 +6,7 @@ import com.minestom.mechanics.config.timing.TickScalingConfig;
 import com.minestom.mechanics.systems.compatibility.ClientVersionDetector;
 import com.minestom.mechanics.systems.compatibility.legacy_1_8.LegacyProjectileCompat;
 import com.minestom.mechanics.systems.projectile.utils.ProjectileUtil;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.collision.*;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
@@ -19,6 +20,8 @@ import net.minestom.server.event.entity.projectile.ProjectileCollideWithEntityEv
 import net.minestom.server.event.entity.projectile.ProjectileUncollideEvent;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.network.packet.server.play.EntityTeleportPacket;
+import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import net.minestom.server.utils.chunk.ChunkCache;
 import net.minestom.server.utils.chunk.ChunkUtils;
@@ -58,7 +61,6 @@ import java.util.Collection;
  * modern (radio silence) behavior applies.</p>
  */
 public abstract class CustomEntityProjectile extends Entity {
-    private static final BoundingBox UNSTUCK_BOX = new BoundingBox(0.12, 0.6, 0.12);
 
     // Core projectile state
     protected Vec velocity = Vec.ZERO;
@@ -79,10 +81,16 @@ public abstract class CustomEntityProjectile extends Entity {
     protected Vec collisionDirection = null;
 
     /**
-     * The physics-resolved position where the arrow stuck ({@code physicsResult.newPosition()}).
-     * Fully-resolved after all three axes — the coordinate both clients agree with.
+     * The collision point (from physicsResult.collisionPoints). Used for block lookup,
+     * unstuck checks, and legacy edge detection.
      */
     protected Point stuckCollisionPoint = null;
+
+    /**
+     * Physics-resolved stuck position (physicsResult.newPosition()). Used for entity
+     * placement — fixes 1.21 clients seeing arrow floating in front of block face.
+     */
+    protected Pos stuckResolvedPosition = null;
 
     // Legacy compatibility handler
     private final LegacyProjectileCompat legacyCompat = new LegacyProjectileCompat();
@@ -92,6 +100,12 @@ public abstract class CustomEntityProjectile extends Entity {
 
     // Track view angles for displacement-based rotation
     private float prevYaw, prevPitch;
+
+    /** Set when we stick this tick; used for rotation/position update. */
+    private boolean justBecameStuck;
+    /** True if the stick was near a block edge (narrow shape). Used to skip legacy packets on stick tick — edge hits use Phase 1 "no packets" so client predicts naturally until pullback. */
+    private boolean lastStickWasEdgeHit;
+    private float stuckYaw, stuckPitch;
 
     // Knockback configuration (common to all projectiles)
     protected boolean useKnockbackHandler = true;
@@ -281,6 +295,7 @@ public abstract class CustomEntityProjectile extends Entity {
 
         collisionDirection = null;
         stuckCollisionPoint = null;
+        stuckResolvedPosition = null;
         setNoGravity(false);
 
         onUnstuck();
@@ -343,80 +358,34 @@ public abstract class CustomEntityProjectile extends Entity {
         Chunk finalChunk = ChunkUtils.retrieve(instance, currentChunk, physicsResult.newPosition());
         if (!ChunkUtils.isLoaded(finalChunk)) return;
 
-        boolean justBecameStuck = false;
-        float stuckYaw = 0, stuckPitch = 0;
+        this.justBecameStuck = false;
 
         // =================================================================
-        // BLOCK COLLISION — MinestomPVP approach.
-        //
-        // Combined collision direction from ALL colliding axes, added to
-        // newPosition and floored to find the block. newPosition is the
-        // fully-resolved coordinate after all axes are processed — the
-        // only position that both 1.8 and 1.21 clients agree with.
-        //
-        // Zero bbox ensures newPosition lands exactly on boundaries.
+        // BLOCK COLLISION — Atlas approach (ShapeImpl + collisionPoints).
         // =================================================================
         if (physicsResult.hasCollision()) {
-            double signumX = physicsResult.collisionX() ? Math.signum(velocity.x()) : 0;
-            double signumY = physicsResult.collisionY() ? Math.signum(velocity.y()) : 0;
-            double signumZ = physicsResult.collisionZ() ? Math.signum(velocity.z()) : 0;
-            Vec combinedDir = new Vec(signumX, signumY, signumZ);
-
-            Point collidedPosition = combinedDir.add(physicsResult.newPosition()).apply(Vec.Operator.FLOOR);
-            Block hitBlock = instance.getBlock(collidedPosition, Block.Getter.Condition.TYPE);
-
-            // Primary axis — dominant collision axis by velocity magnitude.
-            // Also returns the axis index (0/1/2) for edge detection.
-            int hitAxis = computePrimaryAxisIndex(physicsResult);
-            Vec primaryDir = computePrimaryAxis(hitAxis);
-
-            var event = new ProjectileCollideWithBlockEvent(
-                    this, new Pos(newPosition.x(), newPosition.y(), newPosition.z()), hitBlock);
-            EventDispatcher.call(event);
-            if (!event.isCancelled()) {
-                // Capture flight velocity BEFORE zeroing
-                Vec flightVelocity = velocity;
-
-                // Compute stuck rotation from flight velocity before zeroing
-                if (flightVelocity.lengthSquared() > 1e-8) {
-                    double hl = Math.sqrt(flightVelocity.x() * flightVelocity.x()
-                            + flightVelocity.z() * flightVelocity.z());
-                    stuckYaw = (float) Math.toDegrees(Math.atan2(flightVelocity.x(), flightVelocity.z()));
-                    stuckPitch = (float) Math.toDegrees(Math.atan2(flightVelocity.y(), hl));
-                } else {
-                    stuckYaw = prevYaw;
-                    stuckPitch = prevPitch;
-                }
-
-                setNoGravity(true);
-                // Set internal velocity without broadcasting. Legacy clients keep
-                // their last known velocity and continue predicting with normal
-                // physics (gravity + drag) — matching vanilla visual behavior.
-                // Radio silence begins next tick. Modern clients get inGround
-                // metadata from onStuck() which overrides velocity anyway.
-                this.velocity = Vec.ZERO;
-                this.collisionDirection = primaryDir;
-                this.stuckCollisionPoint = newPosition;
-                justBecameStuck = true;
-
-                // Determine if the hit point is near the edge of the block face.
-                // Center hits skip the pullback teleport entirely — the flight
-                // direction raycast works reliably from the center. Edge hits
-                // get the full two-phase system (natural prediction → pullback).
-                boolean nearEdge = LegacyProjectileCompat.isNearEdge(newPosition, hitAxis);
-
-                // Notify legacy compat
-                Pos stuckPos = new Pos(newPosition.x(), newPosition.y(), newPosition.z());
-                legacyCompat.onStick(getEntityId(), stuckPos, flightVelocity,
-                        primaryDir, stuckYaw, stuckPitch, nearEdge, getViewers());
-
-                if (onStuck()) {
-                    remove();
-                    return;
-                }
+            Block hitBlock = null;
+            Point hitPoint = null;
+            int hitAxis = -1;
+            if (physicsResult.collisionShapes()[0] instanceof ShapeImpl) {
+                hitBlock = instance.getBlock(physicsResult.collisionPoints()[0].sub(0, Vec.EPSILON, 0), Block.Getter.Condition.TYPE);
+                hitPoint = physicsResult.collisionPoints()[0];
+                hitAxis = 0;
+            }
+            if (physicsResult.collisionShapes()[1] instanceof ShapeImpl) {
+                hitBlock = instance.getBlock(physicsResult.collisionPoints()[1].sub(0, Vec.EPSILON, 0), Block.Getter.Condition.TYPE);
+                hitPoint = physicsResult.collisionPoints()[1];
+                hitAxis = 1;
+            }
+            if (physicsResult.collisionShapes()[2] instanceof ShapeImpl) {
+                hitBlock = instance.getBlock(physicsResult.collisionPoints()[2].sub(0, Vec.EPSILON, 0), Block.Getter.Condition.TYPE);
+                hitPoint = physicsResult.collisionPoints()[2];
+                hitAxis = 2;
+            }
+            if (hitBlock != null && hitPoint != null) {
+                processBlockCollision(hitBlock, hitPoint, hitAxis, computePrimaryAxis(hitAxis), newPosition);
             }
         }
-
         // =================================================================
         // DRAG / GRAVITY
         // =================================================================
@@ -462,8 +431,12 @@ public abstract class CustomEntityProjectile extends Entity {
         // =================================================================
         // POSITION UPDATE
         // =================================================================
-        Pos finalPos = (justBecameStuck && stuckCollisionPoint != null)
-                ? new Pos(stuckCollisionPoint.x(), stuckCollisionPoint.y(), stuckCollisionPoint.z(), yaw, pitch)
+        // Use physics-resolved newPosition for stuck, not collision point. Atlas uses
+        // collision point, but newPosition is where the engine places the entity after
+        // resolution — fixes 1.21 clients sometimes seeing the arrow floating in front
+        // of the block face (collision point can be offset in some hit configurations).
+        Pos finalPos = (justBecameStuck && stuckResolvedPosition != null)
+                ? stuckResolvedPosition.withView(yaw, pitch)
                 : newPosition.withView(yaw, pitch);
 
         refreshPosition(finalPos, noClip, false);
@@ -485,23 +458,53 @@ public abstract class CustomEntityProjectile extends Entity {
         }
     }
 
-    /**
-     * Compute the axis index (0=X, 1=Y, 2=Z) of the primary (dominant)
-     * collision axis from the physics result. Prefers the collision axis
-     * with the highest velocity component.
-     */
-    private int computePrimaryAxisIndex(PhysicsResult result) {
-        double vx = Math.abs(velocity.x());
-        double vy = Math.abs(velocity.y());
-        double vz = Math.abs(velocity.z());
+    /** Process block collision (stuck logic). Returns true if collision was handled. */
+    private boolean processBlockCollision(Block hitBlock, Point hitPoint, int hitAxis, Vec primaryDir, Pos resolvedPosition) {
+        var event = new ProjectileCollideWithBlockEvent(
+                this, new Pos(hitPoint.x(), hitPoint.y(), hitPoint.z()), hitBlock);
+        EventDispatcher.call(event);
+        if (event.isCancelled()) return false;
 
-        if (result.collisionY() && vy >= vx && vy >= vz) return 1;
-        if (result.collisionX() && vx >= vy && vx >= vz) return 0;
-        if (result.collisionZ()) return 2;
-        // Fallback: any colliding axis
-        if (result.collisionY()) return 1;
-        if (result.collisionX()) return 0;
-        return -1; // Should never happen if hasCollision() is true
+        Vec flightVelocity = velocity;
+        if (flightVelocity.lengthSquared() > 1e-8) {
+            double hl = Math.sqrt(flightVelocity.x() * flightVelocity.x()
+                    + flightVelocity.z() * flightVelocity.z());
+            stuckYaw = (float) Math.toDegrees(Math.atan2(flightVelocity.x(), flightVelocity.z()));
+            stuckPitch = (float) Math.toDegrees(Math.atan2(flightVelocity.y(), hl));
+        } else {
+            stuckYaw = prevYaw;
+            stuckPitch = prevPitch;
+        }
+
+        setNoGravity(true);
+        this.velocity = Vec.ZERO;
+        this.collisionDirection = primaryDir;
+        this.stuckCollisionPoint = hitPoint;
+        this.stuckResolvedPosition = resolvedPosition;
+        this.justBecameStuck = true;
+
+        boolean nearEdge = LegacyProjectileCompat.isNearEdge(hitPoint, hitAxis, hitBlock);
+        this.lastStickWasEdgeHit = nearEdge;
+        // Legacy uses resolved position for relog/spawn — same as what we render
+        legacyCompat.onStick(getEntityId(), resolvedPosition, flightVelocity,
+                primaryDir, stuckYaw, stuckPitch, nearEdge, getViewers());
+
+        // Atlas: delay sync by one tick — "in rare situations there will be a slight
+        // disagreement with the client and server on if it hit or not; scheduling next
+        // tick so it doesn't jump to the hit position until it has actually hit".
+        // We must send (not just return) when stuck for this to take effect.
+        MinecraftServer.getSchedulerManager().scheduleNextTick(() -> {
+            if (isStuck() && !isRemoved()) {
+                sendPacketToViewersAndSelf(new EntityTeleportPacket(
+                        getEntityId(), getPosition(), Vec.ZERO, 0, true));
+                this.lastSyncedPosition = getPosition();
+            }
+        });
+
+        if (onStuck()) {
+            remove();
+        }
+        return true;
     }
 
     /**
@@ -531,13 +534,11 @@ public abstract class CustomEntityProjectile extends Entity {
         if (collisionDirection == null || stuckCollisionPoint == null) return false;
 
         Point intoBlock = stuckCollisionPoint.add(collisionDirection.mul(0.5));
-        Point blockPos = new BlockVec(intoBlock);
-        Block block = instance.getBlock(blockPos);
+        Block block = instance.getBlock(new BlockVec(intoBlock), Block.Getter.Condition.TYPE);
 
-        if (block.isAir()) return true;
-
-        Point localInBlock = stuckCollisionPoint.sub(blockPos).add(collisionDirection.mul(0.5));
-        return !block.registry().collisionShape().intersectBox(localInBlock, UNSTUCK_BOX);
+        // Only unstuck when block is broken. The intersectBox check caused false unsticks
+        // on fences/slabs — narrow shapes don't reliably overlap the test box.
+        return block.isAir();
     }
 
     // =========================================================================
@@ -559,7 +560,16 @@ public abstract class CustomEntityProjectile extends Entity {
             this.lastSyncedPosition = getPosition();
             return;
         }
-        super.synchronizePosition();
+        // Use EntityTeleportPacket (absolute position) instead of super's relative packets.
+        // Relative position packets are wrong for 1.8 clients (ViaVersion); legacy clients
+        // never see the arrow move when we rely on the default Entity sync.
+        Pos pos = getPosition();
+        Vec vel = getVelocityForPacket();
+        sendPacketToViewersAndSelf(new EntityTeleportPacket(
+                getEntityId(), pos, vel, 0, isOnGround()
+        ));
+        sendPacketToViewersAndSelf(new EntityVelocityPacket(getEntityId(), vel));
+        this.lastSyncedPosition = pos;
     }
 
     // =========================================================================
